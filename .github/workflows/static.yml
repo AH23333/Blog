@@ -32,10 +32,10 @@ jobs:
           version: 11
 
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --frozen-lockfile
 
       - name: Build
-        run: pnpm astro build
+        run: pnpm exec astro build
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
