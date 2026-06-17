@@ -1,0 +1,172 @@
+Entropic
+========
+
+Entropic is a retro textmode blog theme for purists.
+
+The implementation is modern Astro.  The surface is not: fixed-width text,
+ASCII frames, volume indexes, ANSI colors, bitmap CJK glyphs, and plain `.phile`
+documents.
+
+
+Directory Layout
+----------------
+
+The tree is organized by site responsibility.
+
+    src/config/             public site, volume, appearance, and effect config
+    src/content/philes/     article source files
+    src/components/         Astro components
+    src/layouts/            shared page shells
+    src/modules/philes/     phile loading and parsing
+    src/modules/volumes/    volume discovery, labels, and sorting
+    src/modules/textmode/   ANSI, bitmap CJK, layout, particles, and fit logic
+    src/modules/seo/        RSS, sitemap, and robots helpers
+    scripts/                maintenance scripts
+    scripts/hooks/          repository hooks
+
+The main knobs are:
+
+    src/config/site.ts          home page text and links
+    src/config/volumes.ts       volume titles, sorting, and postscripts
+    src/config/appearance.ts    colors, fonts, and text cell sizing
+    src/config/effects.ts       glitch and particle behavior
+
+
+Content
+-------
+
+Articles are `.phile` files under:
+
+    src/content/philes/volume-*/**/*.phile
+
+A phile is a frontmatter block followed by plain text.
+
+Required fields:
+
+    title
+    date
+    author
+
+Optional fields:
+
+    order
+    subtitle
+    redacted
+
+The body is rendered as textmode content.  It preserves layout, wraps to the
+configured article width, renders images, accepts ANSI escape sequences, and
+supports the custom ink block syntax.
+
+Ink style reference:
+
+    https://www.cubeyond.net/volume/3/ansi-ink-phile/
+
+Example:
+
+    ---
+    title: "Example"
+    date: 2026-05-31
+    author: "CuB3y0nd"
+    ---
+
+    --[ Summary ]-------------------------------------------------------------
+
+        target    : ...
+        primitive : ...
+
+    --[ ink ]--
+    | 00400000-00401000 r--p 00000000 ./a.out     ; ELF headers
+    ~ BBBBBBBB.BBBBBBBB GGKK KKKKKKKK MMMMMMM
+    | 00401000-00402000 r-xp 00001000 ./a.out     ; executable text
+    ~ BBBBBBBB.BBBBBBBB GGRR KKKKKKKK MMMMMMM
+
+    #[B|B] address range
+    #[G|G] readable permission
+    #[R|R] executable permission
+    #[K|K] offset / padding
+    #[M|M] mapped object
+
+
+Volumes
+-------
+
+Volume numbers come from the directory name:
+
+    volume-0
+    volume-1
+    volume-2
+
+The public routes are:
+
+    /volume/<n>/
+    /volume/<n>/<phile-name>/
+
+Per-volume behavior is configured in `src/config/volumes.ts`.
+
+
+Redactions
+----------
+
+A redacted phile uses:
+
+    redacted: true
+
+The public page renders the redacted screen.  The pre-commit hook also unstages
+redacted philes, leaving the worktree untouched.
+
+Enable hooks in a fresh clone:
+
+    git config core.hooksPath scripts/hooks
+
+
+Commands
+--------
+
+    pnpm install --frozen-lockfile
+        install dependencies
+
+    pnpm dev
+        run the local development server
+
+    pnpm check
+        run Astro diagnostics and Biome checks
+
+    pnpm format
+        format source files
+
+    pnpm build
+        build the static site
+
+    pnpm assets:fonts
+        regenerate font subsets and CJK atlases
+
+Font assets are committed.  Normal production builds do not require local font
+tooling.
+
+Run `pnpm assets:fonts` only when the committed font outputs need to change:
+
+    after editing font source files under `fonts/`
+    after changing CJK glyph coverage or bitmap atlas generation
+    after changing text that introduces new CJK glyphs which must render via
+        the bitmap CJK atlas
+    after changing the font subset scripts themselves
+
+The command regenerates:
+
+    public/fonts/gohu-subset.woff
+    public/assets/cjk/wqy-cjk-body.png
+    public/assets/cjk/wqy-cjk-link.png
+    src/generated/cjk-atlas.ts
+
+Regenerating these assets requires `fonttools`.  If `pyftsubset` is already on
+`PATH`, the scripts use it directly.  Otherwise, with `uv` installed, the
+scripts resolve `fonttools` automatically and keep the uv cache under `/tmp`.
+
+
+Branches
+--------
+
+`master` is stable.  `dev` is integration.
+
+Feature and fix work should branch from `dev`.  Pull requests should be
+squash-merged.  Commits should be signed and should use Conventional Commits.

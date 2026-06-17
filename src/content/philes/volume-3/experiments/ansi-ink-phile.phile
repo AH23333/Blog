@@ -1,0 +1,264 @@
+---
+title: "ANSI Ink for Philes"
+date: 2026-05-29
+author: "CuB3y0nd"
+lang: en
+---
+
+/*----------------------------------------------------------------------------*\
+|*                         ENTROPIC / ANSI INK                                *|
+|*              portable ANSI color grammar for plain text                    *|
+\*----------------------------------------------------------------------------*/
+
+--[ contents ]-------------------------------------------------------------//---
+
+  00  .text.summary    ................................................ contract
+  01  .text.inline     ........................................... source/result
+  02  .rodata.palette  ................................................ role map
+  03  .data.ink        .......................................... dense overlays
+  3a  .data.e_ident    ............................................. ELF e_ident
+  3b  .data.p_flags    ................................................. p_flags
+  3c  .stack.savedrip  ............................................... saved RIP
+  04  .text.writer     ................................................ notation
+  05  .debug.vmmap     .................................................. vm map
+  06  .note.rules      ............................................. hard errors
+  07  .note.refs       ......................................... source material
+
+[ 0. Summary ]─────────────────────────────────────────────────────────────//───
+
+    primitive : ANSI foreground color over fixed-width text
+    inline    : \#[role|text]
+    block     : --[ ink ]-- + text lane + mask lane
+    palette   : Tokyo Night ANSI [0][1], 16 foreground roles
+    failure   : #[R|unknown roles fail the build]
+
+ANSI ink is a small notation layer for `.phile` text.  It has two jobs:
+
+    keep the source legible in a terminal;
+    put color exactly where a byte, bit, field, or name matters.
+
+It is not HTML, Markdown, or a semantic binary annotation language.  The prose
+still carries the argument; ink only tells the eye where to land.
+
+    .--[ NOTE: sparse signal ]---------------------------.
+    | Treat color like a breakpoint: place it only where |
+    | the reader should stop and inspect state.          |
+    '----------------------------------------------------'
+
+[ 1. Inline ink ]──────────────────────────────────────────────────────────//───
+
+Inline ink is for sparse spans inside ordinary prose:
+
+    source : \#[G|r--] maps read-only, \#[R|PF_X] marks execution.
+    render : #[G|r--] maps read-only, #[R|PF_X] marks execution.
+
+The grammar is intentionally one form:
+
+    \#[role|text]
+
+The shortest role names are single ANSI bytes:
+
+    #[r|red] #[g|green] #[y|yellow] #[b|blue] #[m|magenta] #[c|cyan]
+
+Bright colors use uppercase short names:
+
+    #[R|bright-red] #[G|bright-green] #[Y|bright-yellow] #[B|bright-blue]
+    #[M|bright-magenta] #[C|bright-cyan] #[K|bright-black] #[W|bright-white]
+
+Long names are accepted when readability matters in the source:
+
+    source : \#[bright-cyan|field boundary]
+    render : #[bright-cyan|field boundary]
+
+Escaping is local:
+
+    \#[r|literal syntax]
+    #[c|escape a pipe: \|]
+    #[c|escape a close bracket: \]]
+
+[ 2. Palette ]─────────────────────────────────────────────────────────────//───
+
+The palette follows Tokyo Night terminal colors [1], but remains ANSI-shaped,
+not domain-shaped.  It is small enough to memorize and strict enough to fail
+fast when a typo slips into a phile.
+
+    .--[ palette ABI ]-------------------------------.
+    | 16 names in, one deterministic foreground out. |
+    | typo == build failure; alias drift == bug.     |
+    '------------------------------------------------'
+
+    k black          K bright-black
+    r red            R bright-red
+    g green          G bright-green
+    y yellow         Y bright-yellow
+    b blue           B bright-blue
+    m magenta        M bright-magenta
+    c cyan           C bright-cyan
+    w white          W bright-white
+
+Role map:
+
+    .--[ role map ]----------------------------------------------.
+    | C  syntax / delimiter / field boundary                     |
+    | G  valid parse / set bit / recovered signal                |
+    | Y  controlled input / offset / selected lane               |
+    | R  executable / dangerous / negative evidence              |
+    | K  padding / zero / background noise                       |
+    | B  address range / mapped region                           |
+    | M  symbol / object name / external mapping                 |
+    '------------------------------------------------------------'
+
+Terminal palette page:
+
+--[ ink ]--
+|+--[ normal ]-----------------------------------------------------------------+
+~...............................................................................
+|| 00 k.black        01 r.red          02 g.green        03 y.yellow           |
+~.....kkkkkkk...........rrrrr.............ggggggg...........yyyyyyyy............
+|| 04 b.blue         05 m.magenta      06 c.cyan         07 w.white            |
+~.....bbbbbb............mmmmmmmmm.........cccccc............wwwwwww.............
+|+--[ bright ]-----------------------------------------------------------------+
+~...............................................................................
+|| 08 K.bright-black 09 R.bright-red   0a G.bright-green 0b Y.yellow           |
+~.....KKKKKKKKKKKKKK....RRRRRRRRRRR......GGGGGGGGGGGGGG....YYYYYYYY............
+|| 0c B.bright-blue  0d M.bright-mag   0e C.bright-cyan  0f W.white            |
+~.....BBBBBBBBBBBBB.....MMMMMMMMMMMM......CCCCCCCCCCCCC.....WWWWWWW.............
+|+--[ end ]--------------------------------------------------------------------+
+~...............................................................................
+
+If a role is hard to distinguish in this strip, do not make it carry the only
+important signal in a real exploit note.
+
+[ 3. Ink blocks ]──────────────────────────────────────────────────────────//───
+
+Use block form when an artifact has many colored spans.  The source is still
+two plain text lanes:
+
+    text lane : starts with |
+    mask lane : starts with ~
+    no-op     : "." or space leaves the character unchanged
+
+The mask is character-granular, so the overlay can point at half a field, one
+byte, or one permission bit without changing the artifact itself.
+
+[ 3.1 Byte lane ]──────────────────────────────────────────────────────────//───
+
+--[ ink ]--
+| e_ident  7f 45 4c 46 02 01 01 00  00 00 00 00 00 00 00 00
+~          RR RR RR RR CC GG GG KK  KK KK KK KK KK KK KK KK
+
+    R  ELF magic
+    C  class byte
+    G  endian/version bytes
+    K  zero padding
+
+This header row is boring on purpose: it proves alignment before any clever
+annotation appears.
+
+[ 3.2 Flag lane ]─────────────────────────────────────────────────────────//────
+
+--[ ink ]--
+| p_flags  0x00000005  00000101b  PF_R=1  PF_W=0  PF_X=1
+~          KKKKKKGGGG  KKKKKGGK.  GGGG..  KKKK..  RRRR..
+
+Here green marks the set readable bits, black marks background digits, and red
+marks the executable permission.
+
+[ 3.3 Stack lane ]────────────────────────────────────────────────────────//────
+
+--[ ink ]--
+| rbp-10  41 41 41 41 41 41 41 41  | AAAAAAAA | controlled sled
+~         YY YY YY YY YY YY YY YY    YYYYYYYY
+| rbp-08  00 9b 2f 74 f8 7f 00 00  | ../t.... | canary, keep intact
+~         GG GG GG GG GG GG KK KK       GGGGGG
+| rbp+08  90 10 40 00 00 00 00 00  | ..@..... | saved RIP
+~         CC CC CC KK KK KK KK KK       C
+
+    Y  controlled padding
+    G  must-preserve canary bytes
+    C  return target / saved RIP
+    K  zero extension
+
+[ 4. Writing it ]──────────────────────────────────────────────────────────//───
+
+The literal source is still meant to be edited by hand.  A compact block:
+
+    | rbp+08  90 10 40 00 00 00 00 00
+    ~         CC CC CC KK KK KK KK KK
+
+renders as:
+
+--[ ink ]--
+| rbp+08  90 10 40 00 00 00 00 00
+~         CC CC CC KK KK KK KK KK
+
+Inline contrast:
+
+    source : \#[Y|offset 0x200] contains \#[C|encrpted_img]
+    render : #[Y|offset 0x200] contains #[C|encrpted_img]
+
+    source : \#[R|continuous CBC] fails; \#[G|per-PEB CBC] survives.
+    render : #[R|continuous CBC] fails; #[G|per-PEB CBC] survives.
+
+    .--[ dispatch ]----------------------------------.
+    | 1 byte of interest   -> inline ink             |
+    | many aligned bytes   -> ink block              |
+    | reasoning path       -> plain prose            |
+    '------------------------------------------------'
+
+[ 5. Debug rows ]──────────────────────────────────────────────────────────//───
+
+Inline ink works for a sparse debugger note:
+
+    pwndbg> x/gx #[c|$rsp]
+    #[c|0x7fffffffe3d8]: #[y|0x4141414141414141]
+    #[c|0x7fffffffe3e0]: #[R|0x0000000000401090]  ; saved rip
+
+When the whole row is a map, use a mask:
+
+--[ ink ]--
+| 00400000-00401000 r--p 00000000 ./a.out         ; ELF headers
+~ BBBBBBBB.BBBBBBBB GGKK KKKKKKKK MMMMMMM
+| 00401000-00402000 r-xp 00001000 ./a.out         ; .text, executable
+~ BBBBBBBB.BBBBBBBB GGRR KKKKKKKK MMMMMMM
+| 7ffffffde000-7ffffffff000 rw-p 00000000 [stack] ; user stack
+~ BBBBBBBBBBBB.BBBBBBBBBBBB GGGK KKKKKKKK MMMMMMM
+
+    B  address range
+    G  readable/writable permission
+    R  executable permission
+    K  offset/padding field
+    M  mapped object
+
+[ 6. Rules ]───────────────────────────────────────────────────────────────//───
+
+Accepted inline roles:
+
+    .--[ accepted inline roles ]---------------------------------------.
+    | short  : k r g y b m c w    K R G Y B M C W                      |
+    | long   : black red green yellow blue magenta cyan white          |
+    | bright : bright-black bright-red bright-green bright-yellow      |
+    |          bright-blue bright-magenta bright-cyan bright-white     |
+    | form   : \#[role|text]                                            |
+    '------------------------------------------------------------------'
+
+Accepted mask bytes:
+
+    .--[ mask bytes ]--------------------------.
+    | k r g y b m c w    K R G Y B M C W       |
+    | no-op : . or space                       |
+    '------------------------------------------'
+
+Everything else is rejected.  A typo in color notation should fail like a typo
+in an address, a register name, or an exploit constant.
+
+[ 7. References ]──────────────────────────────────────────────────────────//───
+
+    [0] Tokyo Night VS Code theme
+        https://github.com/tokyo-night/tokyo-night-vscode-theme
+
+    [1] Tokyo Night iTerm ANSI palette
+        file : tokyo-night.itermcolors
+        repo : tokyo-night/tokyo-night-vscode-theme
+
+--[ end of grammar ]-------------------------------------------------------//---

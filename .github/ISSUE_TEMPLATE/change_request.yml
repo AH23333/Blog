@@ -1,0 +1,40 @@
+name: Change request
+description: Propose a feature, content, documentation, tooling, or workflow change.
+title: "change: "
+labels: ["enhancement"]
+body:
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - User-facing behavior
+        - Content
+        - Documentation
+        - Tooling or automation
+        - Build, CI, or deployment
+        - Performance
+        - Maintenance
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: Describe the change and why it should exist.
+    validations:
+      required: true
+
+  - type: textarea
+    id: constraints
+    attributes:
+      label: Constraints
+      description: Mention compatibility, performance, design, migration, or maintenance constraints.
+
+  - type: textarea
+    id: references
+    attributes:
+      label: References
+      description: Links, screenshots, examples, prior art, or related issues.

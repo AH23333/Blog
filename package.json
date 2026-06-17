@@ -1,0 +1,39 @@
+{
+  "name": "entropic",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A retro textmode blog theme for purists.",
+  "license": "MIT",
+  "type": "module",
+  "packageManager": "pnpm@11.5.0+sha512.dbfcc4f81cf48597afd4bc391ffdf12c11f1a9fb83a395bfa6b0a2d9cc2fd8ffebafdb1ccbd529632153f793904c2615b7f09fe1a345473fd1c35845172a8eb1",
+  "engines": {
+    "node": ">=22.12.0",
+    "pnpm": ">=9"
+  },
+  "scripts": {
+    "dev": "astro dev",
+    "build": "pnpm check && astro build",
+    "preview": "astro preview",
+    "check": "astro check && biome check .",
+    "format": "biome format --write .",
+    "lint": "biome lint .",
+    "assets:fonts": "pnpm fonts:subset && pnpm fonts:atlas",
+    "fonts:atlas": "node scripts/build-cjk-atlas.mjs",
+    "fonts:subset": "node scripts/subset-fonts.mjs"
+  },
+  "dependencies": {
+    "@astrojs/check": "^0.9.9",
+    "@chenglou/pretext": "^0.0.7",
+    "@vercel/analytics": "^2.0.1",
+    "astro": "^6.3.7",
+    "typescript": "^5.8.3",
+    "yaml": "^2.9.0"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.4.15",
+    "@tailwindcss/vite": "^4.3.0",
+    "@types/node": "^25.9.1",
+    "playwright": "^1.60.0",
+    "tailwindcss": "^4.3.0"
+  }
+}

@@ -1,0 +1,426 @@
+---
+title: "The Fuzzy Notebook"
+date: 2026-02-07
+author: "CuB3y0nd"
+lang: zh
+order: 9
+---
+
+# Prologue
+
+
+  ![](https://v6.gh-proxy.org/https://github.com/CuB3y0nd/picx-images-hosting/raw/master/.6ikt5mc3b5.avif)
+
+
+次日，群名从 `Pwn Squad` 变成了 `Lost Squad`。
+
+
+  ![](https://v6.gh-proxy.org/https://github.com/CuB3y0nd/picx-images-hosting/raw/master/.mlder7db.avif)
+
+
+我们不知道这是否是更好的选择，但我想，我们绝不差尝试的勇气。
+
+:::note
+由于是直接上手用 fuzzer，边做边学，所以肯定会漏掉很多重要的概念，算是比较冒险的学习方法了。不过没事，后面慢慢总结。
+:::
+
+# Concept
+
+以下概念翻译自 [Frequently asked questions (FAQ)](https://aflplus.plus/docs/faq/)。
+
+- 程序包含 **函数 (Function)**，而函数包含编译后的机器码。
+- 函数中的机器码可以由一个或多个 **基本块 (Basic Block)** 组成。
+- 基本块是尽可能长的连续机器指令序列，它只有一个 **入口点 (Entry Point)**（可被多个其它基本块进入），且在执行过程中线性运行，除了末尾外，不会发生分支或跳转到其它地址。
+
+下面的 **A**、**B**、**C**、**D**、**E** 都是基本块：
+
+```plaintext showLineNumbers=false
+function() {
+  A:
+    some
+    code
+  B:
+    if (x) goto C; else goto D;
+  C:
+    some code
+    goto E
+  D:
+    some code
+    goto B
+  E:
+    return
+}
+```
+
+**边 (Edge)** 则表示两个直接相连的基本块之间的唯一关系，自环也算一条边：
+
+```plaintext showLineNumbers=false
+              Block A
+                |
+                v
+              Block B  <------+
+            /        \       |
+            v          v      |
+        Block C    Block D --+
+            \
+              v
+              Block E
+```
+
+# Demo
+
+以下面这个程序为例，感受一下 Fuzz 的基本用法及其思想。
+
+```c
+#include <stdio.h>
+#include <stdlib.h>
+
+int isBigPrime(int n) {
+  if (n <= 5)
+    return 0;
+  for (int i = 2; i * i <= n; i++)
+    if (n % i == 0)
+      return 0;
+  return 1;
+}
+
+int main(void) {
+  char s[35];
+  scanf("%s", s);
+
+  char cnt[300] = {0};
+
+  for (int i = 0; s[i]; i++) {
+    cnt[s[i]]++;
+    if (s[i] < 'x' || s[i] > 'z') {
+      puts("unacceptable");
+      return 0;
+    }
+  }
+
+  if (isBigPrime(cnt['x']) && isBigPrime(cnt['y']) && isBigPrime(cnt['z']))
+    abort();
+
+  puts("Nice string");
+
+  return 0;
+}
+```
+
+程序逻辑为：
+
+- **输入限制**：程序只接受由字符 `x`，`y`，`z` 组成的字符串。如果包含其他字符，程序会输出 unacceptable 并正常退出
+- **计数统计**：使用 `cnt` 数组统计输入字符串中 `x`，`y`，`z` 各自出现的次数
+- **触发崩溃**：
+  - `isBigPrime` 函数检查一个数是否为大于 5 的质数 (e.g. 7, 11, 13, 17 etc.)
+  - 只有当 `x`、`y` 以及 `z` 的数量同时都是大于 5 的质数时，程序才会执行 `abort`
+- **额外 Bug**：
+  - `scanf` 没有限制输入长度，存在栈溢出
+
+根据 [Selecting the best AFL++ compiler for instrumenting the target](https://github.com/AFLplusplus/AFLplusplus/blob/stable/docs/fuzzing_in_depth.md#a-selecting-the-best-afl-compiler-for-instrumenting-the-target) 的指引，我们选择 `afl-clang-lto` 作为 **插桩 (Instrumentation)** 用的编译器。
+
+使用如下指令编译并插桩：
+
+```shellsession
+afl-clang-lto ./test.c -o test
+```
+
+接下来，只要提供一些初始样本，放入 `inputs` 文件夹，比如我提供了这些样本：
+
+```shellsession
+λ ~/Projects/Fuzz/ cat inputs/text/*
+aaaabaaacaaadaaaeaaa
+helloworld
+Hello world!
+ahfoer
+```
+
+它们本身没有一个会让程序崩溃，我们希望 AFL++ 能自己变异这些样本，寻找到每一个能让程序崩溃的输入。
+
+由于 Arch 默认配置的问题，我需要临时关闭一些选项以确保 fuzzer 高效运行，为了方便，我直接使用如下指令自动修改系统配置（虽然这可能会造成一些安全隐患）：
+
+```shellsession
+sudo afl-system-config
+```
+
+然后就可以使用以下指令来探索程序了：
+
+```shellsession
+afl-fuzz -i inputs -o out/ -- ./test
+```
+
+刚跑几秒就出了 6 个 crash，但是全都是栈溢出，之后大概在 1min 左右，把 abort 的 crash 路径也找到了，可以看到是第九个样本：
+
+
+  ![](https://v6.gh-proxy.org/https://github.com/CuB3y0nd/picx-images-hosting/raw/master/.41ykrv2y1c.avif)
+  ![](https://v6.gh-proxy.org/https://github.com/CuB3y0nd/picx-images-hosting/raw/master/.pfuxhp6cy.avif)
+
+
+可以在 `out/default/crashes` 中找到这 10 个可以触发崩溃的输入。
+
+`check` 脚本如下：
+
+```bash
+#!/usr/bin/env bash
+
+for f in out/default/crashes/id:*; do
+  echo "==== $f ===="
+  # hexdump -C "$f" | head
+  ./test <"$f"
+done
+```
+
+# Fuzzing-Module
+
+[Fuzzing-Module](https://github.com/alex-maleno/Fuzzing-Module) 是 AFL++ 官方[推荐](https://github.com/AFLplusplus/AFLplusplus?tab=readme-ov-file#tutorials)的纯新手练习。一共 3 个 exercises，speedrun 一下。
+
+## Exercise 1
+
+程序源码如下：
+
+```cpp
+#include <iostream>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+using namespace std;
+
+int main() {
+
+  string str;
+
+  cout << "enter input string: ";
+  getline(cin, str);
+  cout << str << endl << str[0] << endl;
+
+  if (str[0] == 0 || str[str.length() - 1] == 0) {
+    abort();
+  } else {
+    int count = 0;
+    char prev_num = 'x';
+    while (count != str.length() - 1) {
+      char c = str[count];
+      if (c >= 48 && c <= 57) {
+        if (c == prev_num + 1) {
+          abort();
+        }
+        prev_num = c;
+      }
+      count++;
+    }
+  }
+
+  return 0;
+}
+```
+
+使用 `CC=afl-clang-lto CXX=afl-clang-lto++ cmake -S . -B build` 生成编译配置，然后通过 `cmake --build build` 编译项目。
+
+简单分析一下几个可以造成 crash 的地方，然后跑一下 fuzz 看看能不能对上：
+
+1. `str[0] == \x00`
+2. `str[str.length() -1] == \x00`
+3. 下一个读取到的数字比上一个读取到的数字大一
+4. `\n`，`EOF`
+
+
+  ![](https://v6.gh-proxy.org/https://github.com/CuB3y0nd/picx-images-hosting/raw/master/.3ns513tseu.avif)
+
+
+根据 Exercise 1 的要求，我们使用如下脚本生成 5 个 seeds：
+
+```bash
+#!/usr/bin/env bash
+
+mkdir seeds
+for i in {0..4}; do
+  dd if=/dev/urandom of=seeds/seed_"$i" bs=64 count=10
+done
+```
+
+然后跑 `afl-fuzz -i seeds -o out/ -m 0 -- ./build/simple_crash`，刚跑一秒就把三个 crash 都找到了：
+
+
+  ![](https://v6.gh-proxy.org/https://github.com/CuB3y0nd/picx-images-hosting/raw/master/.et14gm2kg.avif)
+
+
+可以看到第一个对上了 Case 2，第二个对上了 Case 1，第三个对上了 Case 3。
+
+:::important
+第四个 Case 找不到，那时因为当触发的 crash 是由 Undefined Behaviour 导致时，AFL++ 会认为它比较 flaky，自动把它剔除掉。因为 UB 一类的，可能在不同编译 / 优化 / 运行中表现各不相同，从而不能产生一种稳定可复现的 crash 。
+
+既然如此，我们只要增强它的 crash 表现，使其更加可确定即可，比如：
+
+```c showLineNumbers=false
+if (str.length() == 0)
+  abort();
+```
+
+亦或者，我们打开 Sanitizer，这样就可以将语言层面的未定义行为变成 fuzzer 能稳定识别的崩溃信号了。
+
+```bash showLineNumbers=false
+#!/usr/bin/env bash
+
+cmake -S . -B build \
+  -DCMAKE_C_COMPILER=afl-clang-lto \
+  -DCMAKE_CXX_COMPILER=afl-clang-lto++ \
+  -DCMAKE_C_FLAGS="-O1 -g -fno-omit-frame-pointer -fsanitize=address,undefined" \
+  -DCMAKE_CXX_FLAGS="-O1 -g -fno-omit-frame-pointer -fsanitize=address,undefined"
+```
+
+通过上面的指令生成编译配置，开启 **AddressSanitizer (ASan)** 和 **UndefinedBehaviorSanitizer (UBSan)**，然后跑 fuzz 前设置一下这两个环境变量：
+
+```shellsession
+export ASAN_OPTIONS=abort_on_error=1:symbolize=0:detect_leaks=0
+export UBSAN_OPTIONS=abort_on_error=1
+```
+
+debug 时使用：
+
+```shellsession
+export ASAN_OPTIONS=abort_on_error=1:symbolize=1:detect_leaks=0
+export UBSAN_OPTIONS=abort_on_error=1:print_stacktrace=1
+```
+
+:::
+
+## Exercise 2
+
+没啥崩溃点，只有这一个 abort, 输入 `ffl` 即可触发。
+
+```cpp
+} else if (input[i] == 'l') {
+    if (crew.num == 0) {
+        abort();
+    }
+    land();
+}
+```
+
+我使用的 input 是随机生成的 200 字节长 De Bruijn Sequence，实际上沿用 Exercise 1 的 seeds 应该也可以。
+
+
+  ![](https://v6.gh-proxy.org/https://github.com/CuB3y0nd/picx-images-hosting/raw/master/.58hw1s7oeh.avif)
+
+
+观察跑出来的几个 crashes, 发现全都符合 `ffl` 的行为，多的 `f` 被 `h` 抵消。
+
+## Exercise 3
+
+代码太多就不放了，简单罗列一下 abort points:
+
+- `choose_color`: 输入纯数字
+- `min_alt`: 输入小于 0
+- `min_airspeed`: 输入小于 0
+- `fuel_cap`: 输入小于 0
+- `check_alt`: 传入 `alt` 小于 0
+- `check_fuel`: 传入 `fuel` 小于 0
+- `check_speed`: 传入 `speed` 小于 0
+
+这里的话，我遵循提示，在 `cmake` 创建配置文件的时候多加了一个 `-DCMAKE_EXPORT_COMPILE_COMMANDS=1` 参数，用于生成编译命令到 `compile_commands.json`，并尝试使用 [Sourcetrail](https://github.com/CoatiSoftware/Sourcetrail) 来阅读源码。但是发现用这个工具还不如我直接在 nvim 里面看代码来得快……或许以后分析很大的项目时可以再试试。
+
+这节练习给了这么一个 template：
+
+```cpp
+/*
+ * This file isolates the Specs class and tests out the
+ * choose_color function specifically.
+ */
+
+#include "specs.h"
+
+int main(int argc, char **argv) {
+  // In order to call any functions in the Specs class, a Specs
+  // object is necessary. This is using one of the constructors
+  // found in the Specs class.
+  Specs spec(505, 110, 50);
+// By looking at all the code in our project, this is all the
+// necessary setup required. Most projects will have much more
+// that is needed to be done in order to properly setup objects.
+
+// This section should be in your code that you write after all the
+// necessary setup is done. It allows AFL++ to start from here in
+// your main() to save time and just throw new input at the target.
+#ifdef __AFL_HAVE_MANUAL_CONTROL
+  __AFL_INIT();
+#endif
+
+  spec.choose_color();
+  // spec.min_alt();
+
+  return 0;
+}
+```
+
+我们可以通过定义 `__AFL_HAVE_MANUAL_CONTROL` 来设置 fuzz 入口。
+
+先测试 `choose_color`，如果输入纯数字就会崩：
+
+
+  ![](https://v6.gh-proxy.org/https://github.com/CuB3y0nd/picx-images-hosting/raw/master/.4qrudewa3s.avif)
+
+
+但这里多了一个 `\x20`，即空格导致的崩溃，是我没想到的，研究研究。
+
+```cpp
+std::cin >> color;
+if (isNumber(color))
+  abort();
+
+bool Specs::isNumber(std::string str) {
+  for (int i = 0; i < str.length(); i++) {
+    if (isdigit(str[i]) == 0)
+      return false;
+  }
+  return true;
+}
+```
+
+`choose_color` 是用 `cin >>` 读取的输入，由于 `>>` 的逻辑是先跳过所有 spaces，然后从第一个非空字符读取到下一个 space 停止，所以输入 `\x20` 的话，什么都不会读到，导致 `color = ""`，for 循环根本不会进入，返回 true 导致崩溃。
+
+其它的没啥好说的，但是在 slice fuzz `min_airspeed` 的时候发现 `exec speed: 55.54/sec`，简直是在拿显微镜扫地 o_O
+
+究其原因的话，可能是因为 fuzzer 计算 exec 是按处理完一整轮来算的，可是现在这个情况内部有一个循环，可能触发多次输入，所以如果输入样本很大的话，就会处理很久。
+
+```cpp
+void Specs::min_airspeed() {
+  bool out_of_bounds = true;
+  std::cout << "enter aircraft minimum airspeed: ";
+  std::cin >> speed;
+  do {
+    out_of_bounds = false;
+    if (speed < 0)
+      abort();
+    if (speed < 100) {
+      std::cout << "too low. please re-enter: ";
+      std::cin >> speed;
+      out_of_bounds = true;
+    } else if (speed > 200) {
+      std::cout << "too high. please re-enter: ";
+      std::cin >> speed;
+      out_of_bounds = true;
+    }
+  } while (out_of_bounds);
+}
+```
+
+这里发现第二个 crash 有点奇怪：
+
+
+  ![](https://v6.gh-proxy.org/https://github.com/CuB3y0nd/picx-images-hosting/raw/master/.8vnfprhcx0.avif)
+
+
+这是因为 `>>` 在读取数字的时候也有特殊的规则，它会自动拆分数字。即 `1-3113\x09` 被拆分为 `1` 和 `-3113` 两部分，被拆开的那部分会留在输入缓冲区等待下一次读取的时候发出去，所以这里触发的逻辑是先判断 `speed < 100` 重新读取，然后发送负数触发 abort 。
+
+最后还剩下三个 check 函数我没测，因为它们相对前面几个来说更吃运气一点，感觉有点浪费时间，就且先跳过了。
+
+# Fuzzing101
+
+下面是我做过的 [Fuzzing101](https://github.com/antonio-morales/Fuzzing101) Exercises 导航列表：
+
+- [Exercise 1 - Xpdf](/posts/fuzz/xpdf-cve-2019-13288/)
+- [Exercise 2 - libexif](/posts/fuzz/libexif/)
+- [Exercise 3 - TCPdump](/posts/fuzz/tcpdump-cve-2017-13028/)
+- [Exercise 4 - LibTIFF](/posts/fuzz/libtiff-cve-2016-9297/)
+- [Exercise 5 - libxml2](/posts/fuzz/libxml2-cve-2017-9048/)

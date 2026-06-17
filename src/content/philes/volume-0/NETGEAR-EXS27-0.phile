@@ -1,0 +1,928 @@
+---
+title: "Let's Decrypt NETGEAR EXS27 NGR Firmware V1.0.1.34!"
+date: 2026-05-27
+author: "CuB3y0nd"
+order: 0
+redacted: false
+---
+
+CONTENTS
+
+  1.0  Summary ...............................................................
+  2.0  Starting from the vendor ZIP ..........................................
+  3.0  Finding the `encrpted_img` wrapper ....................................
+       3.1  Reading the header from a hexdump ................................
+       3.2  Where the AES key and IV came from ...............................
+  4.0  Decrypting it wrong first .............................................
+       4.1  Continuous CBC: the polite liar ..................................
+       4.2  Per-PEB CBC: the version that survives reality ...................
+  5.0  Recognizing and extracting the FIT image ..............................
+  6.0  SquashFS and the one-bit tax ..........................................
+  7.0  The recovery script ...................................................
+  8.0  Lessons for the next firmware .........................................
+  9.0  References ............................................................
+
+──[ 1.0 ]────────────────────────────────────────────────────────────[ Summary ]
+
+    > target      : NETGEAR EXS27, Nighthawk WiFi 7 Dual-Band Extender
+    > firmware    : V1.0.1.34
+    > wrapper     : `encrpted_img`, found at file offset 0x200
+    > transform   : #[G|AES-CBC over the wrapped payload, IV reset per PEB]
+    > plaintext   : #[C|FIT image] found inside the decrypted payload
+    > result      : Linux kernel, device tree, and #[G|SquashFS root filesystem]
+
+  INK KEY:
+  ├─ #[C|C]  format markers and container nodes
+  ├─ #[G|G]  validated or recovered data
+  ├─ #[Y|Y]  offsets, sizes, and boundary values
+  └─ #[R|R]  wrong paths, hazards, and negative controls
+
+This is a write-up about turning a vendor firmware update into a filesystem you
+can actually reverse engineer. It is not glamorous. Firmware extraction is
+mostly a long negotiation with bytes that look helpful just long enough to waste
+your afternoon.
+
+The pipeline we eventually prove is:
+
+  DECRYPTION FLOW:
+  vendor ZIP
+      │
+      ▼
+  update BIN
+      ├─ 0x00000000  vendor header
+      ├─ 0x00000200  #[C|encrpted_img] header
+      └─ 0x00000214  ciphertext payload, size #[G|0x02295000]
+         │
+         │  #[G|AES-CBC], IV reset every #[Y|0x20000] bytes
+         ▼
+  plaintext
+      └─ 0x00002100  #[C|FIT / flattened device tree]
+                     ├─ kernel@1
+                     ├─ filesystem@1 -> #[G|SquashFS root]
+                     └─ fdt@1
+
+The important part is the word prove. The summary line "AES-CBC, per-PEB"
+is not a vibe, a tool banner, or a binwalk fortune cookie. It rests on this
+proof chain:
+
+  PROOF CHAIN:
+  ├─ [1] #[C|wrapper header]
+  │  signal : visible at offset 0x200
+  ├─ [2] known family
+  │  signal : D-Link/Alpha `encrpted_img` AES constants
+  ├─ [3] #[G|positive control]
+  │  signal : decrypted bytes parse as FIT/FDT
+  └─ [4] #[R|negative control]
+     signal : continuous CBC corrupts later chunks
+
+If you only remember one thing from this phile, remember this:
+
+  ┌ WARNING ───────────────────────────────────────────────────────────────┐
+  │ #[Y|A parseable filesystem is not proof that your decryptor is correct.]    │
+  └────────────────────────────────────────────────────────────────────────┘
+
+You can be "almost right" and still reverse engineer corrupted binaries. The
+device will not care that your mistake was elegant.
+
+──[ 2.0 ]───────────────────────────────────────[ Starting from the vendor ZIP ]
+
+The starting point is the EXS27 V1.0.1.34 firmware ZIP from NETGEAR's public
+support page [1].
+
+Unzipping gives the update binary. These are the input anchors:
+
+  INPUT ANCHORS:
+  ├─ vendor ZIP
+  │  sha256:
+  │    a1db77f35622c58ffd992a59926e607ba5a22690ca2e51be8a6be84d0aebd32e
+  └─ update BIN
+     sha256:
+       fcb6e45640e2e6338ee9fba9b9d52eac7ab22870acc6ace0e9dee5a638347735
+
+At this stage I do not ask "where is SquashFS?" yet. I force the file through
+smaller gates:
+
+  FIRST PASS GATES:
+  ├─ [1] vendor header
+  │  signal : visible at the beginning of the update
+  ├─ [2] #[C|wrapper marker]
+  │  signal : magic string appears after the vendor header
+  ├─ [3] #[Y|length fields]
+  │  signal : values make sense as payload/chunk sizes
+  ├─ [4] entropy boundary
+  │  signal : high-entropy bytes begin at the parsed offset
+  └─ [5] #[G|parser proof]
+     signal : transformed output validates as FIT/FDT
+
+That ordering matters. If the update is encrypted or wrapped, carving for
+SquashFS first is how you end up with a rootfs that #[R|looks alive] but has had
+an exciting internal accident.
+
+──[ 3.0 ]─────────────────────────────────[ Finding the `encrpted_img` wrapper ]
+
+The first manual pass is intentionally primitive. I want offsets before I want
+tools to make guesses for me, so I start with `file`, a short hexdump, and
+`strings` with hex offsets:
+
+================================================================================
+$ file EXS27-V1.0.1.34.bin
+EXS27-V1.0.1.34.bin: data
+
+$ xxd -g 1 -l 0x40 EXS27-V1.0.1.34.bin
+00000000: 45 58 53 32 37 00 00 00 00 00 00 00 00 00 00 00  EXS27...........
+00000010: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
+00000020: 55 53 00 00 00 00 00 00 00 00 00 00 00 00 00 00  US..............
+00000030: 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00  ................
+
+$ LC_ALL=C strings -a -tx EXS27-V1.0.1.34.bin | grep -i 'img\|firm\|exs27'
+      0 EXS27
+     d4 1010000014770000_NETGEAR;EXS27;EXS20;EXS25;EXS18
+    200 encrpted_img
+ 109d9a |Firm
+ 20194d smiMg
+ 57405b -ZIMG$
+ 5844c7 \tImg
+ 5f1b7e iiMgQ
+ aee5ad IMgM
+ d21bf8 rimgt
+ dc02ea ^E'Gimg
+131edd9 Img W
+13cf08a ImGQ
+19207fa iMGQ
+1d03c5d "iMG
+================================================================================
+
+  STRING HIT MAP:
+  ├─ 0x00000000  EXS27 vendor header
+  ├─ 0x000000d4  NETGEAR model list
+  └─ #[C|0x00000200  encrpted_img wrapper candidate]
+
+That command is doing four small things that matter:
+
+  STRINGS SWITCHBOARD:
+  ├─ LC_ALL=C  keep byte classification predictable
+  ├─ -a        scan the whole file, not only object sections
+  ├─ -tx       print hex offsets; strings offset 200 means 0x200
+  └─ grep      stay broad before the wrapper name is known
+
+Most of those `img` matches are just printable accidents inside high-entropy
+data. The useful one is `encrpted_img`: it is readable English, misspelled in
+a way that looks like a vendor format marker, and it sits on the clean boundary
+`0x200`. The first useful hexdump is therefore around that offset:
+
+@ 0x00000200: encrpted_img wrapper header
+
+================================================================================
+$ xxd -g 1 -l 0x50 -s 0x200 EXS27-V1.0.1.34.bin
+00000200: #[C|65 6e 63 72 70 74 65 64 5f 69 6d 67] #[G|02 29 50 00]  encrpted_img.)P.
+00000210: #[Y|00 02 00 00] 88 df 74 2f 96 11 16 cf af 1c 28 09  ......t/......(.
+00000220: 2a be 45 1a 2a 78 30 5f ea ad 4d df 61 1e 14 44  *.E.*x0_..M.a..D
+00000230: 46 5e d6 b0 c0 6b f4 d4 23 66 84 4c 8a 7d 16 12  F^...k..#f.L.}..
+00000240: 8d 24 fe 68 37 30 71 5c 4a 4a 01 fc 01 07 d9 5b  .$.h70q\JJ.....[
+================================================================================
+
+  00000200: 65 6e 63 72 70 74 65 64 5f 69 6d 67 02 29 50 00
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^ ^^^^^^^^^^^
+            #[C|ASCII magic]                         #[G|payload size]
+
+  00000210: 00 02 00 00 88 df 74 2f 96 11 16 cf af 1c 28 09
+            ^^^^^^^^^^^ ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+            #[Y|PEB/chunk size] #[G|ciphertext starts here, at 0x214]
+
+  FIELD INK STRIP:
+  bytes : 65 6e 63 72 70 74 65 64 5f 69 6d 67 02 29 50 00
+          00 02 00 00
+  class : #[C|CC CC CC CC CC CC CC CC CC CC CC CC] #[G|GG GG GG GG] #[Y|YY YY YY YY]
+          magic marker                         size        PEB
+
+The byte order is not something I want to guess. The colored map above gives
+the field boundaries; the next question is scale:
+
+  BYTE ORDER SCORECARD:
+  ├─ #[G|BE]
+  │  payload_len : 36,261,888 bytes (about 34.6 MiB)
+  │  peb_size    : 131,072 bytes (128 KiB)
+  │  verdict     : fits the vendor size and flash-block scale
+  └─ #[R|LE]
+     payload_len : 5,253,378 bytes (about 5.0 MiB)
+     peb_size    : 512 bytes
+     verdict     : wrong scale; leaves wrapped-looking data unexplained
+
+Now the big-endian reading has two things going for it.
+
+First, about 34.6 MiB is in the right class for a router firmware payload that
+later turns into a kernel plus a large SquashFS image. A 5.0 MiB payload would
+leave most of the update file unexplained, even though the surrounding bytes are
+still high entropy and aligned like wrapped payload data. It also lines up with
+the vendor side: NETGEAR's firmware article links the V1.0.1.34 ZIP [1], and
+the download object is advertised at the same rough size class, about 34.6 MB.
+
+Second, `0x20000` reads naturally as a flash erase-block sized chunk: 128 KiB.
+Linux's MTD/UBIFS documentation describes MTD flash as eraseblock-based storage
+and notes that eraseblocks are typically much larger than block-device sectors,
+around 128 KiB in the general case [2]. That makes `0x00020000` a plausible
+chunk unit for a firmware packer. The little-endian alternative, 512 bytes, is
+a normal disk-sector size, but it is a bad fit for a field that later behaves
+like a per-flash-block AES reset interval.
+
+So the field interpretation becomes:
+
+  WRAPPER FIELD MAP:
+  ├─ #[C|magic]
+  │  offset/size : 0x200 / 12
+  │  value       : encrpted_img
+  │  role        : wrapper marker
+  ├─ #[G|payload_len]
+  │  offset/size : 0x20c / 4
+  │  endian      : big
+  │  value       : 0x02295000, about 34.6 MiB
+  ├─ #[Y|peb_size]
+  │  offset/size : 0x210 / 4
+  │  endian      : big
+  │  value       : 0x00020000, 128 KiB reset interval
+  └─ ciphertext
+     offset      : 0x214
+     role        : high-entropy AES-CBC input
+
+The ciphertext row is one of the easy places to cut yourself: a generic tool
+recognized this as a D-Link-style `encrpted_img` container, but its handler
+treated this sample as if ciphertext began at #[R|0x210]. For this EXS27 image,
+the four bytes at 0x210 are still the PEB-size field. Feeding them to AES as
+ciphertext is #[R|not "close enough"]; it shifts the stream and poisons the result.
+
+──[ 3.1 ]──────────────────────────────────[ Reading the header from a hexdump ]
+
+The first parser for a format like this should be almost embarrassingly small:
+
+---------------------8<------------ CUT HERE ------------>8---------------------
+magic = b"encrpted_img"
+
+off = data.index(magic)
+payload_size = int.from_bytes(data[off + 12 : off + 16], "big")
+peb_size     = int.from_bytes(data[off + 16 : off + 20], "big")
+cipher_off   = off + 20
+--------------------------------------------------------------------------------
+
+Before decrypting anything, we can sanity-check the fields:
+
+  HEADER SANITY GATES:
+  ├─ [1] #[C|magic]
+  │  signal : aligned and appears after the vendor header
+  ├─ [2] #[G|payload]
+  │  signal : AES-block aligned
+  ├─ [3] #[Y|PEB]
+  │  signal : AES-block aligned
+  ├─ [4] cipher
+  │  signal : high entropy at `cipher_off`
+  └─ [5] bounds
+     signal : `cipher_off + payload_size` stays inside the file
+
+These checks do not prove the cipher, but they keep the experiment honest. They
+also stop you from debugging a crypto problem that is really an offset problem
+wearing sunglasses.
+
+──[ 3.2 ]─────────────────────────────────[ Where the AES key and IV came from ]
+
+The key and IV were not guessed from the EXS27 bytes. That would be a bad
+magic trick, and this is firmware analysis, not stage magic with a hex editor.
+
+The useful clue is the wrapper itself. `encrpted_img` is not just a random
+string: unblob documents it as a D-Link firmware container, and the associated
+ONEKEY write-up shows the same misspelled header in the D-Link/Alpha firmware
+family [3][4]. That still does not prove the EXS27 key, but it explains where to
+look next.
+
+For the actual AES constants, the closest public trail I found was NETGEAR
+WAX206 analysis material. Its public decode script uses the same static AES-CBC
+key, IV, and 0x20000 block reset pattern for a NETGEAR/Alpha image [5]. Those
+constants are:
+
+  AES key bytes:
+    68 65 39 2d 34 2b 4d 21 29 64 36 3d 6d 7e 77 65
+    31 2c 71 32 61 33 64 31 6e 26 32 2a 5a 5e 25 38
+
+  AES IV bytes:
+    4a 25 31 69 51 6c 38 24 3d 6c 6d 2d 3b 38 41 45
+
+In ASCII form:
+
+---------------------8<------------ CUT HERE ------------>8---------------------
+KEY = b"he9-4+M!)d6=m~we1,q2a3d1n&2*Z^%8"
+IV  = b"J%1iQl8$=lm-;8AE"
+--------------------------------------------------------------------------------
+
+The constants are still only a hypothesis until the EXS27 plaintext validates.
+The way I checked them was deliberately boring:
+
+  VALIDATION LADDER:
+  ├─ [1] #[C|wrapper header]
+  │  signal : magic at 0x200 and aligned big-endian length fields
+  ├─ [2] ciphertext offset
+  │  signal : starts at 0x214, after the PEB-size field
+  ├─ [3] #[G|AES-CBC constants]
+  │  signal : plaintext yields FDT/FIT magic
+  └─ [4] parser validation
+     signal : FIT token tree yields kernel/fs/fdt nodes
+
+#[R|A wrong key gives soup. A wrong mode gives soup. A wrong offset gives soup]
+with seasoning. The right combination gives a FIT image with a valid FDT header
+and parseable node tree.
+
+──[ 4.0 ]──────────────────────────────────────────[ Decrypting it wrong first ]
+
+My first implementation had the right key, the right IV, the right offset, and
+still produced bad analysis material. That is the kind of bug that politely
+waits until you trust it.
+
+The tempting decryptor is one #[R|continuous CBC stream]:
+
+---------------------8<------------ CUT HERE ------------>8---------------------
+decryptor = Cipher(algorithms.AES(KEY), modes.CBC(IV)).decryptor()
+plaintext = decryptor.update(ciphertext) + decryptor.finalize()
+--------------------------------------------------------------------------------
+
+This produced enough recognizable structure to be seductive. A FIT header was
+visible. Some extracted files looked sane. Then a kernel decompression result
+was suspiciously short, and parts of the rootfs had broken dynamic sections.
+
+That is the firmware equivalent of "it works on my machine" except the machine
+is lying and the filesystem is making direct eye contact.
+
+──[ 4.1 ]────────────────────────────────────[ Continuous CBC: the polite liar ]
+
+The header gave us one more clue:
+
+  peb_size = 0x20000
+
+If that value were only decoration, continuous CBC would be fine. But if the
+firmware packer encrypted each flash erase block independently, then the IV must
+reset at each `0x20000` boundary.
+
+  CBC MODE SPLIT:
+  ├─ #[R|continuous CBC]
+  │  state  : one decryptor stream
+  │  border : crosses the PEB boundary
+  │  result : corrupts the first block after each boundary
+  └─ #[G|per-PEB CBC]
+     state  : reset IV every 0x20000 bytes
+     border : starts fresh at each PEB
+     result : preserves downstream XZ/ELF data
+
+CBC has a specific failure shape here. If you decrypt independent CBC chunks as
+one long CBC stream, most blocks after the boundary can look normal again, but
+the first block of each new chunk is wrong because CBC uses the previous
+ciphertext block as input to the XOR step. At a chunk boundary, the packer used
+the fixed IV again; the continuous decryptor uses the previous chunk's last
+ciphertext block. One #[R|bad block per boundary] can corrupt an XZ stream or an
+ELF dynamic section.
+
+The #[R|negative evidence] matched that theory:
+
+  NEGATIVE EVIDENCE MATRIX:
+  ├─ observation
+  │  signal : continuous CBC gives just enough structure to fool validation
+  ├─ parseable FIT
+  │  meaning: not enough to prove correct decryption
+  ├─ partial rootfs recovery
+  │  meaning: seductive, but still insufficient
+  ├─ broken dynamic metadata
+  │  meaning: consistent with chunk-boundary corruption
+  └─ kernel/rootfs extraction failure
+     meaning: mode or PEB mismatch, not random soup
+
+──[ 4.2 ]─────────────────────[ Per-PEB CBC: the version that survives reality ]
+
+The corrected decryptor uses Python cryptography [6] and resets AES-CBC for each
+PEB:
+
+---------------------8<------------ CUT HERE ------------>8---------------------
+#!/usr/bin/env python3
+from __future__ import annotations
+
+import argparse
+from pathlib import Path
+
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+
+
+KEY = b"he9-4+M!)d6=m~we1,q2a3d1n&2*Z^%8"
+IV = b"J%1iQl8$=lm-;8AE"
+MAGIC = b"encrpted_img"
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(
+        description=(
+            "Decrypt NETGEAR EXS27 encrpted_img payloads "
+            "with the Alpha/D-Link AES key."
+        )
+    )
+    parser.add_argument("input", type=Path)
+    parser.add_argument("output", type=Path)
+    args = parser.parse_args()
+
+    data = args.input.read_bytes()
+    off = data.index(MAGIC)
+    payload_size = int.from_bytes(data[off + 12 : off + 16], "big")
+    peb_size = int.from_bytes(data[off + 16 : off + 20], "big")
+    cipher_off = off + 20
+    ciphertext = data[cipher_off : cipher_off + payload_size]
+    if len(ciphertext) != payload_size or len(ciphertext) % 16:
+        raise SystemExit(
+            f"bad ciphertext length: got {len(ciphertext)} "
+            f"expected {payload_size}"
+        )
+
+    chunks = []
+    for chunk_off in range(0, len(ciphertext), peb_size):
+        chunk = ciphertext[chunk_off : chunk_off + peb_size]
+        decryptor = Cipher(algorithms.AES(KEY), modes.CBC(IV)).decryptor()
+        chunks.append(decryptor.update(chunk) + decryptor.finalize())
+    plaintext = b"".join(chunks)
+    args.output.write_bytes(plaintext)
+
+    print(f"magic_offset=0x{off:x}")
+    print(f"payload_size=0x{payload_size:x}")
+    print(f"peb_size=0x{peb_size:x}")
+    print(f"cipher_offset=0x{cipher_off:x}")
+    print(f"output={args.output}")
+
+
+if __name__ == "__main__":
+    main()
+--------------------------------------------------------------------------------
+
+The corrected decryptor prints:
+
+================================================================================
+$ uv run decrypt_exs27_encrpted_img.py EXS27-V1.0.1.34.bin firmware.decrypted
+magic_offset=0x200
+payload_size=0x2295000
+peb_size=0x20000
+cipher_offset=0x214
+================================================================================
+
+  DECRYPTOR READBACK:
+  ├─ magic_offset   -> wrapper begins at 0x200
+  ├─ cipher_offset  -> payload starts after the 20-byte header
+  ├─ payload_size   -> encrypted payload length
+  ├─ peb_size       -> AES-CBC reset interval
+  └─ plaintext
+     sha256:
+       89283bdfb4ba5732e2fbbbdb90dfb232d0f91ef6c15dfa0551eb401394713992
+
+Hashes are not decoration here. They are how you avoid accidentally returning to
+the cursed continuous-CBC output six hours later because the filename looked
+friendlier.
+
+──[ 5.0 ]───────────────────────────[ Recognizing and extracting the FIT image ]
+
+After correct decryption, I scan for flattened device tree magic. FIT means
+Flattened Image Tree: U-Boot's device-tree-based container format for bootable
+images such as kernels, ramdisks, filesystems, and DTBs [7]. Since FIT reuses
+the FDT binary format, an FDT/FIT candidate starts with the big-endian word
+#[G|`0xd00dfeed`], or the byte pattern #[G|`d0 0d fe ed`] [8].
+
+Do not use `grep -aob` for this in the write-up: it also prints the matched
+binary bytes, which can corrupt the terminal output. I use a tiny scanner that
+prints only offsets:
+
+---------------------8<------------ CUT HERE ------------>8---------------------
+from pathlib import Path
+
+data = Path("firmware.decrypted").read_bytes()
+magic = bytes.fromhex("d00dfeed")
+
+off = -1
+while True:
+    off = data.find(magic, off + 1)
+    if off < 0:
+        break
+    print(f"0x{off:x} ({off})")
+--------------------------------------------------------------------------------
+
+================================================================================
+$ uv run find_fdt_magic.py
+0x2100 (8448)
+0x21fc (8700)
+================================================================================
+
+  FDT MAGIC HIT MAP:
+  ├─ #[G|0x00002100]  outer FIT container
+  └─ 0x000021fc  embedded fdt@1 blob
+
+Both hits are real FDT magic. The hit map says which one to parse first:
+`0x2100` is the outer container, while `0x21fc` is the embedded `fdt@1`
+blob. I start with the outer candidate:
+
+@ 0x00002100: FIT / FDT header
+
+================================================================================
+$ xxd -g 1 -l 0x60 -s 0x2100 firmware.decrypted
+00002100: #[G|d0 0d fe ed] #[Y|02 29 2e d7] 00 00 00 38 02 29 2a a0  .....).....8.)*.
+00002110: 00 00 00 28 00 00 00 11 00 00 00 10 00 00 00 00  ...(............
+00002120: 00 00 00 77 #[Y|02 29 2a 68] 00 00 00 00 00 00 00 00  ...w.)*h........
+00002130: 00 00 00 00 00 00 00 00 00 00 00 01 00 00 00 00  ................
+00002140: 00 00 00 03 00 00 00 04 00 00 00 67 68 66 77 92  ...........ghfw.
+00002150: 00 00 00 03 00 00 00 3b 00 00 00 00 4b 65 72 6e  .......;....Kern
+================================================================================
+
+  00002100: d0 0d fe ed 02 29 2e d7 00 00 00 38 02 29 2a a0
+            ^^^^^^^^^^^ ^^^^^^^^^^^ ^^^^^^^^^^^ ^^^^^^^^^^^
+            #[G|FDT magic]   #[Y|total size]  struct off  strings off
+
+  00002120: 00 00 00 77 02 29 2a 68
+            ^^^^^^^^^^^ ^^^^^^^^^^^
+            strings len #[Y|struct block size]
+
+`d0 0d fe ed` is the flattened device tree magic. FIT images are FDT blobs with
+image data stored as properties [7][8], so this is a much stronger validation
+than "I saw some readable strings".
+
+Those field names are not invented from the bytes. The flattened devicetree spec
+defines the header as ten big-endian 32-bit cells [8]:
+
+---------------------8<------------ CUT HERE ------------>8---------------------
+struct fdt_header {
+  uint32_t magic;
+  uint32_t totalsize;
+  uint32_t off_dt_struct;
+  uint32_t off_dt_strings;
+  uint32_t off_mem_rsvmap;
+  uint32_t version;
+  uint32_t last_comp_version;
+  uint32_t boot_cpuid_phys;
+  uint32_t size_dt_strings;
+  uint32_t size_dt_struct;
+};
+--------------------------------------------------------------------------------
+
+So the parser reads exactly that shape:
+
+---------------------8<------------ CUT HERE ------------>8---------------------
+fields = struct.unpack(">10I", blob[base : base + 40])
+(
+    magic, totalsize, off_dt_struct, off_dt_strings, off_mem_rsvmap,
+    version, last_comp_version, boot_cpuid_phys,
+    size_dt_strings, size_dt_struct,
+) = fields
+--------------------------------------------------------------------------------
+
+Which gives:
+
+  FDT HEADER MAP:
+  ├─ #[G|magic]
+  │  value : 0xd00dfeed
+  │  role  : FDT magic
+  ├─ #[Y|totalsize]
+  │  value : 0x02292ed7
+  │  role  : full FIT blob size
+  ├─ structure block
+  │  offset : 0x00000038
+  │  size   : 0x02292a68
+  ├─ string table
+  │  offset : 0x02292aa0
+  │  size   : 0x00000077
+  ├─ reservation map
+  │  offset : 0x00000028
+  └─ versioning
+     version/last : 0x00000011 / 0x00000010
+     boot CPU     : 0x00000000
+
+The rest is a token stream, not a pile of offsets. I walk `off_dt_struct` using
+standard FDT tokens, resolve property names through `off_dt_strings`, and hash
+or extract each node's `data` property:
+
+---------------------8<------------ CUT HERE ------------>8---------------------
+FDT_BEGIN_NODE = 1
+FDT_END_NODE   = 2
+FDT_PROP       = 3
+FDT_NOP        = 4
+FDT_END        = 9
+
+struct_buf = blob[base + off_dt_struct : base + off_dt_struct + size_dt_struct]
+strings = blob[base + off_dt_strings : base + off_dt_strings + size_dt_strings]
+
+pos = 0
+stack = []
+while pos + 4 <= len(struct_buf):
+    token = u32be(struct_buf[pos : pos + 4])
+    pos += 4
+
+    if token == FDT_BEGIN_NODE:
+        end = struct_buf.index(b"\x00", pos)
+        name = struct_buf[pos:end].decode("utf-8", "replace") or "/"
+        pos = align4(end + 1)
+        stack.append(name)
+    elif token == FDT_END_NODE:
+        stack.pop()
+    elif token == FDT_PROP:
+        length = u32be(struct_buf[pos : pos + 4])
+        nameoff = u32be(struct_buf[pos + 4 : pos + 8])
+        pos += 8
+        value = struct_buf[pos : pos + length]
+        pos = align4(pos + length)
+        name = cstr(strings, nameoff)
+        path = "/" + "/".join(x for x in stack if x != "/")
+        handle_property(path, name, value)
+    elif token == FDT_END:
+        break
+--------------------------------------------------------------------------------
+
+That token walker recovered the three useful FIT nodes:
+
+  FIT NODE INVENTORY:
+  /images
+  ├─ #[C|kernel@1]
+  │  type/compression : kernel / lzma
+  │  arch/os          : arm / linux
+  │  load/entry       : 0x80088000
+  │  data             : 3,078,505 bytes
+  │  sha256:
+  │    aa8320ec1d12732a9f0af979604cd6c5b736bd869fd39dcecc1f9bc4adde5f7c
+  │
+  ├─ #[G|filesystem@1]
+  │  type/compression : filesystem / none
+  │  arch             : arm
+  │  data             : 33,161,216 bytes
+  │  sha256:
+  │    050cf09f02815d4656450211415046f0f69fbfb748a631f240e311877ea9924f
+  │
+  └─ #[C|fdt@1]
+     type/compression : flat_dt / none
+     arch             : arm
+     data             : 11,701 bytes
+     sha256:
+       d1310ebbb1f71e10bba18139fd47088fb893898fffedfdd23b115f6664f2869e
+
+The kernel payload is LZMA. Decompressing it gives:
+
+  KERNEL READBACK:
+  ├─ compression -> lzma
+  ├─ sha256:
+  │  bdd60e2d26fade4f6dd76516154dc80e8a8ba7454ef97f5dd3d44022031737e1
+  └─ version:
+     Linux 5.4.55, OpenWrt GCC 10.2.0
+     build Thu Jul 3 12:40:59 UTC 2025
+
+──[ 6.0 ]───────────────────────────────────────[ SquashFS and the one-bit tax ]
+
+The FIT parser does not merely name a node `filesystem@1`; it extracts that
+node's `data` property as a separate blob. The extraction helper is the same FDT
+token walker from section 5.0, with one extra condition: when the current path
+and property name match, write the property value to disk.
+
+---------------------8<------------ CUT HERE ------------>8---------------------
+wanted_path = "/images/filesystem@1"
+wanted_prop = "data"
+
+if token == FDT_PROP:
+    length = u32be(struct_buf[pos : pos + 4])
+    nameoff = u32be(struct_buf[pos + 4 : pos + 8])
+    pos += 8
+    value = struct_buf[pos : pos + length]
+    pos = align4(pos + length)
+
+    path = "/" + "/".join(x for x in stack if x != "/")
+    name = cstr(strings, nameoff)
+    if path == wanted_path and name == wanted_prop:
+        Path("filesystem@1.data").write_bytes(value)
+--------------------------------------------------------------------------------
+
+================================================================================
+$ uv run extract_fit_data.py firmware.decrypted \
+    --offset 0x2100 \
+    --node /images/filesystem@1 \
+    --out filesystem@1.data
+wrote 33161216 bytes to filesystem@1.data
+================================================================================
+
+  FIT EXTRACTION READBACK:
+  ├─ source  -> firmware.decrypted
+  ├─ base    -> outer FIT at 0x2100
+  ├─ node    -> /images/filesystem@1
+  └─ output  -> 33,161,216-byte filesystem blob
+
+Then I identify the blob itself:
+
+================================================================================
+$ file filesystem@1.data
+filesystem@1.data: Squashfs filesystem, little endian, version 4.0, \
+xz compressed, 33114936 bytes, 3468 inodes, blocksize: 262144 bytes, \
+created: Thu Jul  3 12:29:06 2025
+================================================================================
+
+The first bytes also match a SquashFS superblock. Linux's SquashFS header
+defines `struct squashfs_super_block` with little-endian fields in this exact
+order: magic, inode count, mkfs time, block size, fragments, compression, block
+log, flags, id count, major/minor version, root inode, bytes used, and metadata
+table offsets. The same header defines `XZ_COMPRESSION` as 4 [9]:
+
+@ 0x00000000: SquashFS superblock
+
+================================================================================
+$ xxd -g 1 -l 0x60 filesystem@1.data
+00000000: #[G|68 73 71 73] 8c 0d 00 00 92 77 66 68 00 00 04 00  hsqs.....wfh....
+00000010: 9e 00 00 00 04 00 12 00 #[R|c0 04] 01 00 04 00 00 00  ................
+00000020: e8 1b 20 6b 00 00 00 00 #[G|38 4b f9 01 00 00 00 00]  .. k....8K......
+================================================================================
+
+  00000000: 68 73 71 73 8c 0d 00 00 92 77 66 68 00 00 04 00
+            ^^^^^^^^^^^ ^^^^^^^^^^^ ^^^^^^^^^^^ ^^^^^^^^^^^
+            #[G|SquashFS magic] inodes      mkfs time   block size
+
+  00000010: 9e 00 00 00 04 00 12 00 c0 04 01 00 04 00 00 00
+                        ^^^^^ ^^^^^ ^^^^^ ^^^^^ ^^^^^^^^^^^
+                        comp  blog  #[R|flags] ids   version
+
+  00000020: e8 1b 20 6b 00 00 00 00 38 4b f9 01 00 00 00 00
+                                       ^^^^^^^^^^^^^^^^^^^^
+                                        #[G|bytes used]
+
+The parser for those fields is just little-endian `struct.unpack_from` at the
+SquashFS superblock offsets. The important early fields are:
+
+---------------------8<------------ CUT HERE ------------>8---------------------
+magic = data[0:4]
+inodes = u32le(data[4:8])
+mkfs_time = u32le(data[8:12])
+block_size = u32le(data[12:16])
+compression = u16le(data[20:22])
+flags = u16le(data[24:26])
+s_major = u16le(data[28:30])
+s_minor = u16le(data[30:32])
+bytes_used = u64le(data[40:48])
+--------------------------------------------------------------------------------
+
+For example, the visible bytes decode cleanly:
+
+  SUPERBLOCK DECODE TAPE:
+  ├─ #[G|68 73 71 73]              -> magic       -> hsqs
+  ├─ 8c 0d 00 00              -> inodes      -> 3468
+  ├─ 92 77 66 68              -> mkfs_time   -> Jul 3 2025
+  ├─ 00 00 04 00              -> block_size  -> 262144
+  ├─ 04 00                    -> compression -> xz
+  ├─ #[R|c0 04]                    -> flags       -> 0x04c0
+  ├─ 04 00 00 00              -> version     -> 4.0
+  └─ #[G|38 4b f9 01 00 00 00 00]  -> bytes_used  -> 33114936
+
+Parsed as a SquashFS v4 superblock:
+
+  field        value                         note
+  -----------  ----------------------------  -----------------------------------
+  magic        hsqs                          SquashFS magic
+  endian       little                        superblock fields are little-endian
+  version      4.0                           s_major/s_minor
+  compression  4 (xz)                        XZ_COMPRESSION
+  flags        0x04c0                        includes SQUASHFS_COMP_OPTS
+  bytes_used   33114936                      filesystem bytes used
+  inodes       3468                          inode count
+  block_size   262144                        256 KiB data block size
+  created      Thu Jul 3 12:29:06 2025 UTC   mkfs_time
+
+Stock `unsquashfs` still complains because the superblock flags include the
+#[R|`SQUASHFS_COMP_OPTS`] bit:
+
+  FLAG PATCH READBACK:
+  ├─ before  #[R|0x04c0]  SQUASHFS_COMP_OPTS bit is set
+  ├─ mask    ~0x0400  clear only SQUASHFS_COMP_OPTS
+  └─ after   #[G|0x00c0]  lower flag bits stay intact
+
+  patch @ superblock+0x18
+      old: #[R|c0 04]
+      new: #[G|c0 00]
+           ^^
+           clear SQUASHFS_COMP_OPTS while leaving the other flag bits intact
+
+The patch is intentionally surgical:
+
+---------------------8<------------ CUT HERE ------------>8---------------------
+SQUASHFS_MAGIC = b"hsqs"
+SQUASHFS_COMP_OPTS = 1 << 10
+
+data = bytearray(squashfs_image)
+assert data[:4] == SQUASHFS_MAGIC
+
+flags = u16le(data[24:26])
+flags &= ~SQUASHFS_COMP_OPTS
+data[24:26] = p16le(flags)
+--------------------------------------------------------------------------------
+
+This does not "repair" random corruption. It only tells `unsquashfs` not
+to expect a compressor-options block that this vendor image does not provide in
+the generic tool's expected form. After that, extraction yields a normal
+ARM musl root filesystem:
+
+================================================================================
+$ file busybox uhttpd_ngr devProbe
+busybox: ELF 32-bit LSB executable, ARM, EABI5, musl, stripped
+uhttpd_ngr: ELF 32-bit LSB PIE executable, ARM, EABI5, musl, stripped
+devProbe: ELF 32-bit LSB executable, ARM, EABI5, musl, stripped
+regular files: 2831
+================================================================================
+
+  ROOTFS SMOKE READBACK:
+  ├─ ABI     -> 32-bit ARM EABI5 userland
+  ├─ libc    -> musl-linked executables
+  ├─ ELF     -> PIE and non-PIE binaries both parse
+  └─ count   -> 2,831 regular files extracted
+
+──[ 7.0 ]────────────────────────────────────────────────[ The recovery script ]
+
+Once the manual path was understood, I wrapped it in a repeatable script. The
+script is #[R|not the source of truth]; the analysis above is. The script is just
+how I keep tomorrow-me from making yesterday-me's mistake again.
+
+Reduced to the important steps, it does this:
+
+  SCRIPT EXECUTION TRACE:
+  [input]
+    [1] unpack    vendor ZIP -> update BIN
+    [2] wrapper   locate `encrpted_img`; read BE sizes
+  [crypto]
+    [3] decrypt   AES-CBC from magic+20
+        reset IV every 0x20000-byte PEB
+  [FIT]
+    [4] locate    find outer FDT at plaintext 0x2100
+    [5] extract   kernel@1, filesystem@1, fdt@1
+  [rootfs]
+    [6] kernel    LZMA-decompress kernel image
+    [7] squashfs  clear COMP_OPTS on copied filesystem image
+    [8] rootfs    extract with stock `unsquashfs`
+    [9] verify    emit hashes and file-type smoke tests
+
+The script's output should include these recovery anchors:
+
+  RECOVERY ANCHORS:
+  ├─ update BIN
+  │  sha256:
+  │    fcb6e45640e2e6338ee9fba9b9d52eac7ab22870acc6ace0e9dee5a638347735
+  ├─ per-PEB decrypted payload
+  │  sha256:
+  │    89283bdfb4ba5732e2fbbbdb90dfb232d0f91ef6c15dfa0551eb401394713992
+  ├─ kernel@1
+  │  sha256:
+  │    aa8320ec1d12732a9f0af979604cd6c5b736bd869fd39dcecc1f9bc4adde5f7c
+  ├─ filesystem@1
+  │  sha256:
+  │    050cf09f02815d4656450211415046f0f69fbfb748a631f240e311877ea9924f
+  └─ fdt@1
+     sha256:
+       d1310ebbb1f71e10bba18139fd47088fb893898fffedfdd23b115f6664f2869e
+
+#[R|If those hashes move, stop.] Do not continue into "attack surface analysis".
+There is no heroism in auditing a filesystem you accidentally invented.
+
+──[ 8.0 ]──────────────────────────────────────[ Lessons for the next firmware ]
+
+The method that mattered here was not "run extractor X". It was:
+
+  NEXT FIRMWARE CHECKLIST:
+  ├─ [1] archive
+  │  action : preserve original bytes and hash them
+  ├─ [2] wrapper
+  │  action : read container bytes before carving
+  ├─ [3] fields
+  │  action : parse candidate values and check their units
+  ├─ [4] handlers
+  │  action : treat unpacker logic as a hypothesis
+  ├─ [5] validate
+  │  action : prove output with a strong downstream format
+  ├─ [6] disprove
+  │  action : keep a negative control for the tempting wrong path
+  └─ [7] automate
+     action : script it only after the weird part is understood
+
+Once the filesystem is clean, the next phase can begin: mapping the boot
+sequence, service layout, configuration model, and exposed trust boundaries.
+But all of that depends on this quieter first step.
+
+Firmware analysis rewards paranoia at the byte boundary. Be suspicious of
+clean-looking output. Be even more suspicious of output that is #[R|"mostly fine"].
+"Mostly fine" is where root causes go to cosplay as tooling problems.
+
+──[ 9.0 ]─────────────────────────────────────────────────────────[ References ]
+
+REFS:
+├─[1] vendor     NETGEAR EXS27 support page and V1.0.1.34 article
+│     https://www.netgear.com/support/product/exs27
+│     https://kb.netgear.com/000068342/EXS27-Firmware-Version-1-0-1-34
+├─[2] flash      Linux MTD / UBIFS documentation
+│     https://kernel.org/doc/html/v5.9/filesystems/ubifs.html
+├─[3] container  unblob D-Link encrpted_img format support
+│     https://unblob.org/formats/
+├─[4] container  ONEKEY D-Link firmware decryption write-up
+│     https://www.onekey.com/resource/extracting-decryption-keys-dlink
+├─[5] crypto     public NETGEAR WAX206 decode notes and script
+│     https://gist.github.com/kurosabo/28b68409ef37f66e652ba068099a7cf3
+├─[6] crypto     Python cryptography package used for AES-CBC validation
+│     https://cryptography.io/
+├─[7] FIT        U-Boot Flat Image Tree documentation
+│     https://docs.u-boot.org/en/v2025.01/usage/fit/index.html
+├─[8] FDT        Flattened Devicetree specification
+│     https://www.devicetree.org/specifications/
+└─[9] SquashFS   Linux on-disk superblock definitions and extraction tools
+      https://github.com/torvalds/linux/blob/master/fs/squashfs/squashfs_fs.h
+      https://github.com/plougher/squashfs-tools
+
+──[ EOF ]──────────────────────────────────────────────────────────────────//───
