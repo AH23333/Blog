@@ -39,7 +39,7 @@ export const siteConfig: SiteConfig = {
       items: [
         {
           label: "Welcome"
-        },
+        }
         // {
         //   label: "Researcher @RaptX",
         //   linkLabel: "@RaptX",
@@ -78,8 +78,7 @@ export const siteConfig: SiteConfig = {
           href: "https://space.bilibili.com/475905230",
           external: true,
           prefix: "~ call"
-        },
-        
+        }
       ]
     }
   ]

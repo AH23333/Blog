@@ -60,6 +60,7 @@ body.image-lightbox-open .screen {
 
 .image-lightbox-image-dragging {
   cursor: grabbing;
+  /* biome-ignore lint/complexity/noImportantStyles: necessary to override transition during drag */
   transition: none !important;
 }
 
@@ -129,7 +130,9 @@ body.image-lightbox-open .screen {
   font-size: 14px;
   line-height: 1;
   cursor: pointer;
-  transition: background 0.15s ease, border-color 0.15s ease;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
   user-select: none;
   -webkit-user-select: none;
 }

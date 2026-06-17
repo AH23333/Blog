@@ -20,9 +20,17 @@
 import { textHtml } from "../core/html";
 
 const boxChars = {
-  tl: "\u250c", tr: "\u2510", bl: "\u2514", br: "\u2518",
-  h: "\u2500", v: "\u2502", lt: "\u251c", rt: "\u2524",
-  tt: "\u252c", bt: "\u2534", cr: "\u253c"
+  tl: "\u250c",
+  tr: "\u2510",
+  bl: "\u2514",
+  br: "\u2518",
+  h: "\u2500",
+  v: "\u2502",
+  lt: "\u251c",
+  rt: "\u2524",
+  tt: "\u252c",
+  bt: "\u2534",
+  cr: "\u253c"
 };
 
 type MdBlock =
@@ -109,8 +117,11 @@ export function parseMarkdown(input: string): MdBlock[] {
     }
 
     // 表格 (需要下一行是分隔线)
-    if (line.includes("|") && cursor + 1 < lines.length &&
-        lines[cursor + 1].match(/^\|?\s*[-:]{3,}\s*(\|\s*[-:]{3,}\s*)+\|?\s*$/)) {
+    if (
+      line.includes("|") &&
+      cursor + 1 < lines.length &&
+      lines[cursor + 1].match(/^\|?\s*[-:]{3,}\s*(\|\s*[-:]{3,}\s*)+\|?\s*$/)
+    ) {
       const tableLines: string[] = [];
       while (cursor < lines.length && lines[cursor].includes("|")) {
         tableLines.push(lines[cursor]);
@@ -118,7 +129,12 @@ export function parseMarkdown(input: string): MdBlock[] {
       }
       const rows = tableLines
         .filter((l) => !l.match(/^\|?\s*[-:]{3,}\s*(\|\s*[-:]{3,}\s*)+\|?\s*$/))
-        .map((l) => l.split("|").map((c) => c.trim()).filter((c) => c.length > 0));
+        .map((l) =>
+          l
+            .split("|")
+            .map((c) => c.trim())
+            .filter((c) => c.length > 0)
+        );
       if (rows.length > 0) {
         blocks.push({ kind: "table", rows });
       }
@@ -132,9 +148,7 @@ export function parseMarkdown(input: string): MdBlock[] {
       const ordered = !!olMatch;
       const items: string[] = [];
       const indent = (ulMatch?.[1] || olMatch?.[1] || "").length;
-      const pattern = ordered
-        ? /^(\s*)(\d+)[.)]\s+(.+)$/
-        : /^(\s*)[-*+]\s+(.+)$/;
+      const pattern = ordered ? /^(\s*)(\d+)[.)]\s+(.+)$/ : /^(\s*)[-*+]\s+(.+)$/;
 
       while (cursor < lines.length) {
         const m = lines[cursor].match(pattern);
@@ -157,15 +171,23 @@ export function parseMarkdown(input: string): MdBlock[] {
     while (cursor < lines.length && lines[cursor].trim() !== "") {
       const l = lines[cursor];
       // 遇到下一个块级元素则停止
-      if (/^#{1,6}\s/.test(l) || /^[-*_]{3,}\s*$/.test(l) ||
-          l.trimStart().startsWith("```") || /^:::/.test(l) ||
-          l.startsWith(">") || /^(\s*)[-*+]\s/.test(l) ||
-          /^(\s*)(\d+)[.)]\s/.test(l)) {
+      if (
+        /^#{1,6}\s/.test(l) ||
+        /^[-*_]{3,}\s*$/.test(l) ||
+        l.trimStart().startsWith("```") ||
+        /^:::/.test(l) ||
+        l.startsWith(">") ||
+        /^(\s*)[-*+]\s/.test(l) ||
+        /^(\s*)(\d+)[.)]\s/.test(l)
+      ) {
         break;
       }
       // 表格行（有 | 且下一行是分隔线）也停止
-      if (l.includes("|") && cursor + 1 < lines.length &&
-          lines[cursor + 1].match(/^\|?\s*[-:]{3,}\s*(\|\s*[-:]{3,}\s*)+\|?\s*$/)) {
+      if (
+        l.includes("|") &&
+        cursor + 1 < lines.length &&
+        lines[cursor + 1].match(/^\|?\s*[-:]{3,}\s*(\|\s*[-:]{3,}\s*)+\|?\s*$/)
+      ) {
         break;
       }
       paraLines.push(l);
@@ -236,7 +258,7 @@ function processInline(text: string): string {
   // `code` → bright-green
   // [link](url) → bright-cyan
 
-  let result = text
+  const result = text
     // HTML 标签
     .replace(/<(?:strong|b)\b[^>]*>(.+?)<\/(?:strong|b)>/gi, (_, t) => ansiText(t, "W"))
     .replace(/<(?:em|i)\b[^>]*>(.+?)<\/(?:em|i)>/gi, (_, t) => ansiText(t, "C"))
@@ -345,7 +367,7 @@ function renderContainer(type: string, text: string, width: number): string[] {
 
   // 顶部边框：┌─ LABEL ───...──┐
   const labelPad = Math.max(0, innerWidth - style.label.length - 5);
-  const topBorder = boxChars.tl + boxChars.h + " " + style.label + " " + boxChars.h.repeat(labelPad) + boxChars.tr;
+  const topBorder = `${boxChars.tl}${boxChars.h} ${style.label} ${boxChars.h.repeat(labelPad)}${boxChars.tr}`;
   lines.push(ansiText(topBorder, style.color));
 
   // 内容（无侧边框）

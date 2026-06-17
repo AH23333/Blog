@@ -4,9 +4,15 @@
  * 验证行内公式、块级公式、编号和交叉引用的渲染正确性。
  */
 
-import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { mathBlockHtml, processMathInText, replaceMathPlaceholders, resetEquationCounter, resetEquationLabels } from "./render.ts";
+import { describe, it } from "node:test";
+import {
+  mathBlockHtml,
+  processMathInText,
+  replaceMathPlaceholders,
+  resetEquationCounter,
+  resetEquationLabels
+} from "./render.ts";
 
 describe("processMathInText", () => {
   it("应该正确提取块级公式", () => {

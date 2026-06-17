@@ -63,8 +63,8 @@ export type MathSegment = MathBlock | InlineMathResult;
 function renderMathBlock(latex: string, display: boolean, label?: string): MathBlock {
   const number = display ? getNextEquationNumber() : undefined;
 
-  if (display && label) {
-    registerEquationLabel(label, number!);
+  if (display && label && number !== undefined) {
+    registerEquationLabel(label, number);
   }
 
   const html = katex.renderToString(latex, {
