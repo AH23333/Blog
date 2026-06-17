@@ -77,19 +77,20 @@ type Props = {
     const allLines: { el: HTMLElement; lineHtml: string }[] = [];
 
     for (const pre of preElements) {
-      if (pre.hasAttribute("data-typed")) continue;
-      pre.setAttribute("data-typed", "true");
+      const preEl = pre as HTMLElement;
+      if (preEl.hasAttribute("data-typed")) continue;
+      preEl.setAttribute("data-typed", "true");
 
-      const originalHtml = pre.innerHTML;
+      const originalHtml = preEl.innerHTML;
       const tempDiv = document.createElement("div");
       tempDiv.innerHTML = originalHtml;
       const lines = tempDiv.innerHTML.split("\n");
 
-      pre.innerHTML = "";
-      pre.classList.add("tw-visible");
+      preEl.innerHTML = "";
+      preEl.classList.add("tw-visible");
 
       lines.forEach((lineHtml) => {
-        allLines.push({ el: pre, lineHtml });
+        allLines.push({ el: preEl, lineHtml });
       });
     }
 
