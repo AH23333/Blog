@@ -10,9 +10,6 @@
     "node": ">=22.12.0",
     "pnpm": ">=9"
   },
-  "pnpm": {
-    "onlyBuiltDependencies": ["workerd", "esbuild"]
-  },
   "scripts": {
     "dev": "astro dev",
     "build": "pnpm check && astro build",
