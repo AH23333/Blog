@@ -2,9 +2,8 @@ import tailwindcss from "@tailwindcss/vite"
 import { defineConfig } from "astro/config"
 
 export default defineConfig({
-  // GitHub Pages 项目站点配置
-  site: "https://AH23333.github.io",
-  base: "/Blog",
+  // Vercel 部署（无 base path 问题）
+  site: "https://www.cubeyond.net/",
   devToolbar: {
     enabled: false,
   },
