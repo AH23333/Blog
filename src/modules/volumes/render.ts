@@ -1,11 +1,9 @@
 import { textmodeConfig, volumeConfig } from "../../config";
 import { escapeHtml, link, textHtml } from "../textmode/core/html";
 import { cellWidth, padCells, truncateCells } from "../textmode/core/layout";
-import { lifeFrameLineHtml, lifeFrameLines } from "../textmode/life/art";
 import { volumeTitle } from "./labels";
 import type { Volume } from "./model";
 
-const artIndent = textmodeConfig.volumeArtIndent;
 const tocRightColumn = textmodeConfig.volumeRightColumn;
 const tocInnerWidth = tocRightColumn - 1;
 const tocContentWidth = tocInnerWidth - 2;
@@ -20,15 +18,13 @@ export function renderVolumePre(volume: Volume): string {
 function renderToc(volume: Volume): string {
   const config = volumeConfig(volume.number);
   const title = config.subtitle ? `${volumeTitle(volume)} - ${config.subtitle}` : volumeTitle(volume);
-  const lifeLines = lifeFrameLines();
   const entryLabelWidth = Math.max(
     ...volume.philes.map((phile, index) => cellWidth(entryLabel(volume, index, phile.data.title, phile.data.date)))
   );
   const lines = [
-    ...lifeLines.slice(0, 14).map((_, row) => `${" ".repeat(artIndent)}${lifeFrameLineHtml(row)}`),
-    `┌${"─".repeat(artIndent - 1)}${lifeFrameLineHtml(14)}`,
-    `│ ${pad(title, artIndent - 2)}${lifeFrameLineHtml(15)}`,
-    `│ ${pad("                                    CONTENTS", artIndent - 2)}${lifeFrameLineHtml(16)}`,
+    `┌${"─".repeat(tocInnerWidth)}┐`,
+    `│ ${pad(title, tocContentWidth)} │`,
+    `│ ${pad("                                    CONTENTS", tocContentWidth)} │`,
     frameLine(""),
     ...volume.philes.map((phile, index) =>
       renderTocLine(

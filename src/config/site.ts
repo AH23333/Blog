@@ -25,31 +25,27 @@ export type SiteConfig = {
 };
 
 export const siteConfig: SiteConfig = {
-  name: "Entropic",
+  name: "AH's Blog",
   description: "Security Research Philes",
-  homeAsciiArt: `▓█████  ███▄    █ ▄▄▄█████▓ ██▀███   ▒█████   ██▓███   ██▓ ▄████▄
-▓█   ▀  ██ ▀█   █ ▓  ██▒ ▓▒▓██ ▒ ██▒▒██▒  ██▒▓██░  ██▒▓██▒▒██▀ ▀█
-▒███   ▓██  ▀█ ██▒▒ ▓██░ ▒░▓██ ░▄█ ▒▒██░  ██▒▓██░ ██▓▒▒██▒▒▓█    ▄
-▒▓█  ▄ ▓██▒  ▐▌██▒░ ▓██▓ ░ ▒██▀▀█▄  ▒██   ██░▒██▄█▓▒ ▒░██░▒▓▓▄ ▄██▒
-░▒████▒▒██░   ▓██░  ▒██▒ ░ ░██▓ ▒██▒░ ████▓▒░▒██▒ ░  ░░██░▒ ▓███▀ ░
-░░ ▒░ ░░ ▒░   ▒ ▒   ▒ ░░   ░ ▒▓ ░▒▓░░ ▒░▒░▒░ ▒▓▒░ ░  ░░▓  ░ ░▒ ▒  ░
- ░ ░  ░░ ░░   ░ ▒░    ░      ░▒ ░ ▒░  ░ ▒ ▒░ ░▒ ░      ▒ ░  ░  ▒
-   ░      ░   ░ ░   ░        ░░   ░ ░ ░ ░ ▒  ░░        ▒ ░░
-   ░  ░         ░             ░         ░ ░            ░  ░ ░
-                                                        ░`,
+  homeAsciiArt: `    ___    __  ___          ____  __
+   /   |  / / / ( )_____   / __ )/ /___  ____ _
+  / /| | / /_/ /|// ___/  / __  / / __ \\/ __ \`/
+ / ___ |/ __  /  (__  )  / /_/ / / /_/ / /_/ /
+/_/  |_/_/ /_/  /____/  /_____/_/\\____/\\__, /
+                                      /____/`,
   homeSections: [
     {
-      title: "TL;DR",
+      title: "AH's Blog",
       items: [
         {
-          label: "Cybersecurity enthusiast. Idealist. Purist."
+          label: "Welcome"
         },
-        {
-          label: "Researcher @RaptX",
-          linkLabel: "@RaptX",
-          href: "https://raptx.org/",
-          external: true
-        }
+        // {
+        //   label: "Researcher @RaptX",
+        //   linkLabel: "@RaptX",
+        //   href: "https://raptx.org/",
+        //   external: true
+        // }
       ]
     },
     {
@@ -59,41 +55,31 @@ export const siteConfig: SiteConfig = {
         showEmpty: false
       }
     },
-    {
-      title: "Research",
-      items: [
-        { label: "Binary Exploitation" },
-        { label: "Windows Security" },
-        { label: "IoT Security" },
-        { label: "Automation" }
-      ]
-    },
+    // {
+    //   title: "Research",
+    //   items: [
+    //     { label: "Binary Exploitation" },
+    //     { label: "Windows Security" },
+    //     { label: "IoT Security" },
+    //     { label: "Automation" }
+    //   ]
+    // },
     {
       title: "Contact",
       items: [
-        { label: "root -at- cubeyond -dot- net" },
         {
-          label: "PGP Encryption Key",
-          href: "/key.asc"
-        },
-        {
-          label: "github@plt",
-          href: "https://github.com/CuB3y0nd/",
+          label: "github@AH23333",
+          href: "https://github.com/AH23333/",
           external: true,
           prefix: "~ call"
         },
         {
-          label: "memos@plt",
-          href: "https://memos.cubeyond.net/",
+          label: "bilibili@安好_AH",
+          href: "https://space.bilibili.com/475905230",
           external: true,
           prefix: "~ call"
         },
-        {
-          label: "kofi@plt",
-          href: "https://ko-fi.com/cub3y0nd",
-          external: true,
-          prefix: "~ call"
-        }
+        
       ]
     }
   ]

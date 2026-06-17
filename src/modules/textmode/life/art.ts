@@ -16,9 +16,5 @@ export function lifeFrameLineHtml(row: number): string {
 }
 
 export function lifeFrameLines(): string[] {
-  return [
-    `┌${"─".repeat(lifeInnerWidth)}┐`,
-    ...Array.from({ length: lifeInnerHeight }, () => `│${" ".repeat(lifeInnerWidth)}│`),
-    `└${"─".repeat(lifeInnerWidth)}┘`
-  ];
+  return Array.from({ length: lifeFrameHeight }, () => "");
 }

@@ -5,8 +5,9 @@ html:has(.home-shell) {
 
 .screen:has(.home-shell) {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
+  padding-top: 12vh;
   min-height: calc(100vh - 2em);
   text-align: center;
 }

@@ -13,7 +13,7 @@
   position: relative;
   z-index: 2;
   width: calc(var(--text-cell) * 85);
-  height: calc(var(--text-size) * max(18, 17 + var(--phile-meta-lines)));
+  height: calc(var(--text-size) * (var(--phile-meta-lines) + 2));
 }
 
 .phile-header-side {
@@ -24,7 +24,7 @@
 
 .phile-header-meta {
   position: absolute;
-  top: calc(var(--text-size) * 16);
+  top: calc(var(--text-size) * 1);
   left: 0;
   padding-left: calc(var(--text-cell) * 4);
 }

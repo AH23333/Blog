@@ -1,0 +1,111 @@
+/* ── 数学公式样式 ──────────────────────────────────────────────────────── */
+
+/* 块级公式容器 */
+.math-block-wrapper {
+  position: relative;
+  z-index: 2;
+  padding-left: calc(var(--text-cell) * 4);
+  margin: calc(var(--text-size) * 1.5) 0;
+  max-width: calc(var(--text-cell) * 80);
+  overflow-x: auto;
+  overflow-y: visible;
+}
+
+.math-block {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: calc(var(--text-cell) * 2);
+  padding: calc(var(--text-size) * 0.5) 0;
+  min-height: calc(var(--text-size) * 2);
+}
+
+/* KaTeX 渲染的公式本体 */
+.math-block .katex-display {
+  margin: 0;
+  flex: 0 1 auto;
+}
+
+/* 公式编号 */
+.math-number {
+  flex-shrink: 0;
+  color: var(--ansi-bright-black);
+  font-family: var(--text-font);
+  font-size: var(--text-size);
+  line-height: 1;
+  white-space: nowrap;
+}
+
+/* 行内公式 */
+.math-inline {
+  display: inline;
+}
+
+.math-inline .katex {
+  font-size: 1.1em;
+}
+
+/* 公式交叉引用 */
+.math-ref {
+  color: var(--link);
+  font-family: var(--text-font);
+  font-size: var(--text-size);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.math-ref:hover,
+.math-ref:focus-visible {
+  background: var(--link-hover-bg);
+  color: var(--link-hover);
+  text-decoration: underline;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+  outline: 0;
+}
+
+.math-ref-unknown {
+  color: var(--ansi-red);
+}
+
+/* ── KaTeX 字体颜色覆盖（适配暗色主题） ──────────────────────────────── */
+
+/* 确保 KaTeX 公式在暗色背景下可见 */
+.math-block .katex,
+.math-inline .katex {
+  color: var(--fg);
+}
+
+/* 调整 KaTeX 内部颜色变量 */
+.math-block .katex .mord,
+.math-inline .katex .mord,
+.math-block .katex .mbin,
+.math-inline .katex .mbin,
+.math-block .katex .mrel,
+.math-inline .katex .mrel,
+.math-block .katex .mopen,
+.math-inline .katex .mopen,
+.math-block .katex .mclose,
+.math-inline .katex .mclose,
+.math-block .katex .mpunct,
+.math-inline .katex .mpunct,
+.math-block .katex .minner,
+.math-inline .katex .minner {
+  color: var(--fg);
+}
+
+/* ── 响应式适配 ──────────────────────────────────────────────────────── */
+
+@media (max-width: 760px) {
+  .math-block-wrapper {
+    padding-left: calc(var(--text-cell) * 2);
+    max-width: calc(100vw - var(--text-cell) * 4);
+  }
+}
+
+@media (max-width: 540px) {
+  .math-block-wrapper {
+    padding-left: calc(var(--text-cell) * 1);
+    max-width: calc(100vw - var(--text-cell) * 2);
+  }
+}

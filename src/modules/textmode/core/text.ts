@@ -18,6 +18,7 @@ export function renderPreparedText(input: PreparedText, width: number): string {
 export function normalizeText(input: string): string {
   return input
     .replace(/\r\n/g, "\n")
+    .replace(/\t/g, "    ")
     .replace(/[—–-]?[▸►]/gu, "->")
     .replace(/[◂◄][—–-]?/gu, "<-")
     .replace(/[“”]/g, '"')

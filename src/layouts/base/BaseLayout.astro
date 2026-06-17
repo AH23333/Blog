@@ -1,6 +1,7 @@
 ---
 import Analytics from "@vercel/analytics/astro";
 import stylesheetUrl from "../../styles/global.css?url";
+import katexCssUrl from "katex/dist/katex.min.css?url";
 import { appearanceConfig, effectsConfig, siteConfig, textmodeConfig } from "../../config";
 import { appearanceCssVariables } from "../../modules/textmode/core/css-vars";
 
@@ -26,7 +27,7 @@ const particlesEnabled = effectsConfig.particles.enable;
 ---
 
 <!doctype html>
-<html lang="en">
+<html lang="en" style="zoom:1.5">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -48,6 +49,7 @@ const particlesEnabled = effectsConfig.particles.enable;
       )
     }
     <link rel="stylesheet" href={stylesheetUrl} />
+    <link rel="stylesheet" href={katexCssUrl} />
     <style set:html={appearanceCss}></style>
     <link
       rel="preload"

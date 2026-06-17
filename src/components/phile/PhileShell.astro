@@ -23,7 +23,7 @@ const footerHtml = renderPhileFooterPre(phile);
 <article class="textmode-wrap phile-wrap">
   <header
     class="phile-header"
-    style={`--phile-header-lines: ${header.lineCount}; --phile-meta-lines: ${header.metaLineCount}; --phile-title-lines: ${header.titleLineCount}`}
+    style={`--phile-meta-lines: ${header.metaLineCount}`}
   >
     <pre
       class="textmode-pre phile-pre phile-header-side life-art"
@@ -37,6 +37,8 @@ const footerHtml = renderPhileFooterPre(phile);
       <pre class="textmode-pre phile-pre phile-body-pre phile-redacted-pre" set:html={redactedHtml}></pre>
     ) : bodyBlocks.map((block) =>
       block.kind === "image" ? (
+        <div class="phile-media" set:html={block.html}></div>
+      ) : block.kind === "math" ? (
         <div class="phile-media" set:html={block.html}></div>
       ) : (
         <pre class="textmode-pre phile-pre phile-body-pre" set:html={block.html}></pre>

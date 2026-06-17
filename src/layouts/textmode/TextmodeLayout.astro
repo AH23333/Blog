@@ -19,7 +19,219 @@ type Props = {
   pageType={Astro.props.pageType}
   publishedTime={Astro.props.publishedTime}
 >
+  <!-- 返回按钮 -->
+  <button id="nav-back" class="nav-btn" type="button" aria-label="返回上一页" title="返回上一页">
+    &#x2190; BACK
+  </button>
+
+  <!-- 返回顶部按钮 -->
+  <button id="scroll-top" class="nav-btn" type="button" aria-label="返回顶部" title="返回顶部">
+    &#x2191; TOP
+  </button>
+
   <main class="screen">
     <slot />
   </main>
 </BaseLayout>
+
+<script>
+  // 返回上一页（首页隐藏）
+  const backBtn = document.getElementById("nav-back");
+  if (backBtn) {
+    // 首页路径为 "/"（Astro 的 base 为 "/"）
+    if (window.location.pathname === "/") {
+      backBtn.style.display = "none";
+    }
+
+    backBtn.addEventListener("click", () => {
+      if (document.referrer && new URL(document.referrer).origin === window.location.origin) {
+        window.history.back();
+      } else {
+        window.location.href = "/";
+      }
+    });
+  }
+
+  // 返回顶部
+  const topBtn = document.getElementById("scroll-top");
+  if (topBtn) {
+    const checkScroll = () => {
+      topBtn.classList.toggle("visible", window.scrollY > 300);
+    };
+
+    window.addEventListener("scroll", checkScroll, { passive: true });
+    checkScroll();
+
+    topBtn.addEventListener("click", () => {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    });
+  }
+</script>
+
+<script>
+  // UNIX 光标打字动画 — 逐行显示 + 闪烁光标
+  function initTypewriter() {
+    const preElements = document.querySelectorAll(".textmode-pre");
+    if (preElements.length === 0) return;
+
+    const allLines: { el: HTMLElement; lineHtml: string }[] = [];
+
+    for (const pre of preElements) {
+      if (pre.hasAttribute("data-typed")) continue;
+      pre.setAttribute("data-typed", "true");
+
+      const originalHtml = pre.innerHTML;
+      const tempDiv = document.createElement("div");
+      tempDiv.innerHTML = originalHtml;
+      const lines = tempDiv.innerHTML.split("\n");
+
+      pre.innerHTML = "";
+      pre.classList.add("tw-visible");
+
+      lines.forEach((lineHtml) => {
+        allLines.push({ el: pre, lineHtml });
+      });
+    }
+
+    if (allLines.length === 0) return;
+
+    let currentIndex = 0;
+    // 调整 batchSize 和 interval 控制打字速度：
+    // batchSize = 每批显示行数（越大越快），interval = 每批间隔毫秒（越大越慢）
+    const batchSize = 2;
+    const interval = 30;
+
+    const cursor = document.createElement("span");
+    cursor.className = "typewriter-cursor";
+    cursor.textContent = "\u2588";
+    cursor.setAttribute("aria-hidden", "true");
+
+    function typeNextBatch() {
+      const batch = allLines.slice(currentIndex, currentIndex + batchSize);
+
+      if (batch.length === 0) {
+        cursor.remove();
+        return;
+      }
+
+      for (const { el, lineHtml } of batch) {
+        const existingCount = el.querySelectorAll(".tw-line").length;
+        const lineSpan = document.createElement("span");
+        lineSpan.className = "tw-line";
+        lineSpan.innerHTML = lineHtml || " ";
+
+        if (existingCount > 0) {
+          el.appendChild(document.createTextNode("\n"));
+        }
+        el.appendChild(lineSpan);
+      }
+
+      currentIndex += batch.length;
+
+      if (currentIndex < allLines.length) {
+        window.setTimeout(typeNextBatch, interval);
+      } else {
+        cursor.remove();
+      }
+    }
+
+    const lastPre = preElements[preElements.length - 1];
+    lastPre.appendChild(cursor);
+
+    window.setTimeout(typeNextBatch, 80);
+  }
+
+  if (document.readyState === "complete") {
+    window.setTimeout(initTypewriter, 50);
+  } else {
+    window.addEventListener("load", () => {
+      window.setTimeout(initTypewriter, 50);
+    }, { once: true });
+  }
+</script>
+
+<style is:global>
+  /* 初始隐藏文本内容，防止打字动画前的闪烁 */
+  .textmode-pre {
+    visibility: hidden;
+  }
+
+  .textmode-pre.tw-visible {
+    visibility: visible;
+  }
+
+  /* 导航按钮通用样式 */
+  .nav-btn {
+    position: fixed;
+    z-index: 100;
+    padding: 4px 10px;
+    border: 1px solid var(--ansi-bright-black);
+    background: var(--bg);
+    color: var(--ansi-cyan);
+    font-family: var(--text-font);
+    font-size: var(--text-size);
+    line-height: 1;
+    cursor: pointer;
+    opacity: 0.6;
+    transition: opacity 0.2s, border-color 0.2s;
+  }
+
+  .nav-btn:hover {
+    opacity: 1;
+    border-color: var(--link);
+    color: var(--link);
+    background: var(--link-hover-bg);
+  }
+
+  .nav-btn:focus-visible {
+    opacity: 1;
+    outline: 1px solid var(--link);
+    outline-offset: 2px;
+  }
+
+  /* 返回按钮 - 左上角 */
+  #nav-back {
+    top: 8px;
+    left: 8px;
+  }
+
+  /* 返回顶部按钮 - 右下角 */
+  #scroll-top {
+    bottom: 12px;
+    right: 12px;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s;
+  }
+
+  #scroll-top.visible {
+    opacity: 0.6;
+    pointer-events: auto;
+  }
+
+  #scroll-top.visible:hover {
+    opacity: 1;
+  }
+
+  /* 打字机光标 */
+  .typewriter-cursor {
+    display: inline;
+    color: var(--link);
+    animation: cursor-blink 0.8s step-end infinite;
+  }
+
+  @keyframes cursor-blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+  }
+
+  /* 打字行淡入效果 */
+  .tw-line {
+    animation: line-fade-in 0.05s ease-out;
+  }
+
+  @keyframes line-fade-in {
+    from { opacity: 0.3; }
+    to { opacity: 1; }
+  }
+</style>

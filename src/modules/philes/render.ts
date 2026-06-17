@@ -1,8 +1,16 @@
 import { textmodeConfig } from "../../config";
+import {
+  mathBlockHtml,
+  processMathInText,
+  replaceMathPlaceholders,
+  resetEquationCounter,
+  resetEquationLabels
+} from "../math/render";
 import { renderAnsiText } from "../textmode/ansi/render";
 import { escapeHtml, link, textHtml } from "../textmode/core/html";
 import { wrapWordsCells } from "../textmode/core/layout";
 import { lifeFrameHeight, lifeFrameHtml } from "../textmode/life/art";
+import { parseMarkdown, renderMarkdownToAnsi } from "../textmode/markdown/parser";
 import type { Phile } from "./model";
 
 const titleWidth = textmodeConfig.articleArtIndent - textmodeConfig.textIndent;
@@ -16,7 +24,7 @@ export type PhileHeader = {
 };
 
 export type PhileBodyBlock = {
-  kind: "text" | "image";
+  kind: "text" | "image" | "math";
   html: string;
 };
 
@@ -34,19 +42,73 @@ export function renderPhileHeader(phile: Phile): PhileHeader {
 }
 
 export function renderPhileBodyBlocks(phile: Phile): PhileBodyBlock[] {
-  return splitBodyBlocks(phile.body ?? "").map((block) => {
+  resetEquationCounter();
+  resetEquationLabels();
+
+  return splitBodyBlocks(phile.body ?? "").flatMap((block) => {
     if (block.kind === "image") {
-      return {
-        kind: "image",
-        html: renderImage(block.src, block.alt)
-      };
+      return [
+        {
+          kind: "image" as const,
+          html: renderImage(block.src, block.alt)
+        }
+      ];
     }
 
-    return {
-      kind: "text",
-      html: `${renderAnsiText(block.text, textmodeConfig.bodyWidth)}\n`
-    };
+    // 处理数学公式
+    const { text: cleanText, blockMath, inlineMath } = processMathInText(block.text);
+
+    const results: PhileBodyBlock[] = [];
+
+    // 处理块级公式：在文本前后插入 math 块
+    // 这里简化处理：如果文本包含块级公式，将文本分割为多个段落
+    if (blockMath.length > 0 || inlineMath.size > 0) {
+      // 将文本按块级公式位置分割
+      const textParts = cleanText.split(/\$\$[\s\S]*?\$\$/g);
+      const mathBlocks = [...blockMath];
+
+      // 交替插入文本块和公式块
+      const maxLen = Math.max(textParts.length, mathBlocks.length);
+      for (let i = 0; i < maxLen; i++) {
+        if (i < textParts.length && textParts[i].trim().length > 0) {
+          results.push(renderTextBlock(textParts[i], inlineMath));
+        }
+        if (i < mathBlocks.length) {
+          results.push({
+            kind: "math",
+            html: mathBlockHtml(mathBlocks[i])
+          });
+        }
+      }
+    } else {
+      results.push(renderTextBlock(cleanText, inlineMath));
+    }
+
+    return results;
   });
+}
+
+function renderTextBlock(text: string, inlineMath: Map<string, string>): PhileBodyBlock {
+  const isAnsiStyle = text.includes("#[") || text.includes("──[");
+  let rawText: string;
+  if (isAnsiStyle) {
+    rawText = text;
+  } else {
+    try {
+      const blocks = parseMarkdown(text);
+      rawText = renderMarkdownToAnsi(blocks, textmodeConfig.bodyWidth).join("\n");
+    } catch {
+      rawText = text;
+    }
+  }
+  let html = `${renderAnsiText(rawText, textmodeConfig.bodyWidth)}\n`;
+
+  // 替换行内公式占位符
+  if (inlineMath.size > 0) {
+    html = replaceMathPlaceholders(html, inlineMath);
+  }
+
+  return { kind: "text", html };
 }
 
 export function renderPhileFooterPre(phile: Phile): string {
