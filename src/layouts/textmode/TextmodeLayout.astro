@@ -68,7 +68,7 @@ type Props = {
   }
 </script>
 
-<script>
+  <script>
   // UNIX 光标打字动画 — 逐行显示 + 闪烁光标
   function initTypewriter() {
     const preElements = document.querySelectorAll(".textmode-pre");
@@ -81,26 +81,91 @@ type Props = {
       if (preEl.hasAttribute("data-typed")) continue;
       preEl.setAttribute("data-typed", "true");
 
+      // 跳过自身标记为 no-typewriter 的元素
+      if (preEl.hasAttribute("data-no-typewriter")) {
+        preEl.style.visibility = "visible";
+        continue;
+      }
+
       const originalHtml = preEl.innerHTML;
-      const tempDiv = document.createElement("div");
-      tempDiv.innerHTML = originalHtml;
-      const lines = tempDiv.innerHTML.split("\n");
+      if (!originalHtml.trim()) {
+        preEl.style.visibility = "visible";
+        continue;
+      }
+
+      // 保护 data-no-typewriter 子元素：利用 DOM 解析找到它们，用占位符替换
+      // 这样可以避免分行时破坏其 HTML 结构（如 <pre><code> 内的多行内容）
+      const noTypewriterBlocks: string[] = [];
+      let protectedHtml = originalHtml;
+
+      // 用临时 DOM 找出所有 data-no-typewriter 元素
+      const tmp = document.createElement("div");
+      tmp.innerHTML = originalHtml;
+      const blocks = tmp.querySelectorAll("[data-no-typewriter]");
+      for (const block of blocks) {
+        const outer = block.outerHTML;
+        const idx = noTypewriterBlocks.length;
+        noTypewriterBlocks.push(outer);
+        protectedHtml = protectedHtml.replace(outer, `\uE400NT${idx}\uE400`);
+      }
+
+      let lines: string[];
+
+      // <div> 元素：浏览器 innerHTML 不保留 \n → 使用 DOM 分行
+      if (preEl.tagName === "DIV") {
+        const domTmp = document.createElement("div");
+        domTmp.innerHTML = protectedHtml;
+        lines = [];
+
+        const BLOCK_TAGS = /^(p|h[1-6]|ul|ol|li|blockquote|table|hr|div|pre|figure|figcaption|dl|dt|dd|section|header|footer|main|article|nav|aside)$/;
+
+        function walk(node: Node): void {
+          if (node.nodeType === Node.TEXT_NODE) {
+            const text = node.textContent || "";
+            if (text.trim()) {
+              const parts = text.split("\n");
+              for (const part of parts) {
+                lines.push(part);
+              }
+            }
+          } else if (node.nodeType === Node.ELEMENT_NODE) {
+            const el = node as HTMLElement;
+            if (BLOCK_TAGS.test(el.tagName.toLowerCase())) {
+              lines.push(el.outerHTML);
+            } else {
+              for (const child of node.childNodes) {
+                walk(child);
+              }
+            }
+          }
+        }
+
+        for (const child of domTmp.childNodes) {
+          walk(child);
+        }
+      } else {
+        // <pre> 元素：直接按 \n 拆分
+        lines = protectedHtml.split("\n");
+      }
 
       preEl.innerHTML = "";
-      preEl.classList.add("tw-visible");
 
-      lines.forEach((lineHtml) => {
-        allLines.push({ el: preEl, lineHtml });
-      });
+      for (const lineHtml of lines) {
+        // 恢复被保护的 data-no-typewriter 元素
+        let restored = lineHtml;
+        for (let i = 0; i < noTypewriterBlocks.length; i++) {
+          restored = restored.replaceAll(`\uE400NT${i}\uE400`, noTypewriterBlocks[i]);
+        }
+        allLines.push({ el: preEl, lineHtml: restored });
+      }
     }
 
     if (allLines.length === 0) return;
 
     let currentIndex = 0;
-    // 调整 batchSize 和 interval 控制打字速度：
-    // batchSize = 每批显示行数（越大越快），interval = 每批间隔毫秒（越大越慢）
-    const batchSize = 2;
-    const interval = 30;
+    // 自适应批处理：每批至少 2 行，页面越长每批行数越多
+    const batchSize = Math.max(2, Math.min(8, Math.floor(allLines.length / 200)));
+    const interval = 20;
 
     const cursor = document.createElement("span");
     cursor.className = "typewriter-cursor";
@@ -119,12 +184,19 @@ type Props = {
         const existingCount = el.querySelectorAll(".tw-line").length;
         const lineSpan = document.createElement("span");
         lineSpan.className = "tw-line";
-        lineSpan.innerHTML = lineHtml || " ";
+        // 空行使用 &nbsp; 确保空白行高度保留
+        lineSpan.innerHTML = lineHtml || "&nbsp;";
 
         if (existingCount > 0) {
           el.appendChild(document.createTextNode("\n"));
+        } else {
+          // 第一个文字行出现时再显示该 pre，避免空白闪烁
+          el.style.visibility = "visible";
         }
         el.appendChild(lineSpan);
+
+        // 光标跟随当前文字行
+        lineSpan.appendChild(cursor);
       }
 
       currentIndex += batch.length;
@@ -136,10 +208,8 @@ type Props = {
       }
     }
 
-    const lastPre = preElements[preElements.length - 1];
-    lastPre.appendChild(cursor);
-
-    window.setTimeout(typeNextBatch, 80);
+    // 延迟启动，确保 DOM 就绪
+    window.setTimeout(typeNextBatch, 150);
   }
 
   if (document.readyState === "complete") {
@@ -155,10 +225,6 @@ type Props = {
   /* 初始隐藏文本内容，防止打字动画前的闪烁 */
   .textmode-pre {
     visibility: hidden;
-  }
-
-  .textmode-pre.tw-visible {
-    visibility: visible;
   }
 
   /* 导航按钮通用样式 */

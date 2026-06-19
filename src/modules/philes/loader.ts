@@ -10,13 +10,13 @@ type Frontmatter = Record<string, unknown>;
 
 export function phileLoader(base = "./src/content/philes"): Loader {
   return {
-    name: "phile-loader",
+    name: "markdown-loader",
     load: async (context) => {
       const baseDir = path.resolve(fileURLToPath(context.config.root), base);
       const untouched = new Set(context.store.keys());
-      const files = await listPhiles(baseDir);
+      const files = await listMdFiles(baseDir);
 
-      await Promise.all(files.map((filePath) => syncPhile(context, baseDir, filePath, untouched)));
+      await Promise.all(files.map((filePath) => syncMdFile(context, baseDir, filePath, untouched)));
 
       for (const id of untouched) {
         context.store.delete(id);
@@ -24,17 +24,17 @@ export function phileLoader(base = "./src/content/philes"): Loader {
 
       context.watcher?.add(baseDir);
       context.watcher?.on("change", async (changedPath) => {
-        if (changedPath.endsWith(".phile")) {
-          await syncPhile(context, baseDir, changedPath, new Set());
+        if (changedPath.endsWith(".md")) {
+          await syncMdFile(context, baseDir, changedPath, new Set());
         }
       });
       context.watcher?.on("add", async (addedPath) => {
-        if (addedPath.endsWith(".phile")) {
-          await syncPhile(context, baseDir, addedPath, new Set());
+        if (addedPath.endsWith(".md")) {
+          await syncMdFile(context, baseDir, addedPath, new Set());
         }
       });
       context.watcher?.on("unlink", (deletedPath) => {
-        if (deletedPath.endsWith(".phile")) {
+        if (deletedPath.endsWith(".md")) {
           context.store.delete(idForPath(baseDir, deletedPath));
         }
       });
@@ -42,7 +42,7 @@ export function phileLoader(base = "./src/content/philes"): Loader {
   };
 }
 
-async function syncPhile(
+async function syncMdFile(
   context: LoaderContext,
   baseDir: string,
   filePath: string,
@@ -50,7 +50,7 @@ async function syncPhile(
 ): Promise<void> {
   const source = await fs.readFile(filePath, "utf-8");
   const id = idForPath(baseDir, filePath);
-  const { data, body } = parsePhile(source);
+  const { data, body } = parseFrontmatterFile(source);
   assertRequiredFrontmatter(id, data);
   const parsedData = await context.parseData({ id, data, filePath });
   const relativePath = toPosix(path.relative(fileURLToPath(context.config.root), filePath));
@@ -73,38 +73,38 @@ function assertRequiredFrontmatter(id: string, data: Frontmatter): void {
   }
 
   throw new Error(
-    `Invalid phile frontmatter in "${id}". Missing required field${missing.length === 1 ? "" : "s"}: ${missing.join(", ")}.`
+    `Invalid frontmatter in "${id}". Missing required field${missing.length === 1 ? "" : "s"}: ${missing.join(", ")}.`
   );
 }
 
-async function listPhiles(dir: string): Promise<string[]> {
+async function listMdFiles(dir: string): Promise<string[]> {
   const entries = await fs.readdir(dir, { withFileTypes: true });
   const files = await Promise.all(
     entries.map((entry: Dirent<string>) => {
       const entryPath = path.join(dir, entry.name);
 
       if (entry.isDirectory()) {
-        return listPhiles(entryPath);
+        return listMdFiles(entryPath);
       }
 
-      return entry.isFile() && entry.name.endsWith(".phile") ? [entryPath] : [];
+      return entry.isFile() && entry.name.endsWith(".md") ? [entryPath] : [];
     })
   );
 
   return files.flat();
 }
 
-function parsePhile(source: string): { data: Frontmatter; body: string } {
+function parseFrontmatterFile(source: string): { data: Frontmatter; body: string } {
   const normalized = source.replace(/\r\n/g, "\n");
 
   if (!normalized.startsWith("---\n")) {
-    throw new Error("Phile entries must start with YAML frontmatter.");
+    throw new Error("Markdown entries must start with YAML frontmatter.");
   }
 
   const end = normalized.indexOf("\n---\n", 4);
 
   if (end === -1) {
-    throw new Error("Phile frontmatter is missing a closing delimiter.");
+    throw new Error("Markdown frontmatter is missing a closing delimiter.");
   }
 
   return {

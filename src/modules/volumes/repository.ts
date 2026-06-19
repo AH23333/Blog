@@ -1,6 +1,49 @@
 import type { Phile } from "../philes/model";
 import { getAllPhiles, getPhilesByVolume } from "../philes/repository";
-import type { Volume } from "./model";
+import type { PhileGroup, Volume } from "./model";
+
+/**
+ * 从 sourcePath 中提取子目录名。
+ * 例如 "volume-1/programming-language/C.md" → "programming-language"
+ * 如果在 volume 根目录下，返回 undefined。
+ */
+function extractCategory(sourcePath: string): string | undefined {
+  // sourcePath: "volume-1/programming-language/C.md"
+  const parts = sourcePath.split("/");
+  // parts[0] = "volume-1", parts[1] = "programming-language", parts[2] = "C.md"
+  if (parts.length <= 2) {
+    return undefined; // 直接在 volume 根目录下
+  }
+  return parts[1];
+}
+
+/** 将目录名转换为显示标签，如 "write-ups" → "Write-ups" */
+function categoryLabel(dir: string): string {
+  return dir
+    .split("-")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(" ");
+}
+
+function groupPhiles(philes: Phile[]): PhileGroup[] {
+  const groupMap = new Map<string, Phile[]>();
+
+  for (const phile of philes) {
+    const category = extractCategory(phile.route.sourcePath) ?? "__root__";
+    const existing = groupMap.get(category);
+    if (existing) {
+      existing.push(phile);
+    } else {
+      groupMap.set(category, [phile]);
+    }
+  }
+
+  return [...groupMap.entries()].map(([dir, groupPhiles]) => ({
+    dir,
+    label: dir === "__root__" ? "" : categoryLabel(dir),
+    philes: groupPhiles
+  }));
+}
 
 export async function getAllVolumes(philes?: Phile[]): Promise<Volume[]> {
   const allPhiles = philes ?? (await getAllPhiles());
@@ -21,7 +64,8 @@ export async function getAllVolumes(philes?: Phile[]): Promise<Volume[]> {
     .map(([number, volumePhiles]) => ({
       number,
       href: `/volume/${number}/`,
-      philes: volumePhiles
+      philes: volumePhiles,
+      groups: groupPhiles(volumePhiles)
     }));
 }
 
@@ -39,6 +83,7 @@ export async function getVolume(number: number): Promise<Volume | undefined> {
   return {
     number,
     href: `/volume/${number}/`,
-    philes
+    philes,
+    groups: groupPhiles(philes)
   };
 }

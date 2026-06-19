@@ -6,11 +6,11 @@ import {
   resetEquationCounter,
   resetEquationLabels
 } from "../math/render";
-import { renderAnsiText } from "../textmode/ansi/render";
 import { escapeHtml, link, textHtml } from "../textmode/core/html";
 import { wrapWordsCells } from "../textmode/core/layout";
 import { lifeFrameHeight, lifeFrameHtml } from "../textmode/life/art";
-import { parseMarkdown, renderMarkdownToAnsi } from "../textmode/markdown/parser";
+import { highlightCodeBlocks } from "../textmode/markdown/highlight";
+import { renderMarkdownToHtml, splitContainerSegments } from "../textmode/markdown/parser";
 import type { Phile } from "./model";
 
 const titleWidth = textmodeConfig.articleArtIndent - textmodeConfig.textIndent;
@@ -26,6 +26,7 @@ export type PhileHeader = {
 export type PhileBodyBlock = {
   kind: "text" | "image" | "math";
   html: string;
+  hasContainers?: boolean;
 };
 
 export function renderPhileHeader(phile: Phile): PhileHeader {
@@ -89,26 +90,45 @@ export function renderPhileBodyBlocks(phile: Phile): PhileBodyBlock[] {
 }
 
 function renderTextBlock(text: string, inlineMath: Map<string, string>): PhileBodyBlock {
-  const isAnsiStyle = text.includes("#[") || text.includes("──[");
-  let rawText: string;
-  if (isAnsiStyle) {
-    rawText = text;
-  } else {
-    try {
-      const blocks = parseMarkdown(text);
-      rawText = renderMarkdownToAnsi(blocks, textmodeConfig.bodyWidth).join("\n");
-    } catch {
-      rawText = text;
+  // 使用新的 markdown-it 解析器，支持容器和代码块
+  const segments = splitContainerSegments(text);
+  const parts: string[] = [];
+  let hasContainers = false;
+
+  for (const segment of segments) {
+    if (segment.kind === "container") {
+      hasContainers = true;
+      // 渲染容器内部 Markdown 内容，并处理语法高亮
+      let innerHtml = renderMarkdownToHtml(segment.content);
+      innerHtml = highlightCodeBlocks(innerHtml);
+      const typeLabel = segment.type.toUpperCase();
+      const displayLabel = segment.title ? `${typeLabel}: ${segment.title}` : typeLabel;
+      parts.push(
+        `<div class="phile-container phile-container-${segment.type}" data-no-typewriter>`,
+        `<div class="phile-container-label">${displayLabel}</div>`,
+        `<div class="phile-container-content">${innerHtml}</div>`,
+        `</div>`
+      );
+    } else {
+      let segmentHtml = renderMarkdownToHtml(segment.content);
+      segmentHtml = highlightCodeBlocks(segmentHtml);
+      parts.push(segmentHtml);
     }
   }
-  let html = `${renderAnsiText(rawText, textmodeConfig.bodyWidth)}\n`;
+
+  let html = parts.join("\n");
 
   // 替换行内公式占位符
   if (inlineMath.size > 0) {
     html = replaceMathPlaceholders(html, inlineMath);
   }
 
-  return { kind: "text", html };
+  // 若 HTML 中包含 <div> 元素（来自 ::: 容器或 ``` 代码块），
+  // 则必须使用 <div> 标签承载，因为 <pre> 内不允许嵌套 <div>，
+  // 浏览器会自动提前闭合 <pre> 导致 DOM 结构损坏，打字机失效。
+  const hasBlockElements = hasContainers || /<div[\s>]/i.test(html);
+
+  return { kind: "text", html, hasContainers: hasBlockElements };
 }
 
 export function renderPhileFooterPre(phile: Phile): string {

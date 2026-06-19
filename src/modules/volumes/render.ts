@@ -18,29 +18,67 @@ export function renderVolumePre(volume: Volume): string {
 function renderToc(volume: Volume): string {
   const config = volumeConfig(volume.number);
   const title = config.subtitle ? `${volumeTitle(volume)} - ${config.subtitle}` : volumeTitle(volume);
+
+  // 计算 entryLabel 的最大宽度（全局统一）
   const entryLabelWidth = Math.max(
     ...volume.philes.map((phile, index) => cellWidth(entryLabel(volume, index, phile.data.title, phile.data.date)))
   );
+
   const lines = [
     `┌${"─".repeat(tocInnerWidth)}┐`,
     `│ ${pad(title, tocContentWidth)} │`,
     `│ ${pad("                                    CONTENTS", tocContentWidth)} │`,
-    frameLine(""),
-    ...volume.philes.map((phile, index) =>
-      renderTocLine(
-        volume,
-        index,
-        phile.data.title,
-        phile.data.date,
-        phile.route.href,
-        phile.data.author,
-        entryLabelWidth
-      )
-    ),
-    frameLine(""),
-    `└${"─".repeat(tocInnerWidth)}┘`
+    frameLine("")
   ];
 
+  const hasGroups = volume.groups.length > 1 || (volume.groups.length === 1 && volume.groups[0].dir !== "__root__");
+
+  if (hasGroups) {
+    // 树状多级目录
+    let globalIndex = 0;
+    for (const group of volume.groups) {
+      // 分类标题行
+      const groupLabel = group.label || "Root";
+      const separator = `─ ${groupLabel} ${"─".repeat(Math.max(0, tocContentWidth - groupLabel.length - 3))}`;
+      lines.push(`│ ${separator} │`);
+
+      for (const phile of group.philes) {
+        lines.push(
+          renderTocLine(
+            volume,
+            globalIndex,
+            phile.data.title,
+            phile.data.date,
+            phile.route.href,
+            phile.data.author,
+            entryLabelWidth
+          )
+        );
+        globalIndex++;
+      }
+
+      lines.push(frameLine(""));
+    }
+  } else {
+    // 扁平列表（无子目录或仅根目录）
+    for (let i = 0; i < volume.philes.length; i++) {
+      const phile = volume.philes[i];
+      lines.push(
+        renderTocLine(
+          volume,
+          i,
+          phile.data.title,
+          phile.data.date,
+          phile.route.href,
+          phile.data.author,
+          entryLabelWidth
+        )
+      );
+    }
+    lines.push(frameLine(""));
+  }
+
+  lines.push(`└${"─".repeat(tocInnerWidth)}┘`);
   return lines.join("\n");
 }
 

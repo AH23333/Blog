@@ -91,10 +91,11 @@ describe("mathBlockHtml", () => {
     const result = processMathInText("$$\nx=1\n$$");
     const html = mathBlockHtml(result.blockMath[0]);
 
-    assert.ok(html.includes("math-block-wrapper"));
     assert.ok(html.includes("math-block"));
     assert.ok(html.includes("math-number"));
     assert.ok(html.includes("(1)"));
+    // 验证简化后无多余嵌套 wrapper
+    assert.ok(!html.includes("math-block-wrapper"));
   });
 
   it("应该为带标签的公式生成 id", () => {

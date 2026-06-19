@@ -41,7 +41,7 @@ const footerHtml = renderPhileFooterPre(phile);
       ) : block.kind === "math" ? (
         <div class="phile-media" set:html={block.html}></div>
       ) : (
-        <pre class="textmode-pre phile-pre phile-body-pre" set:html={block.html}></pre>
+        <div class="textmode-pre phile-body" set:html={block.html}></div>
       )
     )
   }

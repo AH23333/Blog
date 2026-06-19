@@ -31,7 +31,10 @@ function cjkSpan(char: string): string {
   const style = cjkAtlasStyle(char);
 
   if (!style) {
-    throw new Error(`Missing CJK atlas glyph for ${JSON.stringify(char)}. Run pnpm assets:fonts.`);
+    // 字形未在字体图集中，降级为普通文本（失去位图字体效果但不阻塞渲染）
+    const html = escapeHtml(char);
+    cjkSpanCache.set(char, html);
+    return html;
   }
 
   const html = `<span class="cjk cjk-bitmap" style="${style}">${char}</span>`;

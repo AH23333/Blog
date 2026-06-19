@@ -56,9 +56,57 @@ export interface InlineMathResult {
   kind: "inline-math";
   latex: string;
   html: string;
+  /** 是否为高公式（需要特殊样式处理） */
+  isTall: boolean;
 }
 
 export type MathSegment = MathBlock | InlineMathResult;
+
+/**
+ * 检测公式是否包含多行结构（cases, aligned, array 等）
+ * 这些结构在行内显示时会导致高度过大，需要特殊处理
+ */
+function detectTallFormula(latex: string): boolean {
+  const tallPatterns = [
+    /\\begin\s*\{cases\}/,
+    /\\begin\s*\{aligned\}/,
+    /\\begin\s*\{array\}/,
+    /\\begin\s*\{matrix\}/,
+    /\\begin\s*\{pmatrix\}/,
+    /\\begin\s*\{bmatrix\}/,
+    /\\begin\s*\{vmatrix\}/,
+    /\\begin\s*\{Vmatrix\}/,
+    /\\begin\s*\{split\}/,
+    /\\begin\s*\{gather\}/,
+    /\\begin\s*\{multline\}/,
+    /\\begin\s*\{eqnarray\}/,
+    /\\[{}\s]*\\[{}\s]*\\[{}\s]*\\[{}]/ // 多行换行
+  ];
+
+  if (tallPatterns.some((pattern) => pattern.test(latex))) {
+    return true;
+  }
+
+  // 检测包含分数的运算符组合：\lim, \sum, \int, \prod 等结合 \frac
+  // 这类公式在行内高度过大，需要提升为块级渲染
+  const hasOperator =
+    /\\(?:lim|sum|prod|coprod|int|iint|iiint|oint|bigcup|bigcap|bigvee|bigwedge|bigotimes|bigoplus|bigodot)\b/.test(
+      latex
+    );
+  const hasFrac = /\\frac\s*\{/.test(latex);
+
+  if (hasOperator && hasFrac) {
+    return true;
+  }
+
+  // 检测嵌套分数（\frac 内部再包含 \frac）
+  const fracCount = (latex.match(/\\frac\s*\{/g) || []).length;
+  if (fracCount >= 2) {
+    return true;
+  }
+
+  return false;
+}
 
 function renderMathBlock(latex: string, display: boolean, label?: string): MathBlock {
   const number = display ? getNextEquationNumber() : undefined;
@@ -86,6 +134,8 @@ function renderMathBlock(latex: string, display: boolean, label?: string): MathB
 }
 
 function renderInlineMath(latex: string): InlineMathResult {
+  const isTall = detectTallFormula(latex);
+
   const html = katex.renderToString(latex, {
     displayMode: false,
     throwOnError: false,
@@ -97,7 +147,8 @@ function renderInlineMath(latex: string): InlineMathResult {
   return {
     kind: "inline-math",
     latex,
-    html
+    html,
+    isTall
   };
 }
 
@@ -105,8 +156,6 @@ function renderInlineMath(latex: string): InlineMathResult {
 
 export function mathBlockHtml(block: MathBlock): string {
   const parts: string[] = [];
-
-  parts.push('<div class="math-block-wrapper">');
 
   if (block.label) {
     parts.push(`<div class="math-block" id="eq-${block.label}">`);
@@ -120,13 +169,30 @@ export function mathBlockHtml(block: MathBlock): string {
     parts.push(`<span class="math-number">(${block.number})</span>`);
   }
 
-  parts.push("</div></div>");
+  parts.push("</div>");
 
   return parts.join("\n");
 }
 
 export function inlineMathHtml(inline: InlineMathResult): string {
   return `<span class="math-inline">${inline.html}</span>`;
+}
+
+/**
+ * 将高公式（cases/aligned 等）渲染为块级 HTML。
+ * 使用 KaTeX 的 inline 模式（displayMode: false）以保持较小的字体，
+ * 但外部包裹块级容器以独立成行。
+ */
+function mathBlockHtmlForTall(latex: string): string {
+  const html = katex.renderToString(latex, {
+    displayMode: false,
+    throwOnError: false,
+    output: "html",
+    trust: false,
+    strict: false
+  });
+
+  return `<div class="math-block math-block-tall"><span class="math-inline-tall-block">${html}</span></div>`;
 }
 
 // ── 从文本中提取公式 ──────────────────────────────────────────────────────
@@ -165,7 +231,12 @@ export interface ProcessedMathText {
   inlineMath: Map<string, string>;
   /** 代码块映射表：代码占位符 → 原始代码文本 */
   codeBlocks: Map<string, string>;
+  /** 高公式映射表：特殊标记 → 渲染后的 HTML（需在文本外渲染为块级元素） */
+  tallBlockMath: Map<string, string>;
 }
+
+/** 高公式在文本中的标记符 */
+const TALL_MARKER = "\uE200";
 
 /**
  * 保护代码区域：将围栏代码块和行内代码替换为占位符，
@@ -217,7 +288,9 @@ function restoreCodeRegions(text: string, codeBlocks: Map<string, string>): stri
 export function processMathInText(text: string): ProcessedMathText {
   const blockMath: MathBlock[] = [];
   const inlineMath = new Map<string, string>();
+  const tallBlockMath = new Map<string, string>();
   let inlineCounter = 0;
+  let tallCounter = 0;
 
   // 第零步：保护代码区域，避免 $ 误解析
   const { protected: protectedText, codeBlocks } = protectCodeRegions(text);
@@ -304,11 +377,19 @@ export function processMathInText(text: string): ProcessedMathText {
 
     const latex = processed.slice(dollar + 1, end).trim();
     if (latex.length > 0) {
-      const placeholder = makePlaceholder(inlineCounter);
       const mathResult = renderInlineMath(latex);
-      inlineMath.set(placeholder, inlineMathHtml(mathResult));
-      result += placeholder;
-      inlineCounter++;
+      if (mathResult.isTall) {
+        // 高公式：使用特殊标记符，将在文本外渲染为块级元素
+        const marker = `${TALL_MARKER}${tallCounter}${TALL_MARKER}`;
+        tallBlockMath.set(marker, mathBlockHtmlForTall(latex));
+        result += marker;
+        tallCounter++;
+      } else {
+        const placeholder = makePlaceholder(inlineCounter);
+        inlineMath.set(placeholder, inlineMathHtml(mathResult));
+        result += placeholder;
+        inlineCounter++;
+      }
     }
 
     cursor = end + 1;
@@ -347,7 +428,7 @@ export function processMathInText(text: string): ProcessedMathText {
   // 第四步：恢复代码区域
   result = restoreCodeRegions(result, codeBlocks);
 
-  return { text: result, blockMath, inlineMath, codeBlocks };
+  return { text: result, blockMath, inlineMath, codeBlocks, tallBlockMath };
 }
 
 /**

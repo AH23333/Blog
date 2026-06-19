@@ -28,8 +28,8 @@ export const volumeConfigs = new Map<number, VolumeConfig>([
   [
     0,
     {
-      title: "Security Research",
-      listLabel: "Volume 0 - Security Research",
+      title: "Phile",
+      listLabel: "Volume 0 - Phile语法及结构说明",
       phileSort: {
         by: "order",
         direction: "asc"

@@ -1,7 +1,7 @@
 .phile-wrap {
   position: relative;
   width: calc(var(--text-cell) * 85);
-  overflow-x: hidden;
+  overflow-y: visible;
 }
 
 .volume-wrap,
@@ -34,6 +34,436 @@
   position: relative;
   z-index: 2;
   padding-left: calc(var(--text-cell) * 4);
+  overflow-y: visible;
+  overflow-x: auto;
+  line-height: 1.2;
+}
+
+/* ── Markdown HTML 渲染样式 ───────────────────────────────────────────── */
+/*
+ * .textmode-pre.phile-body 使用复合选择器（特异性 0,2,0）确保覆盖
+ * .textmode-pre（base.css）中的 white-space: pre 和 line-height: 1。
+ *
+ * white-space: normal 是关键的覆盖项：
+ *   .phile-body 是 <div> 元素，内含 markdown-it 渲染的 HTML（<p>、<h2> 等
+ *   块级子元素）。若 white-space: pre 生效，浏览器会将子元素之间的换行符
+ *   文本节点包裹为匿名块框，每个换行符创建一个具有完整 line-height 高度
+ *   的行框，导致块元素之间出现异常宽大的行间距。
+ *
+ * 该规则仅影响 .phile-body（文章正文），不影响 <pre> 元素上的
+ * .textmode-pre（如 .phile-body-pre、.phile-footer-pre 等），
+ * 它们保持 white-space: pre 的正常行为。
+ */
+.textmode-pre.phile-body {
+  position: relative;
+  z-index: 2;
+  margin: 0;
+  padding-left: calc(var(--text-cell) * 4);
+  overflow-x: auto;
+  /* 显式覆盖 .textmode-pre 的 line-height: 1 */
+  line-height: 1.2;
+  font-family: var(--text-font);
+  font-size: var(--text-size);
+  color: var(--fg);
+  /* 覆盖 .textmode-pre 的 white-space: pre，允许文本正常换行 */
+  white-space: normal;
+  /* 覆盖 .textmode-pre 的 overflow-wrap: normal */
+  overflow-wrap: break-word;
+  word-break: break-word;
+}
+
+.phile-body > *:first-child {
+  margin-top: 0;
+}
+
+.phile-body h1 {
+  font-size: var(--text-size);
+  font-weight: normal;
+  color: var(--ansi-bright-yellow);
+  margin: calc(var(--text-size) * 1.5) 0 calc(var(--text-size) * 0.5) 0;
+  padding-bottom: calc(var(--text-size) * 0.25);
+  border-bottom: 1px solid var(--ansi-bright-yellow);
+}
+
+.phile-body h2 {
+  font-size: var(--text-size);
+  font-weight: normal;
+  color: var(--ansi-bright-yellow);
+  margin: calc(var(--text-size) * 1.25) 0 calc(var(--text-size) * 0.5) 0;
+  opacity: 0.9;
+}
+
+.phile-body h3,
+.phile-body h4 {
+  font-size: var(--text-size);
+  font-weight: normal;
+  color: var(--ansi-yellow);
+  margin: calc(var(--text-size) * 1) 0 calc(var(--text-size) * 0.25) 0;
+}
+
+.phile-body h5,
+.phile-body h6 {
+  font-size: var(--text-size);
+  font-weight: normal;
+  color: var(--ansi-cyan);
+  margin: calc(var(--text-size) * 0.75) 0 calc(var(--text-size) * 0.25) 0;
+}
+
+.phile-body p {
+  margin: 0 0 calc(var(--text-size) * 0.5) 0;
+}
+
+.phile-body strong {
+  color: var(--ansi-bright-white);
+}
+
+.phile-body em {
+  color: var(--ansi-bright-cyan);
+  font-style: normal;
+}
+
+.phile-body del {
+  color: var(--ansi-magenta);
+  text-decoration: none;
+}
+
+.phile-body code {
+  font-family: var(--text-font);
+  color: var(--ansi-bright-green);
+  background: rgba(255, 255, 255, 0.05);
+  padding: 0 2px;
+}
+
+/* ── ``` 代码块样式 ──────────────────────────────────────────────────── */
+/* 与 ::: 容器保持一致的矩形框样式：完整边框 + 左侧强调色条 + 标题标签 */
+
+.phile-codeblock {
+  display: block;
+  margin: calc(var(--text-size) * 0.5) 0;
+  border: 1px solid;
+  border-left: 3px solid var(--ansi-bright-green);
+  border-radius: 2px;
+  padding: 0;
+  white-space: normal;
+  box-sizing: border-box;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.phile-codeblock-label {
+  padding: 0 calc(var(--text-cell) * 1.5);
+  font-size: var(--text-size);
+  line-height: 1.2;
+  color: var(--ansi-bright-green);
+  border-bottom: 1px solid var(--ansi-bright-green);
+  font-family: var(--text-font);
+  user-select: none;
+}
+
+.phile-codeblock-content {
+  padding: 0 calc(var(--text-cell) * 1.5);
+  color: var(--fg);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.phile-codeblock-content > *:first-child {
+  margin-top: calc(var(--text-size) * 0.25);
+}
+
+.phile-codeblock-content > *:last-child {
+  margin-bottom: calc(var(--text-size) * 0.25);
+}
+
+.phile-codeblock-content pre {
+  margin: 0;
+  padding: 0;
+  overflow-x: auto;
+  white-space: pre;
+  line-height: 1.2;
+  font-family: var(--text-font);
+  font-size: var(--text-size);
+  color: var(--fg);
+  background: transparent;
+}
+
+.phile-codeblock-content code {
+  font-family: var(--text-font);
+  font-size: var(--text-size);
+  color: inherit;
+  background: none;
+  padding: 0;
+}
+
+/* ── highlight.js 语法高亮颜色（终端复古主题） ──────────────────────── */
+
+/* 注释 */
+.phile-codeblock .hljs-comment,
+.phile-codeblock .hljs-quote {
+  color: var(--ansi-bright-black);
+  font-style: normal;
+}
+
+/* 关键字 */
+.phile-codeblock .hljs-keyword,
+.phile-codeblock .hljs-selector-tag,
+.phile-codeblock .hljs-type {
+  color: var(--ansi-bright-red);
+}
+
+/* 字符串 */
+.phile-codeblock .hljs-string,
+.phile-codeblock .hljs-addition {
+  color: var(--ansi-bright-green);
+}
+
+/* 数字 */
+.phile-codeblock .hljs-number,
+.phile-codeblock .hljs-literal {
+  color: var(--ansi-bright-yellow);
+}
+
+/* 函数名 / 标题 */
+.phile-codeblock .hljs-title,
+.phile-codeblock .hljs-title.function_,
+.phile-codeblock .hljs-title.class_,
+.phile-codeblock .hljs-name {
+  color: var(--ansi-bright-cyan);
+}
+
+/* 属性 / 变量 */
+.phile-codeblock .hljs-attr,
+.phile-codeblock .hljs-attribute,
+.phile-codeblock .hljs-variable,
+.phile-codeblock .hljs-template-variable,
+.phile-codeblock .hljs-selector-attr,
+.phile-codeblock .hljs-selector-pseudo {
+  color: var(--ansi-bright-magenta);
+}
+
+/* 内置对象 / 字面量 */
+.phile-codeblock .hljs-built_in,
+.phile-codeblock .hljs-symbol,
+.phile-codeblock .hljs-link {
+  color: var(--ansi-bright-blue);
+}
+
+/* 正则表达式 */
+.phile-codeblock .hljs-regexp {
+  color: var(--ansi-bright-red);
+}
+
+/* 删除 / 差异 */
+.phile-codeblock .hljs-deletion {
+  color: var(--ansi-red);
+}
+
+/* 元数据 / 参数 */
+.phile-codeblock .hljs-meta,
+.phile-codeblock .hljs-params {
+  color: var(--ansi-yellow);
+}
+
+/* 标签 */
+.phile-codeblock .hljs-tag {
+  color: var(--ansi-bright-cyan);
+}
+
+/* 强调 */
+.phile-codeblock .hljs-emphasis {
+  font-style: normal;
+  color: var(--ansi-bright-white);
+}
+
+/* 粗体 */
+.phile-codeblock .hljs-strong {
+  color: var(--ansi-bright-white);
+}
+
+/* 代码块内 ANSI 标记保持原样 */
+.phile-codeblock .hljs .ansi {
+  font-weight: normal;
+}
+
+/* ── 旧 pre 回退样式（未包裹在 .phile-codeblock 中时） ──────────────── */
+
+.phile-body > pre {
+  margin: 0 0 calc(var(--text-size) * 0.5) 0;
+  overflow-x: auto;
+  white-space: pre;
+  line-height: 1.2;
+}
+
+.phile-body > pre code {
+  background: none;
+  padding: 0;
+  color: inherit;
+}
+
+.phile-body blockquote {
+  margin: 0 0 calc(var(--text-size) * 0.5) calc(var(--text-cell) * 2);
+  padding-left: calc(var(--text-cell) * 2);
+  border-left: 2px solid var(--ansi-bright-cyan);
+  color: var(--ansi-bright-cyan);
+  opacity: 0.85;
+}
+
+.phile-body ul,
+.phile-body ol {
+  margin: 0 0 calc(var(--text-size) * 0.5) 0;
+  padding-left: calc(var(--text-cell) * 4);
+  list-style-position: outside;
+}
+
+.phile-body li {
+  margin: 0;
+}
+
+.phile-body li > ul,
+.phile-body li > ol {
+  margin-bottom: 0;
+}
+
+.phile-body ul.contains-task-list {
+  list-style: none;
+  padding-left: calc(var(--text-cell) * 2);
+}
+
+.phile-body hr {
+  border: none;
+  border-top: 1px solid var(--ansi-bright-black);
+  margin: calc(var(--text-size) * 1) 0;
+}
+
+.phile-body table {
+  border-collapse: collapse;
+  border: 1px solid var(--ansi-bright-black);
+  margin: 0 0 calc(var(--text-size) * 0.5) 0;
+  width: auto;
+  max-width: 100%;
+}
+
+.phile-body th,
+.phile-body td {
+  padding: calc(var(--text-cell) * 0.5) calc(var(--text-cell) * 1.5);
+  text-align: left;
+  border: 1px solid var(--ansi-bright-black);
+  line-height: 1.2;
+  vertical-align: top;
+}
+
+.phile-body th {
+  color: var(--ansi-bright-yellow);
+  font-weight: normal;
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.phile-body a {
+  color: var(--link);
+  text-decoration: none;
+}
+
+.phile-body a:hover {
+  background: var(--link-hover-bg);
+  color: var(--link-hover);
+}
+
+.phile-body img {
+  max-width: 100%;
+  height: auto;
+}
+
+.phile-body input[type="checkbox"] {
+  margin-right: calc(var(--text-cell) * 1);
+  accent-color: var(--ansi-bright-green);
+}
+
+/* ── ::: 容器样式 ────────────────────────────────────────────────────── */
+.phile-container {
+  display: block;
+  margin: calc(var(--text-size) * 0.5) 0;
+  border: 1px solid;
+  border-radius: 2px;
+  padding: 0;
+  white-space: normal;
+  box-sizing: border-box;
+}
+
+.phile-container-important {
+  border-color: var(--ansi-bright-yellow);
+}
+
+.phile-container-note {
+  border-color: var(--ansi-bright-cyan);
+}
+
+.phile-container-tip {
+  border-color: var(--ansi-bright-green);
+}
+
+.phile-container-warning {
+  border-color: var(--ansi-bright-red);
+}
+
+.phile-container-label {
+  padding: 0 calc(var(--text-cell) * 1.5);
+  font-size: var(--text-size);
+  line-height: 1.2;
+  border-bottom: 1px solid;
+  border-color: inherit;
+}
+
+.phile-container-important .phile-container-label {
+  color: var(--ansi-bright-yellow);
+}
+
+.phile-container-note .phile-container-label {
+  color: var(--ansi-bright-cyan);
+}
+
+.phile-container-tip .phile-container-label {
+  color: var(--ansi-bright-green);
+}
+
+.phile-container-warning .phile-container-label {
+  color: var(--ansi-bright-red);
+}
+
+.phile-container-content {
+  padding: 0 calc(var(--text-cell) * 1.5);
+  color: var(--fg);
+}
+
+.phile-container-content > *:first-child {
+  margin-top: calc(var(--text-size) * 0.25);
+}
+
+.phile-container-content > *:last-child {
+  margin-bottom: calc(var(--text-size) * 0.25);
+}
+
+/* ── 响应式 ──────────────────────────────────────────────────────────── */
+@media (max-width: 760px) {
+  .textmode-pre.phile-body {
+    padding-left: calc(var(--text-cell) * 2);
+  }
+
+  .phile-codeblock-lang::after {
+    content: " \u2500\u2500\u2500\u2500\u2500\u2500\u2510";
+  }
+}
+
+@media (max-width: 540px) {
+  .textmode-pre.phile-body {
+    padding-left: calc(var(--text-cell) * 1);
+  }
+
+  .phile-codeblock-lang::after {
+    content: " \u2500\u2500\u2510";
+  }
+
+  .phile-codeblock-content pre {
+    padding: calc(var(--text-cell) * 1);
+  }
 }
 
 .phile-redacted-pre {

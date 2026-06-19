@@ -229,7 +229,8 @@ function parseMarker(input: string, start: number): { role: string; text: string
   const role = ansiRoles.get(alias);
 
   if (!role) {
-    throw new Error(`Unknown ANSI role "${alias}".`);
+    // 未知角色：降级为普通文本（不抛异常，避免阻塞渲染）
+    return undefined;
   }
 
   return {
@@ -266,7 +267,8 @@ function roleForMask(char: string | undefined): string | undefined {
   const role = ansiRoles.get(char);
 
   if (!role) {
-    throw new Error(`Unknown ink mask "${char}".`);
+    // 未知掩码字符：降级为无颜色（不抛异常，避免阻塞渲染）
+    return undefined;
   }
 
   return role;

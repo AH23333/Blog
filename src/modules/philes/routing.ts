@@ -1,12 +1,12 @@
 import type { PhileEntry, PhileRoute } from "./model";
 
-const volumePathPattern = /^volume-(\d+)\/(.+?)(?:\.phile)?$/;
+const volumePathPattern = /^volume-(\d+)\/(.+?)(?:\.md)?$/;
 
 export function routeForPhile(entry: PhileEntry): PhileRoute {
   const match = entry.id.match(volumePathPattern);
 
   if (!match) {
-    throw new Error(`Invalid phile path "${entry.id}". Expected content/philes/volume-<number>/**/*.phile.`);
+    throw new Error(`Invalid path "${entry.id}". Expected content/philes/volume-<number>/**/*.md.`);
   }
 
   const volume = Number(match[1]);

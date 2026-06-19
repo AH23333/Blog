@@ -1,4 +1,4 @@
-import { effectsConfig } from "../../../config";
+import { effectsConfig, type HomeAsciiGlitchConfig } from "../../../config";
 
 type GlitchZone = {
   rowStart: number;
@@ -10,10 +10,207 @@ type GlitchZone = {
   collapseBias: number;
 };
 
+type AnimatorState = {
+  idleTimeoutId: number;
+  frameTimeoutId: number;
+  burstActive: boolean;
+  followupBudget: number;
+  lingeringZones: GlitchZone[];
+  lastGlitchFrame: string;
+};
+
+type AnimatorElements = {
+  hero: HTMLElement;
+  base: HTMLElement;
+  glitch: HTMLElement;
+};
+
 const asciiGlitchCharset = Array.from({ length: 95 }, (_, index) => String.fromCharCode(32 + index)).join("");
 const asciiGlitchUppercaseSubstitutions = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 const decayFrameMinMs = 24;
 const decayFrameMaxMs = 86;
+
+function createInitialState(): AnimatorState {
+  return {
+    idleTimeoutId: 0,
+    frameTimeoutId: 0,
+    burstActive: false,
+    followupBudget: 0,
+    lingeringZones: [],
+    lastGlitchFrame: ""
+  };
+}
+
+class AsciiGlitchAnimator {
+  private state: AnimatorState;
+  private readonly elements: AnimatorElements;
+  private readonly source: string;
+  private readonly config: HomeAsciiGlitchConfig;
+
+  constructor(
+    hero: HTMLElement,
+    base: HTMLElement,
+    glitch: HTMLElement,
+    source: string,
+    config: HomeAsciiGlitchConfig
+  ) {
+    this.elements = { hero, base, glitch };
+    this.source = source;
+    this.config = config;
+    this.state = createInitialState();
+  }
+
+  start(): void {
+    this.schedule();
+    this.attachEventListeners();
+  }
+
+  stop(): void {
+    this.reset();
+    this.detachEventListeners();
+  }
+
+  private schedule = (): void => {
+    if (document.visibilityState !== "visible") {
+      return;
+    }
+
+    window.clearTimeout(this.state.idleTimeoutId);
+    const nextDelay =
+      this.state.followupBudget > 0 && maybe(0.58)
+        ? randomBetween(this.config.minIntervalMs * 0.18, this.config.minIntervalMs * 0.55)
+        : chooseWeightedDelays(this.config.minIntervalMs, this.config.maxIntervalMs);
+    this.state.idleTimeoutId = window.setTimeout(this.trigger, nextDelay);
+  };
+
+  private trigger = (): void => {
+    if (this.state.burstActive) {
+      this.schedule();
+      return;
+    }
+
+    window.clearTimeout(this.state.idleTimeoutId);
+    this.state.idleTimeoutId = 0;
+    this.state.burstActive = true;
+    if (this.state.followupBudget === 0 && maybe(0.34)) {
+      this.state.followupBudget = randomInt(1, 3);
+    }
+    this.runBurstFrame(randomInt(this.config.burstFrameMin, this.config.burstFrameMax));
+  };
+
+  private runBurstFrame = (remainingFrames: number): void => {
+    if (remainingFrames <= 0) {
+      this.runDecayFrame(
+        randomInt(2, 5),
+        this.state.lastGlitchFrame || this.elements.glitch.textContent || this.source
+      );
+      return;
+    }
+
+    const mutationRatio = randomBetween(this.config.mutationRatioMin, this.config.mutationRatioMax);
+    const zones = createGlitchZones(this.source.split("\n"), this.state.lingeringZones);
+    this.state.lingeringZones = zones
+      .filter((zone) => zone.decay > 0 && maybe(0.58))
+      .map((zone) => ({
+        ...zone,
+        rowStart: Math.max(0, zone.rowStart + randomInt(-1, 1)),
+        rowEnd: Math.max(zone.rowStart + 1, zone.rowEnd + randomInt(-1, 1)),
+        colStart: Math.max(0, zone.colStart + randomInt(-3, 3)),
+        colEnd: Math.max(zone.colStart + 2, zone.colEnd + randomInt(-3, 3)),
+        strength: Math.max(0.16, zone.strength * randomBetween(0.72, 0.94)),
+        decay: zone.decay - 1,
+        collapseBias: Math.min(0.72, zone.collapseBias * randomBetween(0.92, 1.08))
+      }));
+
+    this.elements.base.textContent = createBaseFrame(
+      this.source,
+      Math.max(this.config.mutationRatioMin * 0.5, mutationRatio * randomBetween(0.32, 0.55)),
+      this.config.lineShiftChance,
+      zones
+    );
+    this.state.lastGlitchFrame = createGlitchFrame(this.source, mutationRatio, this.config.lineShiftChance, zones);
+    this.elements.glitch.textContent = this.state.lastGlitchFrame;
+    applyGlitchVisualState(this.elements.hero);
+    this.elements.hero.classList.add("is-glitching");
+    this.state.frameTimeoutId = window.setTimeout(
+      () => this.runBurstFrame(remainingFrames - 1),
+      randomBetween(this.config.frameMinMs, this.config.frameMaxMs)
+    );
+  };
+
+  private runDecayFrame = (remainingFrames: number, previousFrame: string): void => {
+    if (remainingFrames <= 0) {
+      this.finishBurst();
+      return;
+    }
+
+    const progress = 1 - remainingFrames / Math.max(1, remainingFrames + 1);
+    const keepRatio = randomBetween(0.08, 0.34) * (1 - progress * 0.55);
+    const baseDropRatio = randomBetween(0.01, 0.035) * remainingFrames;
+    const ghostFrame = createDecayFrame(previousFrame, keepRatio);
+    this.elements.base.textContent = createBaseFrame(
+      this.source,
+      baseDropRatio,
+      this.config.lineShiftChance * 0.25,
+      this.state.lingeringZones
+    );
+    this.elements.glitch.textContent = ghostFrame;
+    applyGlitchDecayVisualState(this.elements.hero, remainingFrames);
+    this.elements.hero.classList.add("is-glitching");
+
+    this.state.frameTimeoutId = window.setTimeout(
+      () => this.runDecayFrame(remainingFrames - 1, ghostFrame),
+      randomBetween(decayFrameMinMs, decayFrameMaxMs)
+    );
+  };
+
+  private finishBurst = (): void => {
+    this.state.burstActive = false;
+    this.state.frameTimeoutId = 0;
+    this.state.lastGlitchFrame = "";
+    this.elements.hero.classList.remove("is-glitching");
+    this.elements.base.textContent = this.source;
+    this.elements.glitch.textContent = "";
+    clearGlitchVisualState(this.elements.hero);
+    if (this.state.followupBudget > 0) {
+      this.state.followupBudget -= 1;
+    }
+    this.schedule();
+  };
+
+  private reset = (): void => {
+    window.clearTimeout(this.state.idleTimeoutId);
+    window.clearTimeout(this.state.frameTimeoutId);
+    this.state = createInitialState();
+    this.elements.hero.classList.remove("is-glitching");
+    this.elements.base.textContent = this.source;
+    this.elements.glitch.textContent = "";
+    clearGlitchVisualState(this.elements.hero);
+  };
+
+  private handleVisibilityChange = (): void => {
+    if (document.visibilityState === "visible") {
+      this.schedule();
+      return;
+    }
+    this.reset();
+  };
+
+  private handleBeforeUnload = (): void => {
+    window.clearTimeout(this.state.idleTimeoutId);
+    window.clearTimeout(this.state.frameTimeoutId);
+  };
+
+  private attachEventListeners(): void {
+    document.addEventListener("visibilitychange", this.handleVisibilityChange);
+    window.addEventListener("beforeunload", this.handleBeforeUnload);
+  }
+
+  private detachEventListeners(): void {
+    document.removeEventListener("visibilitychange", this.handleVisibilityChange);
+    window.removeEventListener("beforeunload", this.handleBeforeUnload);
+  }
+}
 
 export function initHomeAsciiGlitch(): void {
   const config = effectsConfig.homeAsciiGlitch;
@@ -31,145 +228,11 @@ export function initHomeAsciiGlitch(): void {
   }
 
   const source = base.dataset.asciiText ?? base.textContent ?? "";
-
   if (!source) {
     return;
   }
 
-  let idleTimeoutId = 0;
-  let frameTimeoutId = 0;
-  let burstActive = false;
-  let followupBudget = 0;
-  let lingeringZones: GlitchZone[] = [];
-  let lastGlitchFrame = "";
-
-  const schedule = () => {
-    if (document.visibilityState !== "visible") {
-      return;
-    }
-
-    window.clearTimeout(idleTimeoutId);
-    const nextDelay =
-      followupBudget > 0 && maybe(0.58)
-        ? randomBetween(config.minIntervalMs * 0.18, config.minIntervalMs * 0.55)
-        : chooseWeightedDelays(config.minIntervalMs, config.maxIntervalMs);
-    idleTimeoutId = window.setTimeout(trigger, nextDelay);
-  };
-
-  const runBurstFrame = (remainingFrames: number) => {
-    if (remainingFrames <= 0) {
-      runDecayFrame(randomInt(2, 5), lastGlitchFrame || glitch.textContent || source);
-      return;
-    }
-
-    const mutationRatio = randomBetween(config.mutationRatioMin, config.mutationRatioMax);
-    const zones = createGlitchZones(source.split("\n"), lingeringZones);
-    lingeringZones = zones
-      .filter((zone) => zone.decay > 0 && maybe(0.58))
-      .map((zone) => ({
-        ...zone,
-        rowStart: Math.max(0, zone.rowStart + randomInt(-1, 1)),
-        rowEnd: Math.max(zone.rowStart + 1, zone.rowEnd + randomInt(-1, 1)),
-        colStart: Math.max(0, zone.colStart + randomInt(-3, 3)),
-        colEnd: Math.max(zone.colStart + 2, zone.colEnd + randomInt(-3, 3)),
-        strength: Math.max(0.16, zone.strength * randomBetween(0.72, 0.94)),
-        decay: zone.decay - 1,
-        collapseBias: Math.min(0.72, zone.collapseBias * randomBetween(0.92, 1.08))
-      }));
-
-    base.textContent = createBaseFrame(
-      source,
-      Math.max(config.mutationRatioMin * 0.5, mutationRatio * randomBetween(0.32, 0.55)),
-      config.lineShiftChance,
-      zones
-    );
-    lastGlitchFrame = createGlitchFrame(source, mutationRatio, config.lineShiftChance, zones);
-    glitch.textContent = lastGlitchFrame;
-    applyGlitchVisualState(hero);
-    hero.classList.add("is-glitching");
-    frameTimeoutId = window.setTimeout(
-      () => runBurstFrame(remainingFrames - 1),
-      randomBetween(config.frameMinMs, config.frameMaxMs)
-    );
-  };
-
-  const trigger = () => {
-    if (burstActive) {
-      schedule();
-      return;
-    }
-
-    window.clearTimeout(idleTimeoutId);
-    idleTimeoutId = 0;
-    burstActive = true;
-    if (followupBudget === 0 && maybe(0.34)) {
-      followupBudget = randomInt(1, 3);
-    }
-    runBurstFrame(randomInt(config.burstFrameMin, config.burstFrameMax));
-  };
-
-  const runDecayFrame = (remainingFrames: number, previousFrame: string) => {
-    if (remainingFrames <= 0) {
-      finishBurst();
-      return;
-    }
-
-    const progress = 1 - remainingFrames / Math.max(1, remainingFrames + 1);
-    const keepRatio = randomBetween(0.08, 0.34) * (1 - progress * 0.55);
-    const baseDropRatio = randomBetween(0.01, 0.035) * remainingFrames;
-    const ghostFrame = createDecayFrame(previousFrame, keepRatio);
-    base.textContent = createBaseFrame(source, baseDropRatio, config.lineShiftChance * 0.25, lingeringZones);
-    glitch.textContent = ghostFrame;
-    applyGlitchDecayVisualState(hero, remainingFrames);
-    hero.classList.add("is-glitching");
-
-    frameTimeoutId = window.setTimeout(
-      () => runDecayFrame(remainingFrames - 1, ghostFrame),
-      randomBetween(decayFrameMinMs, decayFrameMaxMs)
-    );
-  };
-
-  const finishBurst = () => {
-    burstActive = false;
-    frameTimeoutId = 0;
-    lastGlitchFrame = "";
-    hero.classList.remove("is-glitching");
-    base.textContent = source;
-    glitch.textContent = "";
-    clearGlitchVisualState(hero);
-    if (followupBudget > 0) {
-      followupBudget -= 1;
-    }
-    schedule();
-  };
-
-  const reset = () => {
-    window.clearTimeout(idleTimeoutId);
-    window.clearTimeout(frameTimeoutId);
-    idleTimeoutId = 0;
-    frameTimeoutId = 0;
-    burstActive = false;
-    lastGlitchFrame = "";
-    hero.classList.remove("is-glitching");
-    base.textContent = source;
-    glitch.textContent = "";
-    clearGlitchVisualState(hero);
-  };
-
-  schedule();
-
-  document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible") {
-      schedule();
-      return;
-    }
-
-    reset();
-  });
-  window.addEventListener("beforeunload", () => {
-    window.clearTimeout(idleTimeoutId);
-    window.clearTimeout(frameTimeoutId);
-  });
+  new AsciiGlitchAnimator(hero, base, glitch, source, config).start();
 }
 
 function sampleGlitchCharacter(source: string): string {

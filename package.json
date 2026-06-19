@@ -26,13 +26,16 @@
     "@chenglou/pretext": "^0.0.7",
     "@vercel/analytics": "^2.0.1",
     "astro": "^6.3.7",
+    "highlight.js": "^11.11.1",
     "katex": "^0.17.0",
+    "markdown-it": "^14.2.0",
     "typescript": "^5.8.3",
     "yaml": "^2.9.0"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.15",
     "@tailwindcss/vite": "^4.3.0",
+    "@types/markdown-it": "^14.1.2",
     "@types/node": "^25.9.1",
     "playwright": "^1.60.0",
     "tailwindcss": "^4.3.0"

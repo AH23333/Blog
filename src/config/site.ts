@@ -39,13 +39,13 @@ export const siteConfig: SiteConfig = {
       items: [
         {
           label: "Welcome"
+        },
+        {
+          label: "模板修改自 @entropic",
+          linkLabel: "@entropic",
+          href: "https://github.com/AH23333/entropic.git",
+          external: true
         }
-        // {
-        //   label: "Researcher @RaptX",
-        //   linkLabel: "@RaptX",
-        //   href: "https://raptx.org/",
-        //   external: true
-        // }
       ]
     },
     {
@@ -70,14 +70,22 @@ export const siteConfig: SiteConfig = {
         {
           label: "github@AH23333",
           href: "https://github.com/AH23333/",
-          external: true,
-          prefix: "~ call"
+          external: true
         },
         {
           label: "bilibili@安好_AH",
           href: "https://space.bilibili.com/475905230",
-          external: true,
-          prefix: "~ call"
+          external: true
+        }
+      ]
+    },
+    {
+      title: "友链",
+      items: [
+        {
+          label: "blog.pinocchio",
+          href: "https://blog.pinocchio.fyi/home",
+          external: true
         }
       ]
     }

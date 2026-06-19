@@ -1,51 +1,132 @@
 /* ── 数学公式样式 ──────────────────────────────────────────────────────── */
 
-/* 块级公式容器 */
-.math-block-wrapper {
+/*
+ * 块级公式容器使用 display: block 而非 flex 布局。
+ *
+ * 原因：
+ *   1. flex 列布局中，子项高度 = 内容高度之和，与 display: table 的
+ *      .mtable 元素会产生匿名 table wrapper box，导致尺寸计算不一致。
+ *   2. flex 子项默认 min-height: auto，可能阻止容器收缩到内容实际高度。
+ *   3. block 布局中 margin collapsing 正常工作，而 flex 容器不折叠边距。
+ *   4. katex.min.css 在 global.css 之后加载，其内部样式（如 .katex-display
+ *      的 margin: 1em 0）需通过更高特异性选择器覆盖。
+ */
+.math-block {
   position: relative;
   z-index: 2;
-  padding-left: calc(var(--text-cell) * 4);
-  margin: calc(var(--text-size) * 1.5) 0;
+  display: block;
+  box-sizing: border-box;
+  padding: calc(var(--text-size) * 0.25) calc(var(--text-cell) * 2);
+  margin: calc(var(--text-size) * 0.5) 0;
   max-width: calc(var(--text-cell) * 80);
+  width: fit-content;
   overflow-x: auto;
-  overflow-y: visible;
+  overflow-y: clip;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 4px;
+  /* 建立独立的 line-height 上下文，避免从 .phile-body 继承 1.2 的行高 */
+  line-height: 1;
+  /* 覆盖 KaTeX 默认的 text-align: center */
+  text-align: left;
 }
 
-.math-block {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: calc(var(--text-cell) * 2);
-  padding: calc(var(--text-size) * 0.5) 0;
-  min-height: calc(var(--text-size) * 2);
+.math-block-tall {
+  padding-top: calc(var(--text-size) * 0.25);
+  padding-bottom: calc(var(--text-size) * 0.25);
 }
 
-/* KaTeX 渲染的公式本体 */
+.math-inline-tall-block {
+  display: block;
+  font-size: 1em;
+  line-height: 1.4;
+}
+
+.math-inline-tall-block .katex {
+  font-size: 1em;
+}
+
+/* ── 行内公式 ────────────────────────────────────────────────────────── */
+
+.math-inline {
+  display: inline;
+  max-width: 100%;
+}
+
+.math-inline .katex {
+  display: inline-block;
+  font-size: 1.1em;
+  vertical-align: middle;
+  line-height: 1.3;
+}
+
+/* 覆盖 KaTeX 内部元素的对齐方式 */
+.math-inline .katex-html {
+  display: inline-block;
+}
+
+/* 保持 KaTeX 的 vlist（垂直线性列表）表格布局，不覆盖为 inline-block
+   否则会破坏分数、极限等需要垂直堆叠的结构 */
+.math-inline .katex .mtable {
+  display: inline-table;
+}
+
+/* ── 覆盖 KaTeX display 模式样式 ──────────────────────────────────────── */
+
+/* 零化 KaTeX 默认 .katex-display 的 margin: 1em 0 */
 .math-block .katex-display {
+  display: block;
   margin: 0;
-  flex: 0 1 auto;
+  padding: 0;
+  text-align: left;
+  max-width: 100%;
 }
 
-/* 公式编号 */
+/* 覆盖 .katex-display > .katex 的 display: block 和 text-align: center */
+.math-block .katex-display > .katex {
+  display: block;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.math-block .katex-display > .katex > .katex-html {
+  display: block;
+}
+
+/* 零化 KaTeX 内部结构元素的上/下边距，消除多余空白 */
+.math-block .katex .base,
+.math-block .katex .mtable,
+.math-block .katex .col-align-c,
+.math-block .katex .vlist,
+.math-block .katex .vlist-t,
+.math-block .katex .vlist-r,
+.math-block .katex .vlist-t2,
+.math-block .katex .vlist-r2 {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+/* mtable 使用 inline-table 避免在 block 容器中产生块级断裂 */
+.math-block .katex .mtable {
+  display: inline-table;
+  width: auto;
+}
+
+/* ── 公式编号 ─────────────────────────────────────────────────────────── */
+
+/* 在 block 布局中，编号独占一行右对齐（替代 flex 的 margin-left: auto） */
 .math-number {
-  flex-shrink: 0;
+  display: block;
+  text-align: right;
   color: var(--ansi-bright-black);
   font-family: var(--text-font);
   font-size: var(--text-size);
   line-height: 1;
   white-space: nowrap;
+  padding-top: calc(var(--text-size) * 0.25);
 }
 
-/* 行内公式 */
-.math-inline {
-  display: inline;
-}
+/* ── 公式引用 ─────────────────────────────────────────────────────────── */
 
-.math-inline .katex {
-  font-size: 1.1em;
-}
-
-/* 公式交叉引用 */
 .math-ref {
   color: var(--link);
   font-family: var(--text-font);
@@ -68,15 +149,9 @@
   color: var(--ansi-red);
 }
 
-/* ── KaTeX 字体颜色覆盖（适配暗色主题） ──────────────────────────────── */
-
-/* 确保 KaTeX 公式在暗色背景下可见 */
+/* 暗色主题下 KaTeX 文字颜色 */
 .math-block .katex,
-.math-inline .katex {
-  color: var(--fg);
-}
-
-/* 调整 KaTeX 内部颜色变量 */
+.math-inline .katex,
 .math-block .katex .mord,
 .math-inline .katex .mord,
 .math-block .katex .mbin,
@@ -94,18 +169,16 @@
   color: var(--fg);
 }
 
-/* ── 响应式适配 ──────────────────────────────────────────────────────── */
+/* ── 响应式 ──────────────────────────────────────────────────────────── */
 
 @media (max-width: 760px) {
-  .math-block-wrapper {
-    padding-left: calc(var(--text-cell) * 2);
+  .math-block {
     max-width: calc(100vw - var(--text-cell) * 4);
   }
 }
 
 @media (max-width: 540px) {
-  .math-block-wrapper {
-    padding-left: calc(var(--text-cell) * 1);
+  .math-block {
     max-width: calc(100vw - var(--text-cell) * 2);
   }
 }
