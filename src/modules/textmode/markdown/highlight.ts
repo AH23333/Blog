@@ -20,6 +20,7 @@ import typescript from "highlight.js/lib/languages/typescript";
 import x86asm from "highlight.js/lib/languages/x86asm";
 import xml from "highlight.js/lib/languages/xml";
 import yaml from "highlight.js/lib/languages/yaml";
+import { decodeHtmlEntities, escapeHtml } from "../core/html";
 
 // 注册常用语言
 hljs.registerLanguage("bash", bash);
@@ -73,112 +74,82 @@ const languageDisplayNames: Record<string, string> = {
 };
 
 /**
+ * 对单个代码块应用语法高亮。
+ * 可作为 markdown-it 的 highlight 选项使用。
+ */
+export function highlightCode(code: string, lang: string): string {
+  // 归一化语言标识
+  let language = lang || "plaintext";
+  if (language === "asm") {
+    language = "x86asm";
+  }
+
+  try {
+    if (language && hljs.getLanguage(language)) {
+      return hljs.highlight(code, { language }).value;
+    }
+    return hljs.highlightAuto(code).value;
+  } catch {
+    return escapeHtml(code);
+  }
+}
+
+/**
  * 对 HTML 中的代码块进行语法高亮后处理。
  * 找到所有 <pre><code> 块，应用 highlight.js 高亮，并包裹为带语言标签的容器。
  *
- * 同时保护 ::: 容器内的代码块，避免被包裹两次。
+ * 使用 matchAll + 反向处理，避免 O(n²) 字符串查找。
  */
 export function highlightCodeBlocks(html: string): string {
-  // 保护已有的容器结构（::: 容器内的 <pre> 不重复包裹）
-  // 只处理顶层的 <pre><code>，跳过已被 .phile-container-content 包裹的
+  // 匹配已高亮的代码块（hljs class 表明已由 markdown-it highlight 选项处理过）
+  const regex = /<pre><code(?:\s+class="[^"]*language-(\w+)[^"]*")?[^>]*>([\s\S]*?)<\/code><\/pre>/g;
+  const matches = [...html.matchAll(regex)];
+
+  if (matches.length === 0) return html;
+
   let result = html;
 
-  // 匹配 <pre><code class="language-xxx">...</code></pre> 结构
-  result = result.replace(
-    /<pre><code(?:\s+class="language-(\w+)")?>([\s\S]*?)<\/code><\/pre>/g,
-    (_match, lang: string | undefined, code: string) => {
-      // 跳过已在容器内的代码块
-      // 检查是否在 phile-container-content 内部（通过检查上下文）
-      // 查找匹配的 <pre><code> 块前的最近的父元素
-      const matchIndex = result.indexOf(_match);
-      if (matchIndex === -1) return _match;
+  // 反向处理，避免索引偏移
+  for (let i = matches.length - 1; i >= 0; i--) {
+    const match = matches[i];
+    const fullMatch = match[0];
+    const lang = match[1];
+    const codeContent = match[2];
+    const matchIndex = match.index;
+    if (matchIndex === undefined) continue;
 
-      // 查找匹配块前的最近的 .phile-container-content
-      const beforeMatch = result.substring(0, matchIndex);
-      const containerContentMatch = beforeMatch.match(/<div class="phile-container-content">.*?$/s);
+    // 检查是否在 phile-container-content 内部
+    const beforeMatch = html.substring(0, matchIndex);
+    const containerContentMatch = /<div class="phile-container-content">[^<]*$/.test(beforeMatch);
 
-      // 如果在容器内，跳过处理
-      if (containerContentMatch) {
-        return _match;
-      }
+    if (containerContentMatch) continue;
 
-      // 解码 HTML 实体
-      const decoded = decodeHtmlEntities(code.trimEnd());
+    // 如果内容已包含 HTML 标签，说明已被 markdown-it highlight 选项高亮
+    const isHighlighted = /<span\b/.test(codeContent);
+    const highlighted = isHighlighted
+      ? codeContent
+      : highlightCode(decodeHtmlEntities(codeContent.trimEnd()), lang || "");
 
-      // 确定语言
-      let language = lang || detectLanguage(decoded);
+    const language = lang || "plaintext";
+    const displayName =
+      languageDisplayNames[language] ?? (language ? language.charAt(0).toUpperCase() + language.slice(1) : "Code");
 
-      // 将通用 asm 映射到 x86asm（highlight.js 使用 x86asm）
-      if (language === "asm") {
-        language = "x86asm";
-      }
+    const titleWidth = 60;
+    const header = ` ${displayName} `;
+    const headerPad = Math.max(0, titleWidth - header.length - 3);
+    const topBorder = `┌─${header}─${"─".repeat(headerPad)}┐`;
 
-      // 应用语法高亮
-      let highlighted: string;
-      try {
-        if (language && hljs.getLanguage(language)) {
-          const result = hljs.highlight(decoded, { language });
-          highlighted = result.value;
-        } else {
-          // 未知语言，仅做 HTML 转义
-          highlighted = hljs.highlightAuto(decoded).value;
-        }
-      } catch {
-        // 高亮失败时回退到纯文本
-        highlighted = escapeHtmlContent(decoded);
-      }
+    const replacement = [
+      `<div class="phile-codeblock phile-codeblock-${language}" data-no-typewriter>`,
+      `<div class="phile-codeblock-label">${topBorder}</div>`,
+      `<div class="phile-codeblock-content">`,
+      `<pre><code class="hljs${language ? ` language-${language}` : ""}">${highlighted}</code></pre>`,
+      `</div>`,
+      `</div>`
+    ].join("\n");
 
-      const displayName =
-        languageDisplayNames[language] ?? (language ? language.charAt(0).toUpperCase() + language.slice(1) : "Code");
-
-      // 生成类似容器的标题：┌─ Python ─────────────────────────────────────────────┐
-      const titleWidth = 60; // 与容器一致的内部宽度
-      const header = ` ${displayName} `;
-      const headerPad = Math.max(0, titleWidth - header.length - 3);
-      const topBorder = `┌─${header}─${"─".repeat(headerPad)}┐`;
-
-      return [
-        `<div class="phile-codeblock phile-codeblock-${language}" data-no-typewriter>`,
-        `<div class="phile-codeblock-label">${topBorder}</div>`,
-        `<div class="phile-codeblock-content">`,
-        `<pre><code class="hljs${language ? ` language-${language}` : ""}">${highlighted}</code></pre>`,
-        `</div>`,
-        `</div>`
-      ].join("\n");
-    }
-  );
+    result = result.substring(0, matchIndex) + replacement + result.substring(matchIndex + fullMatch.length);
+  }
 
   return result;
-}
-
-/**
- * 解码常见的 HTML 实体。
- */
-function decodeHtmlEntities(text: string): string {
-  return text
-    .replace(/&lt;/g, "<")
-    .replace(/&gt;/g, ">")
-    .replace(/&amp;/g, "&")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&#x27;/g, "'");
-}
-
-/**
- * 简单的 HTML 内容转义（回退用）。
- */
-function escapeHtmlContent(text: string): string {
-  return text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
-
-/**
- * 根据代码内容推测语言（用于无语言标识的代码块）。
- */
-function detectLanguage(_code: string): string {
-  return "plaintext";
 }
