@@ -9,6 +9,8 @@ body.image-lightbox-open .screen {
 }
 
 .image-lightbox {
+  position: fixed;
+  inset: 0;
   width: 100vw;
   max-width: none;
   height: 100vh;
@@ -22,6 +24,7 @@ body.image-lightbox-open .screen {
   overflow: hidden;
   overscroll-behavior: contain;
   touch-action: none;
+  box-sizing: border-box;
 }
 
 .image-lightbox::backdrop {
