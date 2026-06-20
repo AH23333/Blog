@@ -7,6 +7,7 @@
  */
 
 import katex from "katex";
+import { extractFencedCodeBlocks } from "../textmode/markdown/codeblock";
 
 // ── 公式计数器 ────────────────────────────────────────────────────────────
 
@@ -238,6 +239,9 @@ export interface ProcessedMathText {
 /** 高公式在文本中的标记符 */
 const TALL_MARKER = "\uE200";
 
+/** 块级公式在文本中的占位符，用于标记公式在原始文本中的位置 */
+export const BLOCK_MATH_PLACEHOLDER = "\uE202";
+
 /**
  * 保护代码区域：将围栏代码块和行内代码替换为占位符，
  * 避免其中的 $ 被误解析为数学公式。
@@ -245,18 +249,16 @@ const TALL_MARKER = "\uE200";
 function protectCodeRegions(text: string): { protected: string; codeBlocks: Map<string, string> } {
   const codeBlocks = new Map<string, string>();
   let codeCounter = 0;
-  let result = text;
 
-  // 第一步：保护围栏代码块 ```...```
-  result = result.replace(/```[\s\S]*?```/g, (match) => {
-    const placeholder = makeCodePlaceholder(codeCounter);
-    codeBlocks.set(placeholder, match);
-    codeCounter++;
-    return placeholder;
-  });
+  // 第一步：保护围栏代码块（使用共享的围栏提取函数）
+  const { processed: fencedProtected, blocks: fencedBlocks } = extractFencedCodeBlocks(text, makeCodePlaceholder);
+  for (let idx = 0; idx < fencedBlocks.length; idx++) {
+    codeBlocks.set(makeCodePlaceholder(idx), fencedBlocks[idx]);
+    codeCounter = idx + 1;
+  }
 
   // 第二步：保护行内代码 `...`
-  result = result.replace(/`([^`\n]+)`/g, (match) => {
+  const result = fencedProtected.replace(/`([^`\n]+)`/g, (match) => {
     const placeholder = makeCodePlaceholder(codeCounter);
     codeBlocks.set(placeholder, match);
     codeCounter++;
@@ -322,11 +324,27 @@ export function processMathInText(text: string): ProcessedMathText {
 
     // 检测标签：可能在公式内部末尾，也可能在 $$ 闭合之后
     let label: string | undefined;
+
+    // 先处理 \label{...}（KaTeX 不支持，需要剥离）
+    const labelRegex = /\\label\{([^}]+)\}/g;
+    let labelMatch: RegExpExecArray | null;
+    labelMatch = labelRegex.exec(latex);
+    while (labelMatch !== null) {
+      if (!label) {
+        label = labelMatch[1];
+      }
+      labelMatch = labelRegex.exec(latex);
+    }
+    latex = latex.replace(/\\label\{[^}]+\}/g, "").trim();
+
+    // 再处理 {#label}（优先级高于 \label）
     const inlineLabelMatch = latex.match(/\s*\{#([\w-]+)\}\s*$/);
     if (inlineLabelMatch) {
       label = inlineLabelMatch[1];
       latex = latex.slice(0, inlineLabelMatch.index).trim();
-    } else {
+    }
+
+    if (!label) {
       // 检查 $$ 闭合标签之后是否有 {#label}
       const afterEnd = processed.slice(end + 2).trimStart();
       const afterLabelMatch = afterEnd.match(/^\{#([\w-]+)\}/);
@@ -348,6 +366,7 @@ export function processMathInText(text: string): ProcessedMathText {
     if (latex.length > 0) {
       const block = renderMathBlock(latex, true, label);
       blockMath.push(block);
+      result += BLOCK_MATH_PLACEHOLDER;
     }
 
     cursor = end + 2;
@@ -376,12 +395,14 @@ export function processMathInText(text: string): ProcessedMathText {
     }
 
     const latex = processed.slice(dollar + 1, end).trim();
-    if (latex.length > 0) {
-      const mathResult = renderInlineMath(latex);
+    // 剥离 \label{...}（KaTeX 不支持，行内公式通常不需要标签）
+    const cleanLatex = latex.replace(/\\label\{[^}]+\}/g, "").trim();
+    if (cleanLatex.length > 0) {
+      const mathResult = renderInlineMath(cleanLatex);
       if (mathResult.isTall) {
         // 高公式：使用特殊标记符，将在文本外渲染为块级元素
         const marker = `${TALL_MARKER}${tallCounter}${TALL_MARKER}`;
-        tallBlockMath.set(marker, mathBlockHtmlForTall(latex));
+        tallBlockMath.set(marker, mathBlockHtmlForTall(cleanLatex));
         result += marker;
         tallCounter++;
       } else {

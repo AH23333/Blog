@@ -1,4 +1,5 @@
 import { effectsConfig, type HomeAsciiGlitchConfig } from "../../../config";
+import { maybe, randomBetween, randomInt } from "../shared/random";
 
 type GlitchZone = {
   rowStart: number;
@@ -245,18 +246,6 @@ function sampleGlitchCharacter(source: string): string {
     return String(Math.floor(Math.random() * 10));
   }
   return asciiGlitchCharset[Math.floor(Math.random() * asciiGlitchCharset.length)] ?? ".";
-}
-
-function randomBetween(min: number, max: number): number {
-  return min + Math.random() * (max - min);
-}
-
-function randomInt(min: number, max: number): number {
-  return Math.floor(randomBetween(min, max + 1));
-}
-
-function maybe(probability: number): boolean {
-  return Math.random() < probability;
 }
 
 function chooseWeightedDelays(min: number, max: number): number {

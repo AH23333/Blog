@@ -13,7 +13,6 @@ import { textHtml } from "../core/html";
 import { renderContainer } from "./blocks";
 import type { MarkdownSegment } from "./container";
 import { splitContainerSegments } from "./container";
-import { highlightCode } from "./highlight";
 import { renderBlockTokens } from "./tokens";
 
 // 重新导出 container 类型，保持向后兼容
@@ -26,8 +25,7 @@ const md = new MarkdownIt({
   html: false,
   linkify: true,
   typographer: false,
-  breaks: false,
-  highlight: (str, lang) => highlightCode(str, lang)
+  breaks: false
 });
 
 // 启用 GFM 扩展：表格 & 删除线

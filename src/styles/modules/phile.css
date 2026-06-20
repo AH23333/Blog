@@ -137,6 +137,27 @@
 /* ── ``` 代码块样式 ──────────────────────────────────────────────────── */
 /* 与 ::: 容器保持一致的矩形框样式：完整边框 + 左侧强调色条 + 标题标签 */
 
+/* ── ```Plain Text 围栏块样式 ─────────────────────────────────────────── */
+/* 保留原始缩进排版，不应用代码块样式（无边框、无背景、继承正文字体） */
+
+.plaintext-pre {
+  display: block;
+  margin: calc(var(--text-size) * 0.5) 0;
+  white-space: pre;
+  font-family: var(--text-font);
+  font-size: var(--text-size);
+  line-height: 1.2;
+  color: var(--text-color);
+  background: none;
+  border: none;
+  padding: 0;
+}
+
+.plaintext-pre .cjk {
+  display: inline-block;
+  white-space: normal;
+}
+
 .phile-codeblock {
   display: block;
   margin: calc(var(--text-size) * 0.5) 0;

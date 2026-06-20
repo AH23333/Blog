@@ -28,7 +28,7 @@ export const volumeConfigs = new Map<number, VolumeConfig>([
   [
     0,
     {
-      title: "Phile",
+      title: "Phile Syntax and Structure",
       listLabel: "Volume 0 - Phile语法及结构说明",
       phileSort: {
         by: "order",
@@ -47,7 +47,7 @@ export const volumeConfigs = new Map<number, VolumeConfig>([
     1,
     {
       title: "Historical Philes",
-      listLabel: "Volume 1 - Historical Philes",
+      listLabel: "Volume 1 - 往期文章",
       postscript: [
         "  ──[ EOF ]──────────────────────────────────────────────────────────────────//───",
         "",

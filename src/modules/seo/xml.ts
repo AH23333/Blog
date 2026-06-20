@@ -1,9 +1,4 @@
 import type { Phile } from "../philes/model";
-import type { Volume } from "../volumes/model";
-
-export type SitemapEntry = {
-  href: string;
-};
 
 export function absoluteUrl(site: URL, href: string): string {
   return new URL(href, site).toString();
@@ -45,26 +40,6 @@ ${rssPhiles(options.philes)
 </rss>`);
 }
 
-export function renderSitemap(site: URL, entries: SitemapEntry[]): string {
-  return xmlDocument(`<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-${entries.map((entry) => renderSitemapEntry(site, entry)).join("\n")}
-</urlset>`);
-}
-
-export function sitemapEntries(volumes: Volume[], philes: Phile[]): SitemapEntry[] {
-  return [
-    { href: "/" },
-    { href: "/rss.xml" },
-    ...volumes.map((volume) => ({
-      href: volume.href
-    })),
-    ...philes.map((phile) => ({
-      href: phile.route.href
-    }))
-  ];
-}
-
 function renderRssItem(site: URL, phile: Phile): string {
   const url = absoluteUrl(site, phile.route.href);
 
@@ -94,12 +69,6 @@ function plainText(input: string): string {
     .replace(/[*_~`]/g, "")
     .replace(/\s+/g, " ")
     .trim();
-}
-
-function renderSitemapEntry(site: URL, entry: SitemapEntry): string {
-  return `  <url>
-    <loc>${escapeXml(absoluteUrl(site, entry.href))}</loc>
-  </url>`;
 }
 
 function formatRssDate(date: Date | undefined): string {

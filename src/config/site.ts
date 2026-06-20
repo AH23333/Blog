@@ -26,7 +26,7 @@ export type SiteConfig = {
 
 export const siteConfig: SiteConfig = {
   name: "AH's Blog",
-  description: "Security Research Philes",
+  description: "Blog",
   homeAsciiArt: `    ___    __  ___          ____  __
    /   |  / / / ( )_____   / __ )/ /___  ____ _
   / /| | / /_/ /|// ___/  / __  / / __ \\/ __ \`/
@@ -84,7 +84,7 @@ export const siteConfig: SiteConfig = {
       items: [
         {
           label: "blog.pinocchio",
-          href: "https://blog.pinocchio.fyi/home",
+          href: "https://blog.pinocchio.fyi",
           external: true
         }
       ]

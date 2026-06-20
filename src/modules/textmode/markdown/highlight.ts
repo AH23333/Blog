@@ -107,22 +107,30 @@ export function highlightCodeBlocks(html: string): string {
 
   if (matches.length === 0) return html;
 
-  let result = html;
+  // 使用数组拼接避免 O(n*m) 字符串拼接
+  const parts: string[] = [];
+  let lastEnd = 0;
+  let skippedInContainer = false;
 
-  // 反向处理，避免索引偏移
-  for (let i = matches.length - 1; i >= 0; i--) {
-    const match = matches[i];
-    const fullMatch = match[0];
-    const lang = match[1];
-    const codeContent = match[2];
+  for (const match of matches) {
     const matchIndex = match.index;
     if (matchIndex === undefined) continue;
 
+    const fullMatch = match[0];
+    const lang = match[1];
+    const codeContent = match[2];
+
     // 检查是否在 phile-container-content 内部
-    const beforeMatch = html.substring(0, matchIndex);
+    const beforeMatch = html.substring(lastEnd, matchIndex);
     const containerContentMatch = /<div class="phile-container-content">[^<]*$/.test(beforeMatch);
 
-    if (containerContentMatch) continue;
+    if (containerContentMatch) {
+      skippedInContainer = true;
+      continue;
+    }
+
+    // 追加匹配前的文本
+    parts.push(beforeMatch);
 
     // 如果内容已包含 HTML 标签，说明已被 markdown-it highlight 选项高亮
     const isHighlighted = /<span\b/.test(codeContent);
@@ -139,17 +147,23 @@ export function highlightCodeBlocks(html: string): string {
     const headerPad = Math.max(0, titleWidth - header.length - 3);
     const topBorder = `┌─${header}─${"─".repeat(headerPad)}┐`;
 
-    const replacement = [
+    parts.push(
       `<div class="phile-codeblock phile-codeblock-${language}" data-no-typewriter>`,
       `<div class="phile-codeblock-label">${topBorder}</div>`,
       `<div class="phile-codeblock-content">`,
       `<pre><code class="hljs${language ? ` language-${language}` : ""}">${highlighted}</code></pre>`,
       `</div>`,
       `</div>`
-    ].join("\n");
+    );
 
-    result = result.substring(0, matchIndex) + replacement + result.substring(matchIndex + fullMatch.length);
+    lastEnd = matchIndex + fullMatch.length;
   }
 
-  return result;
+  // 如果所有匹配都在容器内，直接返回原 HTML
+  if (skippedInContainer && parts.length === 0) return html;
+
+  // 追加剩余文本
+  parts.push(html.substring(lastEnd));
+
+  return parts.join("\n");
 }

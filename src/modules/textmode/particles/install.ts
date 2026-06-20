@@ -1,4 +1,5 @@
 import { effectsConfig, type ParticleContext } from "../../../config";
+import { maybe, randomBetween, randomInt } from "../shared/random";
 
 const particleLayerClass = "ascii-particles";
 const config = effectsConfig.particles;
@@ -387,16 +388,4 @@ function pointerFalloff(pointer: PointerState): number {
 
 function sample<T>(items: T[]): T {
   return items[randomInt(0, items.length - 1)] ?? items[0];
-}
-
-function randomBetween(min: number, max: number): number {
-  return min + Math.random() * (max - min);
-}
-
-function randomInt(min: number, max: number): number {
-  return Math.floor(randomBetween(min, max + 1));
-}
-
-function maybe(probability: number): boolean {
-  return Math.random() < probability;
 }

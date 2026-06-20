@@ -20,7 +20,7 @@ The tree is organized by site responsibility.
     src/modules/philes/     phile loading and parsing
     src/modules/volumes/    volume discovery, labels, and sorting
     src/modules/textmode/   ANSI, bitmap CJK, layout, particles, and fit logic
-    src/modules/seo/        RSS, sitemap, and robots helpers
+    src/modules/seo/        RSS and robots helpers
     scripts/                maintenance scripts
     scripts/hooks/          repository hooks
 

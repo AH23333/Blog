@@ -1,17 +1,115 @@
 import { textmodeConfig } from "../../config";
 import {
+  BLOCK_MATH_PLACEHOLDER,
   mathBlockHtml,
   processMathInText,
   replaceMathPlaceholders,
   resetEquationCounter,
   resetEquationLabels
 } from "../math/render";
+import {
+  extractAndRenderInkBlocks,
+  processAnsiInlineMarkup,
+  restoreAnsiInlineMarkup,
+  restoreInkBlocks
+} from "../textmode/ansi/render";
 import { escapeHtml, link, textHtml } from "../textmode/core/html";
 import { wrapWordsCells } from "../textmode/core/layout";
 import { lifeFrameHeight, lifeFrameHtml } from "../textmode/life/art";
+import { extractFencedCodeBlocks } from "../textmode/markdown/codeblock";
 import { highlightCodeBlocks } from "../textmode/markdown/highlight";
 import { renderMarkdownToHtml, splitContainerSegments } from "../textmode/markdown/parser";
 import type { Phile } from "./model";
+
+// ── Plain Text 围栏块预处理 ────────────────────────────────────────────────
+
+const PTBLOCK_REGEX = /```Plain Text\n([\s\S]*?)```/g;
+const PTBLOCK_PLACEHOLDER_PREFIX = "\uE501";
+
+/**
+ * 从文本中提取所有 ```Plain Text ... ``` 围栏块，替换为占位符。
+ *
+ * 围栏块内的空格缩进不会被 markdown-it 的 4 空格代码块规则误解析。
+ * 预渲染为 <pre class="plaintext-pre">，保留原始排版。
+ */
+function extractPlainTextBlocks(text: string): { processedText: string; blocks: string[] } {
+  const blocks: string[] = [];
+
+  const processedText = text.replace(PTBLOCK_REGEX, (_, content: string) => {
+    const index = blocks.length;
+    // 每行应用 textHtml（CJK 包裹），换行符保留
+    const lines = content.split("\n");
+    const htmlLines = lines.map((line) => textHtml(line));
+    blocks.push(`<pre class="plaintext-pre">${htmlLines.join("\n")}</pre>`);
+    return `${PTBLOCK_PLACEHOLDER_PREFIX}PTBLOCK_${index}${PTBLOCK_PLACEHOLDER_PREFIX}`;
+  });
+
+  return { processedText, blocks };
+}
+
+/**
+ * 将占位符替换回预渲染的 HTML。
+ */
+function restorePlainTextBlocks(html: string, blocks: string[]): string {
+  const placeholderRegex = new RegExp(
+    `${escapeRegExp(PTBLOCK_PLACEHOLDER_PREFIX)}PTBLOCK_(\\d+)${escapeRegExp(PTBLOCK_PLACEHOLDER_PREFIX)}`,
+    "g"
+  );
+  return html.replace(placeholderRegex, (_, index: string) => {
+    const i = parseInt(index, 10);
+    return blocks[i] ?? "";
+  });
+}
+
+function escapeRegExp(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/**
+ * 将相对路径解析为 /images/ 下的绝对路径。
+ *
+ * - `./image.png` → `/images/<articleDir>/image.png`
+ * - `../shared/icon.png` → `/images/<parentDir>/shared/icon.png`
+ * - `/images/foo.png` 和 `https://...` 原样返回
+ */
+function resolveImagePath(src: string, articleDir: string): string {
+  // 规范化路径分隔符：\ → /
+  const normalized = src.replaceAll("\\", "/");
+
+  // 绝对路径（以 / 或协议开头）原样返回
+  if (normalized.startsWith("/") || /^https?:\/\//i.test(normalized)) {
+    return normalized;
+  }
+
+  // 包含 public/images/ 的路径，提取 /images/ 之后的部分
+  const publicImagesMatch = normalized.match(/public\/images\/(.+)$/i);
+  if (publicImagesMatch) {
+    return `/images/${publicImagesMatch[1]}`;
+  }
+
+  // 相对于文章目录的路径
+  const parts = articleDir ? articleDir.split("/").filter(Boolean) : [];
+  const srcParts = normalized.split("/");
+
+  for (const part of srcParts) {
+    if (part === "..") {
+      parts.pop();
+    } else if (part !== ".") {
+      parts.push(part);
+    }
+  }
+
+  return `/images/${parts.join("/")}`;
+}
+
+/**
+ * 从 sourcePath 中提取文章所在目录。
+ * 例如 "volume-1/fuzz/article.md" → "volume-1/fuzz"
+ */
+function getArticleDir(sourcePath: string): string {
+  const lastSlash = sourcePath.lastIndexOf("/");
+  return lastSlash >= 0 ? sourcePath.slice(0, lastSlash) : "";
+}
 
 const titleWidth = textmodeConfig.articleArtIndent - textmodeConfig.textIndent;
 
@@ -46,7 +144,7 @@ export function renderPhileBodyBlocks(phile: Phile): PhileBodyBlock[] {
   resetEquationCounter();
   resetEquationLabels();
 
-  return splitBodyBlocks(phile.body ?? "").flatMap((block) => {
+  return splitBodyBlocks(phile.body ?? "", getArticleDir(phile.route.sourcePath)).flatMap((block) => {
     if (block.kind === "image") {
       return [
         {
@@ -64,8 +162,8 @@ export function renderPhileBodyBlocks(phile: Phile): PhileBodyBlock[] {
     // 处理块级公式：在文本前后插入 math 块
     // 这里简化处理：如果文本包含块级公式，将文本分割为多个段落
     if (blockMath.length > 0 || inlineMath.size > 0) {
-      // 将文本按块级公式位置分割
-      const textParts = cleanText.split(/\$\$[\s\S]*?\$\$/g);
+      // 按块级公式占位符分割文本，恢复公式在文章中的原始位置
+      const textParts = cleanText.split(BLOCK_MATH_PLACEHOLDER);
       const mathBlocks = [...blockMath];
 
       // 交替插入文本块和公式块
@@ -89,9 +187,65 @@ export function renderPhileBodyBlocks(phile: Phile): PhileBodyBlock[] {
   });
 }
 
+// ── 围栏代码块保护 ────────────────────────────────────────────────────────
+
+const CODE_BLOCK_PLACEHOLDER = "\uE502";
+
+/**
+ * 保护围栏代码块：将 ```...``` 替换为占位符，避免 ANSI 解析器剥离
+ * 代码块内的 LaTeX 反斜杠命令。
+ */
+function protectCodeBlocks(text: string): { protected: string; blocks: string[] } {
+  const { processed, blocks } = extractFencedCodeBlocks(
+    text,
+    (i) => `${CODE_BLOCK_PLACEHOLDER}CB_${i}${CODE_BLOCK_PLACEHOLDER}`
+  );
+  return { protected: processed, blocks };
+}
+
+function restoreCodeBlocks(text: string, blocks: string[]): string {
+  if (blocks.length === 0) return text;
+  // 使用 split + join 替代 replaceAll，避免大字符串 replaceAll 的 RangeError
+  const parts = text.split(`${CODE_BLOCK_PLACEHOLDER}CB_`);
+  if (parts.length <= 1) return text;
+  const result: string[] = [parts[0]];
+  for (let i = 1; i < parts.length; i++) {
+    const suffixIdx = parts[i].indexOf(CODE_BLOCK_PLACEHOLDER);
+    if (suffixIdx === -1) {
+      result.push(`${CODE_BLOCK_PLACEHOLDER}CB_${parts[i]}`);
+      continue;
+    }
+    const blockIndex = parseInt(parts[i].slice(0, suffixIdx), 10);
+    const remainder = parts[i].slice(suffixIdx + CODE_BLOCK_PLACEHOLDER.length);
+    if (!Number.isNaN(blockIndex) && blockIndex < blocks.length) {
+      result.push(blocks[blockIndex]);
+    }
+    result.push(remainder);
+  }
+  return result.join("");
+}
+
 function renderTextBlock(text: string, inlineMath: Map<string, string>): PhileBodyBlock {
+  // 提取 ```Plain Text 围栏块，避免 markdown-it 将 4+ 空格缩进误解析为代码块
+  const { processedText, blocks: plainTextBlocks } = extractPlainTextBlocks(text);
+
+  // 提取并渲染 --[ ink ]-- 块
+  const { processedText: textWithoutInk, blocks: inkBlocks } = extractAndRenderInkBlocks(
+    processedText,
+    textmodeConfig.bodyWidth
+  );
+
+  // 保护围栏代码块，避免 ANSI 解析器剥离 LaTeX 命令的反斜杠
+  const { protected: codeProtected, blocks: codeBlocks } = protectCodeBlocks(textWithoutInk);
+
+  // 处理行内 ANSI 标记：#[role|text] → Unicode 占位符
+  const { processed: textWithAnsi, markers: ansiMarkers } = processAnsiInlineMarkup(codeProtected);
+
+  // 恢复代码块
+  const textWithCode = restoreCodeBlocks(textWithAnsi, codeBlocks);
+
   // 使用新的 markdown-it 解析器，支持容器和代码块
-  const segments = splitContainerSegments(text);
+  const segments = splitContainerSegments(textWithCode);
   const parts: string[] = [];
   let hasContainers = false;
 
@@ -102,7 +256,7 @@ function renderTextBlock(text: string, inlineMath: Map<string, string>): PhileBo
       let innerHtml = renderMarkdownToHtml(segment.content);
       innerHtml = highlightCodeBlocks(innerHtml);
       const typeLabel = segment.type.toUpperCase();
-      const displayLabel = segment.title ? `${typeLabel}: ${segment.title}` : typeLabel;
+      const displayLabel = segment.title ? `${typeLabel}: ${escapeHtml(segment.title)}` : typeLabel;
       parts.push(
         `<div class="phile-container phile-container-${segment.type}" data-no-typewriter>`,
         `<div class="phile-container-label">${displayLabel}</div>`,
@@ -112,6 +266,12 @@ function renderTextBlock(text: string, inlineMath: Map<string, string>): PhileBo
     } else {
       let segmentHtml = renderMarkdownToHtml(segment.content);
       segmentHtml = highlightCodeBlocks(segmentHtml);
+      // 恢复 ```Plain Text 围栏块的预渲染 HTML
+      segmentHtml = restorePlainTextBlocks(segmentHtml, plainTextBlocks);
+      // 恢复 --[ ink ]-- 块的预渲染 HTML
+      segmentHtml = restoreInkBlocks(segmentHtml, inkBlocks);
+      // 恢复 ANSI 行内标记：Unicode 占位符 → HTML span
+      segmentHtml = restoreAnsiInlineMarkup(segmentHtml, ansiMarkers);
       parts.push(segmentHtml);
     }
   }
@@ -137,7 +297,7 @@ export function renderPhileFooterPre(phile: Phile): string {
 
 type ParsedBodyBlock = { kind: "text"; text: string } | { kind: "image"; src: string; alt: string };
 
-function splitBodyBlocks(input: string): ParsedBodyBlock[] {
+function splitBodyBlocks(input: string, articleDir: string): ParsedBodyBlock[] {
   const blocks: ParsedBodyBlock[] = [];
   const textLines: string[] = [];
 
@@ -150,7 +310,7 @@ function splitBodyBlocks(input: string): ParsedBodyBlock[] {
     }
 
     flushTextBlock(blocks, textLines);
-    blocks.push({ kind: "image", ...image });
+    blocks.push({ kind: "image", src: resolveImagePath(image.src, articleDir), alt: image.alt });
   }
 
   flushTextBlock(blocks, textLines);
