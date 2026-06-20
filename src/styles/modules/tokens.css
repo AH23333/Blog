@@ -7,11 +7,12 @@
   --link-hover-bg: #153329;
   --link-hover: #c7ffe9;
   --text-font: "gohu";
-  --text-size: 14px;
-  --cjk-size: 13px;
-  --cjk-link-size: 14px;
-  --text-cell: 8px;
-  --home-size: 14px;
+  --text-size: 21px;
+  --cjk-size: 20px;
+  --cjk-link-size: 22px;
+  --text-cell: 12px;
+  --cjk-scale: 1.5;
+  --home-size: 21px;
   --fit-scale: 1;
   --ansi-black: #15161e;
   --ansi-red: #f7768e;

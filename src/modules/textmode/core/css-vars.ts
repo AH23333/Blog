@@ -19,6 +19,7 @@ export function appearanceCssVariables(config: AppearanceConfig): string {
     "--cjk-size": config.sizing.cjkSize,
     "--cjk-link-size": config.sizing.cjkLinkSize,
     "--text-cell": config.sizing.textCell,
+    "--cjk-scale": config.sizing.cjkScale,
     "--home-size": config.sizing.homeSize
   };
 

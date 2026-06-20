@@ -635,8 +635,7 @@ function touchMetrics(event: TouchEvent): { distance: number; centerX: number; c
 // ─── 变换应用 ──────────────────────────────────────────────────────────
 
 function applyImageTransform(lightbox: LightboxElements): void {
-  // 使用 calc(-50% + Xpx) 确保图片始终以中心为基准，放大后也保持居中
-  lightbox.image.style.transform = `translate(calc(-50% + ${roundTransform(transform.x)}px), calc(-50% + ${roundTransform(transform.y)}px)) scale(${roundTransform(transform.scale)})`;
+  lightbox.image.style.transform = `translate(${roundTransform(transform.x)}px, ${roundTransform(transform.y)}px) scale(${roundTransform(transform.scale)})`;
 }
 
 function clamp(value: number, min: number, max: number): number {

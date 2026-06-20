@@ -23,6 +23,7 @@ export type AppearanceConfig = {
     cjkSize: string;
     cjkLinkSize: string;
     textCell: string;
+    cjkScale: string;
     homeSize: string;
   };
 };
@@ -48,10 +49,11 @@ export const appearanceConfig: AppearanceConfig = {
     asciiFormat: "woff"
   },
   sizing: {
-    textSize: "14px",
-    cjkSize: "13px",
-    cjkLinkSize: "15px",
-    textCell: "8px",
-    homeSize: "14px"
+    textSize: "21px",
+    cjkSize: "20px",
+    cjkLinkSize: "22px",
+    textCell: "12px",
+    cjkScale: "1.5",
+    homeSize: "21px"
   }
 };
