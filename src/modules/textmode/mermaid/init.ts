@@ -68,15 +68,13 @@ function ensureMermaid() {
 
 export async function initMermaidDiagrams(): Promise<void> {
   // 从 DOM 获取未处理的图表，[data-processed] 属性在 DOM 层面去重
-  const diagrams = document.querySelectorAll<HTMLElement>(
-    "pre.mermaid:not([data-processed])"
-  );
+  const diagrams = document.querySelectorAll<HTMLElement>("pre.mermaid:not([data-processed])");
   if (diagrams.length === 0) return;
 
   const mermaid = await ensureMermaid();
 
   for (const diagram of diagrams) {
-    const id = "mermaid-" + Math.random().toString(36).slice(2, 11);
+    const id = `mermaid- + ${Math.random().toString(36).slice(2, 11)}`;
     try {
       const { svg } = await mermaid.render(id, diagram.textContent || "");
       diagram.innerHTML = svg;

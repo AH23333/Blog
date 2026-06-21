@@ -1,4 +1,4 @@
-import { defineConfig } from "astro/config"
+import { defineConfig } from "astro/config";
 
 function katexFontFilterPlugin() {
   return {
@@ -11,22 +11,22 @@ function katexFontFilterPlugin() {
           fileName.includes("KaTeX_") &&
           (fileName.endsWith(".ttf") || fileName.endsWith(".woff"))
         ) {
-          delete bundle[fileName]
+          delete bundle[fileName];
         }
       }
-    },
-  }
+    }
+  };
 }
 
 export default defineConfig({
   site: "https://www.cubeyond.net/",
   devToolbar: {
-    enabled: false,
+    enabled: false
   },
   vite: {
     plugins: [katexFontFilterPlugin()],
     optimizeDeps: {
-      include: ["mermaid"],
-    },
-  },
-})
+      include: ["mermaid"]
+    }
+  }
+});

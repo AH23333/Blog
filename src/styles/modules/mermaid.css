@@ -25,6 +25,12 @@ pre.mermaid::-webkit-scrollbar-thumb {
   border-radius: 3px;
 }
 
+/* lightbox 内 SVG（须在 pre.mermaid[data-processed] svg 之前，避免降序优先级） */
+.mermaid-lightbox .mermaid-lightbox-inner svg {
+  display: block;
+  height: auto;
+}
+
 /* 已渲染的 SVG 自适应容器 */
 pre.mermaid[data-processed] svg {
   display: block;
@@ -92,11 +98,6 @@ pre.mermaid[data-processed] svg {
 .mermaid-lightbox .mermaid-lightbox-inner::-webkit-scrollbar-thumb {
   background: #414868;
   border-radius: 3px;
-}
-
-.mermaid-lightbox .mermaid-lightbox-inner svg {
-  display: block;
-  height: auto;
 }
 
 .mermaid-lightbox .mermaid-lightbox-close {

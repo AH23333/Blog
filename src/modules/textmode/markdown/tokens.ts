@@ -17,10 +17,11 @@ export interface Token {
   content: string;
   markup: string;
   info: string;
-  meta: any;
+  // meta: any;
   block: boolean;
   hidden: boolean;
 }
+
 import { ansiText } from "./ansi";
 import { renderCodeBlock, renderHeading, renderParagraph, renderTable } from "./blocks";
 import { boxChars } from "./box-chars";
