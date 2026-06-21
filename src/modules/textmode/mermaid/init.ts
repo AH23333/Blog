@@ -74,7 +74,7 @@ export async function initMermaidDiagrams(): Promise<void> {
   const mermaid = await ensureMermaid();
 
   for (const diagram of diagrams) {
-    const id = `mermaid- + ${Math.random().toString(36).slice(2, 11)}`;
+    const id = `mermaid-${Math.random().toString(36).slice(2, 11)}`;
     try {
       const { svg } = await mermaid.render(id, diagram.textContent || "");
       diagram.innerHTML = svg;
