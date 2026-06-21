@@ -14,8 +14,11 @@ type Props = {
 const phile = Astro.props.phile;
 const header = renderPhileHeader(phile);
 const isRedacted = phile.data.redacted || (phile.body ?? "").trim().length === 0;
-const bodyBlocks = isRedacted ? [] : renderPhileBodyBlocks(phile);
+const bodyBlocks = isRedacted ? [] : await renderPhileBodyBlocks(phile);
 const hasImages = bodyBlocks.some((block) => block.kind === "image");
+const hasMermaid = bodyBlocks.some(
+  (block) => block.kind === "text" && (block.html.includes('class="mermaid"') || block.html.includes('mermaid-container'))
+);
 const redactedHtml = isRedacted ? renderRedactedBody(phile) : undefined;
 const footerHtml = renderPhileFooterPre(phile);
 ---
@@ -40,6 +43,8 @@ const footerHtml = renderPhileFooterPre(phile);
         <div class="phile-media" set:html={block.html}></div>
       ) : block.kind === "math" ? (
         <div class="phile-media" set:html={block.html}></div>
+      ) : block.html.includes('class="mermaid"') ? (
+        <div class="phile-media mermaid-container" set:html={block.html}></div>
       ) : (
         <div class="textmode-pre phile-body" set:html={block.html}></div>
       )
@@ -60,6 +65,27 @@ const footerHtml = renderPhileFooterPre(phile);
       import { installImageLightbox } from "../../modules/textmode/lightbox/images";
 
       installImageLightbox();
+    </script>
+  )
+}
+{
+  hasMermaid && (
+    <script>
+      import { initMermaidDiagrams } from "../../modules/textmode/mermaid/init";
+      import { installMermaidLightbox } from "../../modules/textmode/lightbox/mermaid";
+
+      // 等待 DOM 就绪后初始化 mermaid，渲染完成后再安装 lightbox
+      if (document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", () => {
+          initMermaidDiagrams().then(() => {
+            installMermaidLightbox();
+          });
+        });
+      } else {
+        initMermaidDiagrams().then(() => {
+          installMermaidLightbox();
+        });
+      }
     </script>
   )
 }

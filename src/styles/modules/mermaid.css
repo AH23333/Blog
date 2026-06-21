@@ -1,0 +1,121 @@
+/* Mermaid 图表样式 — 暗色终端主题适配 */
+
+/* astro-mermaid 生成 <pre class="mermaid">，客户端渲染后内含 SVG */
+pre.mermaid {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: calc(var(--text-size) * 0.5) 0;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  cursor: zoom-in;
+  /* 滚动条暗色主题 */
+  scrollbar-width: thin;
+  scrollbar-color: #414868 transparent;
+}
+
+pre.mermaid::-webkit-scrollbar {
+  height: 6px;
+}
+pre.mermaid::-webkit-scrollbar-track {
+  background: transparent;
+}
+pre.mermaid::-webkit-scrollbar-thumb {
+  background: #414868;
+  border-radius: 3px;
+}
+
+/* 已渲染的 SVG 自适应容器 */
+pre.mermaid[data-processed] svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+/* 错误提示 */
+.mermaid-error {
+  margin: calc(var(--text-size) * 0.5) 0;
+  padding: var(--text-cell);
+  border: 1px solid var(--ansi-red);
+  background: #1a1b26;
+  color: var(--ansi-red);
+  font-family: var(--text-font);
+  font-size: var(--text-size);
+  line-height: 1;
+  white-space: pre;
+  overflow-x: auto;
+}
+
+/* ── 点击放大 Lightbox（由 JS 动态创建并插入 body） ── */
+
+.mermaid-lightbox {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  cursor: zoom-out;
+  overflow: auto;
+  padding: 32px;
+  box-sizing: border-box;
+}
+
+.mermaid-lightbox.mermaid-lightbox-active {
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+}
+
+.mermaid-lightbox .mermaid-lightbox-inner {
+  width: 90vw;
+  max-width: 90vw;
+  max-height: 90vh;
+  overflow: auto;
+  padding: 24px;
+  background: #0c0d10;
+  border: 1px solid #414868;
+  border-radius: 4px;
+  /* 滚动条暗色主题 */
+  scrollbar-width: thin;
+  scrollbar-color: #414868 transparent;
+}
+
+.mermaid-lightbox .mermaid-lightbox-inner::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.mermaid-lightbox .mermaid-lightbox-inner::-webkit-scrollbar-track {
+  background: transparent;
+}
+.mermaid-lightbox .mermaid-lightbox-inner::-webkit-scrollbar-thumb {
+  background: #414868;
+  border-radius: 3px;
+}
+
+.mermaid-lightbox .mermaid-lightbox-inner svg {
+  display: block;
+  height: auto;
+}
+
+.mermaid-lightbox .mermaid-lightbox-close {
+  position: fixed;
+  top: 16px;
+  right: 24px;
+  z-index: 10000;
+  width: 36px;
+  height: 36px;
+  border: 1px solid #565f89;
+  background: #1a1b26;
+  color: #c0caf5;
+  font-size: 20px;
+  line-height: 34px;
+  text-align: center;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.mermaid-lightbox .mermaid-lightbox-close:hover {
+  background: #414868;
+}

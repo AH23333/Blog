@@ -1,15 +1,12 @@
-Entropic
-========
+# Entropic
 
 Entropic is a retro textmode blog theme for purists.
 
-The implementation is modern Astro.  The surface is not: fixed-width text,
+The implementation is modern Astro. The surface is not: fixed-width text,
 ASCII frames, volume indexes, ANSI colors, bitmap CJK glyphs, and plain `.phile`
 documents.
 
-
-Directory Layout
-----------------
+## Directory Layout
 
 The tree is organized by site responsibility.
 
@@ -31,9 +28,7 @@ The main knobs are:
     src/config/appearance.ts    colors, fonts, and text cell sizing
     src/config/effects.ts       glitch and particle behavior
 
-
-Content
--------
+## Content
 
 Articles are `.phile` files under:
 
@@ -53,7 +48,7 @@ Optional fields:
     subtitle
     redacted
 
-The body is rendered as textmode content.  It preserves layout, wraps to the
+The body is rendered as textmode content. It preserves layout, wraps to the
 configured article width, renders images, accepts ANSI escape sequences, and
 supports the custom ink block syntax.
 
@@ -86,9 +81,7 @@ Example:
     #[K|K] offset / padding
     #[M|M] mapped object
 
-
-Volumes
--------
+## Volumes
 
 Volume numbers come from the directory name:
 
@@ -103,24 +96,20 @@ The public routes are:
 
 Per-volume behavior is configured in `src/config/volumes.ts`.
 
-
-Redactions
-----------
+## Redactions
 
 A redacted phile uses:
 
     redacted: true
 
-The public page renders the redacted screen.  The pre-commit hook also unstages
+The public page renders the redacted screen. The pre-commit hook also unstages
 redacted philes, leaving the worktree untouched.
 
 Enable hooks in a fresh clone:
 
     git config core.hooksPath scripts/hooks
 
-
-Commands
---------
+## Commands
 
     pnpm install --frozen-lockfile
         install dependencies
@@ -140,7 +129,7 @@ Commands
     pnpm assets:fonts
         regenerate font subsets and CJK atlases
 
-Font assets are committed.  Normal production builds do not require local font
+Font assets are committed. Normal production builds do not require local font
 tooling.
 
 Run `pnpm assets:fonts` only when the committed font outputs need to change:
@@ -158,15 +147,13 @@ The command regenerates:
     public/assets/cjk/wqy-cjk-link.png
     src/generated/cjk-atlas.ts
 
-Regenerating these assets requires `fonttools`.  If `pyftsubset` is already on
-`PATH`, the scripts use it directly.  Otherwise, with `uv` installed, the
+Regenerating these assets requires `fonttools`. If `pyftsubset` is already on
+`PATH`, the scripts use it directly. Otherwise, with `uv` installed, the
 scripts resolve `fonttools` automatically and keep the uv cache under `/tmp`.
 
+## Branches
 
-Branches
---------
+`master` is stable. `dev` is integration.
 
-`master` is stable.  `dev` is integration.
-
-Feature and fix work should branch from `dev`.  Pull requests should be
-squash-merged.  Commits should be signed and should use Conventional Commits.
+Feature and fix work should branch from `dev`. Pull requests should be
+squash-merged. Commits should be signed and should use Conventional Commits.

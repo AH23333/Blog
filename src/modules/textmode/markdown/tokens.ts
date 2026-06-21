@@ -1,8 +1,26 @@
 /**
  * Token 渲染模块：处理 markdown-it 的块级和内联 token 渲染。
+ *
+ * 直接声明 Token 接口而非从 markdown-it 导入，因为 @types/markdown-it 的 Token 类
+ * 未作为命名导出暴露，且 verbatimModuleSyntax 要求类型导入必须显式标注。
  */
 
-import type Token from "markdown-it/lib/token.mjs";
+// markdown-it Token 类型（与 @types/markdown-it 中的 Token 类结构兼容）
+export interface Token {
+  type: string;
+  tag: string;
+  attrs: [string, string][] | null;
+  map: [number, number] | null;
+  nesting: number;
+  level: number;
+  children: Token[] | null;
+  content: string;
+  markup: string;
+  info: string;
+  meta: any;
+  block: boolean;
+  hidden: boolean;
+}
 import { ansiText } from "./ansi";
 import { renderCodeBlock, renderHeading, renderParagraph, renderTable } from "./blocks";
 import { boxChars } from "./box-chars";

@@ -140,37 +140,34 @@ export function renderPhileHeader(phile: Phile): PhileHeader {
   };
 }
 
-export function renderPhileBodyBlocks(phile: Phile): PhileBodyBlock[] {
+export async function renderPhileBodyBlocks(phile: Phile): Promise<PhileBodyBlock[]> {
   resetEquationCounter();
   resetEquationLabels();
 
-  return splitBodyBlocks(phile.body ?? "", getArticleDir(phile.route.sourcePath)).flatMap((block) => {
+  const blocks = splitBodyBlocks(phile.body ?? "", getArticleDir(phile.route.sourcePath));
+  const results: PhileBodyBlock[] = [];
+
+  for (const block of blocks) {
     if (block.kind === "image") {
-      return [
-        {
-          kind: "image" as const,
-          html: renderImage(block.src, block.alt)
-        }
-      ];
+      results.push({
+        kind: "image" as const,
+        html: renderImage(block.src, block.alt)
+      });
+      continue;
     }
 
     // 处理数学公式
     const { text: cleanText, blockMath, inlineMath } = processMathInText(block.text);
 
-    const results: PhileBodyBlock[] = [];
-
     // 处理块级公式：在文本前后插入 math 块
-    // 这里简化处理：如果文本包含块级公式，将文本分割为多个段落
     if (blockMath.length > 0 || inlineMath.size > 0) {
-      // 按块级公式占位符分割文本，恢复公式在文章中的原始位置
       const textParts = cleanText.split(BLOCK_MATH_PLACEHOLDER);
       const mathBlocks = [...blockMath];
 
-      // 交替插入文本块和公式块
       const maxLen = Math.max(textParts.length, mathBlocks.length);
       for (let i = 0; i < maxLen; i++) {
         if (i < textParts.length && textParts[i].trim().length > 0) {
-          results.push(renderTextBlock(textParts[i], inlineMath));
+          results.push(await renderTextBlock(textParts[i], inlineMath));
         }
         if (i < mathBlocks.length) {
           results.push({
@@ -180,11 +177,11 @@ export function renderPhileBodyBlocks(phile: Phile): PhileBodyBlock[] {
         }
       }
     } else {
-      results.push(renderTextBlock(cleanText, inlineMath));
+      results.push(await renderTextBlock(cleanText, inlineMath));
     }
+  }
 
-    return results;
-  });
+  return results;
 }
 
 // ── 围栏代码块保护 ────────────────────────────────────────────────────────
@@ -225,7 +222,19 @@ function restoreCodeBlocks(text: string, blocks: string[]): string {
   return result.join("");
 }
 
-function renderTextBlock(text: string, inlineMath: Map<string, string>): PhileBodyBlock {
+/**
+ * 将 markdown-it 渲染的 mermaid 代码块（<pre><code class="language-mermaid">）
+ * 转换为 <pre class="mermaid">，供 astro-mermaid 客户端脚本渲染。
+ */
+function transformMermaidCodeBlocks(html: string): string {
+  // 匹配 <pre><code class="language-mermaid">...</code></pre>
+  return html.replace(
+    /<pre><code class="language-mermaid">([\s\S]*?)<\/code><\/pre>/g,
+    (_, code: string) => `<pre class="mermaid">${code}</pre>`
+  );
+}
+
+async function renderTextBlock(text: string, inlineMath: Map<string, string>): Promise<PhileBodyBlock> {
   // 提取 ```Plain Text 围栏块，避免 markdown-it 将 4+ 空格缩进误解析为代码块
   const { processedText, blocks: plainTextBlocks } = extractPlainTextBlocks(text);
 
@@ -282,6 +291,10 @@ function renderTextBlock(text: string, inlineMath: Map<string, string>): PhileBo
   if (inlineMath.size > 0) {
     html = replaceMathPlaceholders(html, inlineMath);
   }
+
+  // 将 markdown-it 生成的 mermaid 代码块转换为 <pre class="mermaid">，
+  // 由 astro-mermaid 客户端脚本渲染为 SVG
+  html = transformMermaidCodeBlocks(html);
 
   // 若 HTML 中包含 <div> 元素（来自 ::: 容器或 ``` 代码块），
   // 则必须使用 <div> 标签承载，因为 <pre> 内不允许嵌套 <div>，

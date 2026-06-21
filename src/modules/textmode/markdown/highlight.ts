@@ -120,6 +120,9 @@ export function highlightCodeBlocks(html: string): string {
     const lang = match[1];
     const codeContent = match[2];
 
+    // 跳过 mermaid 代码块：由 astro-mermaid 客户端脚本渲染，不需要语法高亮
+    if (lang === "mermaid") continue;
+
     // 检查是否在 phile-container-content 内部
     const beforeMatch = html.substring(lastEnd, matchIndex);
     const containerContentMatch = /<div class="phile-container-content">[^<]*$/.test(beforeMatch);
