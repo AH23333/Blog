@@ -28,8 +28,8 @@ export const volumeConfigs = new Map<number, VolumeConfig>([
   [
     0,
     {
-      title: "Phile Syntax and Structure",
-      listLabel: "Volume 0 - Phile语法及结构说明",
+      title: "Site Function Test Articles and Syntax Explanation",
+      listLabel: "Volume 0 - 站点功能测试文章及语法解释",
       phileSort: {
         by: "order",
         direction: "asc"
@@ -67,7 +67,7 @@ export const volumeConfigs = new Map<number, VolumeConfig>([
     2,
     {
       title: "Year-End Wrap-ups",
-      listLabel: "Volume 2 - Year-End Wrap-ups",
+      listLabel: "Volume 2 - 年度总结",
       postscript: [
         "  ──[ 0x146 ]────────────────────────────────────────────────────────────────//───",
         "",
@@ -86,8 +86,8 @@ export const volumeConfigs = new Map<number, VolumeConfig>([
   [
     3,
     {
-      title: "Chromatic Philes",
-      listLabel: "Volume 3 - Chromatic Philes",
+      title: "Chromatic Articles and ANSI Explanation",
+      listLabel: "Volume 3 - 彩色文章及ANSI解释",
       postscript: [
         "  ──[ SGR ]──────────────────────────────────────────────────────────────────//───",
         "",

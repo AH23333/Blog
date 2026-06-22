@@ -122,11 +122,6 @@
   font-style: normal;
 }
 
-.phile-body del {
-  color: var(--ansi-magenta);
-  text-decoration: none;
-}
-
 .phile-body code {
   font-family: var(--text-font);
   color: var(--ansi-bright-green);

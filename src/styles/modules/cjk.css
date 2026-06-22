@@ -60,6 +60,21 @@ a:focus-visible .cjk-bitmap {
   --cjk-ink: var(--link-hover);
 }
 
+/* 删除线内的 CJK 字符：贯穿横线（inline-block 不会从 <s> 继承 text-decoration） */
+/* markdown-it strikethrough 生成 <s> 标签，同时兼容 <del> */
+s .cjk::after,
+del .cjk::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1px;
+  background: var(--fg);
+  pointer-events: none;
+  /* 确保在链接 hover 时，a:hover .cjk::after 的 link underline 优先级更高 (0,2,2 vs 0,1,2) */
+}
+
 a:hover .cjk::after,
 a:focus-visible .cjk::after {
   content: "";
