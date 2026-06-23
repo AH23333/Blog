@@ -4,9 +4,23 @@
  * 从 TextmodeLayout.astro 内联脚本提取，获得 TypeScript 类型检查与 IDE 支持。
  */
 
+declare global {
+  interface Window {
+    __typewriterDone?: boolean;
+  }
+}
+
+function signalTypewriterDone(): void {
+  window.__typewriterDone = true;
+  window.dispatchEvent(new CustomEvent("typewriter-done"));
+}
+
 export function initTypewriter(): void {
   const preElements = document.querySelectorAll(".textmode-pre");
-  if (preElements.length === 0) return;
+  if (preElements.length === 0) {
+    signalTypewriterDone();
+    return;
+  }
 
   const allLines: { el: HTMLElement; lineHtml: string }[] = [];
 
@@ -93,7 +107,10 @@ export function initTypewriter(): void {
     }
   }
 
-  if (allLines.length === 0) return;
+  if (allLines.length === 0) {
+    signalTypewriterDone();
+    return;
+  }
 
   let currentIndex = 0;
   const batchSize = Math.max(2, Math.min(8, Math.floor(allLines.length / 200)));
@@ -134,6 +151,7 @@ export function initTypewriter(): void {
       window.setTimeout(typeNextBatch, interval);
     } else {
       cursor.remove();
+      signalTypewriterDone();
     }
   }
 

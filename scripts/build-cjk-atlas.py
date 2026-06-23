@@ -22,7 +22,7 @@ FONT_PATH = ROOT / "fonts/wqy-zenhei-sharp-0.9.45.ttf"
 OUT_DIR = ROOT / "public/assets/cjk"
 GENERATED = ROOT / "src/generated/cjk-atlas.ts"
 CONTENT_ROOTS = ("src/content", "src/config", "src/components", "src/pages")
-TEXT_EXTENSIONS = {".astro", ".phile", ".ts"}
+TEXT_EXTENSIONS = {".astro", ".phile", ".ts", ".md"}
 PUNCTUATION = "　，。：；、？！（）《》「」『』【】—…￥"
 CJK_PATTERN = re.compile(
     r"[\u3000-\u303f\u3400-\u4dbf\u4e00-\u9fff"
@@ -43,12 +43,28 @@ def main() -> None:
         for index, char in enumerate(char for char in chars if ord(char) in cmap)
     }
 
+    # 第一遍：生成 atlas 图片，同时收集有实际位图数据的字符
+    valid_chars = write_atlas(font, glyphs, BODY_PPEM, OUT_DIR / "wqy-cjk-body.png")
+    write_atlas(font, glyphs, LINK_PPEM, OUT_DIR / "wqy-cjk-link.png")
+
+    # 过滤掉没有位图数据的字符，重新索引
+    filtered_glyphs = {
+        char: new_index
+        for new_index, char in enumerate(
+            char for char, _ in sorted(
+                ((c, i) for c, i in glyphs.items() if c in valid_chars),
+                key=lambda x: x[1]
+            )
+        )
+    }
+
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     GENERATED.parent.mkdir(parents=True, exist_ok=True)
 
-    write_atlas(font, glyphs, BODY_PPEM, OUT_DIR / "wqy-cjk-body.png")
-    write_atlas(font, glyphs, LINK_PPEM, OUT_DIR / "wqy-cjk-link.png")
-    write_generated(glyphs)
+    # 第二遍：用过滤后的字符重新生成 atlas 图片
+    write_atlas(font, filtered_glyphs, BODY_PPEM, OUT_DIR / "wqy-cjk-body.png")
+    write_atlas(font, filtered_glyphs, LINK_PPEM, OUT_DIR / "wqy-cjk-link.png")
+    write_generated(filtered_glyphs)
 
 
 def collect_chars() -> list[str]:
@@ -70,7 +86,7 @@ def collect_chars() -> list[str]:
     return sorted(chars, key=lambda char: ord(char))
 
 
-def write_atlas(font: TTFont, glyphs: dict[str, int], ppem: int, output: Path) -> None:
+def write_atlas(font: TTFont, glyphs: dict[str, int], ppem: int, output: Path) -> set[str]:
     strike_index = next(
         index
         for index, strike in enumerate(font["EBLC"].strikes)
@@ -83,6 +99,7 @@ def write_atlas(font: TTFont, glyphs: dict[str, int], ppem: int, output: Path) -
     height = rows * CELL_SIZE
     pixels = bytearray(width * height * 4)
     baseline = ppem - 1
+    valid_chars: set[str] = set()
 
     for char, index in glyphs.items():
         glyph_name = cmap.get(ord(char))
@@ -97,6 +114,12 @@ def write_atlas(font: TTFont, glyphs: dict[str, int], ppem: int, output: Path) -
             metrics = glyph.metrics
         except AttributeError:
             continue
+
+        # 跳过没有实际位图数据的字形（宽或高为 0）
+        if metrics.width <= 0 or metrics.height <= 0:
+            continue
+
+        valid_chars.add(char)
 
         cell_x = (index % COLS) * CELL_SIZE
         cell_y = (index // COLS) * CELL_SIZE
@@ -118,6 +141,7 @@ def write_atlas(font: TTFont, glyphs: dict[str, int], ppem: int, output: Path) -
                     pixels[offset : offset + 4] = b"\xff\xff\xff\xff"
 
     write_png(output, width, height, pixels)
+    return valid_chars
 
 
 def best_cmap(font: TTFont) -> dict[int, str]:

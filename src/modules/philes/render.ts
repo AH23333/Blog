@@ -140,6 +140,30 @@ export function renderPhileHeader(phile: Phile): PhileHeader {
   };
 }
 
+/**
+ * 将表格行内的 $$...$$ 块级公式转换为 $...$ 行内公式。
+ *
+ * 原因：processMathInText 在 Markdown 解析之前提取块级公式，
+ * 若表格单元格内存在 $$...$$，公式会被提取并替换为占位符，
+ * 导致表格行被分割，Markdown 解析器无法正确识别表格结构。
+ *
+ * 该函数逐行处理文本，将表格行（以 | 开头、非分隔行的行）
+ * 中的 $$...$$ 替换为 $...$，使其作为行内公式保留在表格结构内。
+ */
+function convertBlockMathInTableRows(text: string): string {
+  const lines = text.split("\n");
+  return lines
+    .map((line) => {
+      const trimmed = line.trim();
+      // 表格行：以 | 开头，且不是分隔行（如 |---|）
+      if (trimmed.startsWith("|") && !/^\|[\s\-:]+\|/.test(trimmed)) {
+        return line.replace(/\$\$(.+?)\$\$/g, (_: string, formula: string) => `$${formula}$`);
+      }
+      return line;
+    })
+    .join("\n");
+}
+
 export async function renderPhileBodyBlocks(phile: Phile): Promise<PhileBodyBlock[]> {
   resetEquationCounter();
   resetEquationLabels();
@@ -156,8 +180,12 @@ export async function renderPhileBodyBlocks(phile: Phile): Promise<PhileBodyBloc
       continue;
     }
 
+    // 预处理：将表格行内的 $$...$$ 转换为 $...$，
+    // 避免块级公式提取破坏 Markdown 表格结构
+    const preprocessedText = convertBlockMathInTableRows(block.text);
+
     // 处理数学公式
-    const { text: cleanText, blockMath, inlineMath } = processMathInText(block.text);
+    const { text: cleanText, blockMath, inlineMath } = processMathInText(preprocessedText);
 
     // 处理块级公式：在文本前后插入 math 块
     if (blockMath.length > 0 || inlineMath.size > 0) {

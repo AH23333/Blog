@@ -50,6 +50,7 @@
 .math-inline {
   display: inline;
   max-width: 100%;
+  white-space: nowrap;
 }
 
 .math-inline .katex {

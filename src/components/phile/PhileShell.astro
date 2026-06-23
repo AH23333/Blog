@@ -17,7 +17,7 @@ const isRedacted = phile.data.redacted || (phile.body ?? "").trim().length === 0
 const bodyBlocks = isRedacted ? [] : await renderPhileBodyBlocks(phile);
 const hasImages = bodyBlocks.some((block) => block.kind === "image");
 const hasMermaid = bodyBlocks.some(
-  (block) => block.kind === "text" && (block.html.includes('class="mermaid"') || block.html.includes('mermaid-container'))
+  (block) => block.kind === "text" && block.html.includes('class="mermaid"')
 );
 const redactedHtml = isRedacted ? renderRedactedBody(phile) : undefined;
 const footerHtml = renderPhileFooterPre(phile);
@@ -43,8 +43,6 @@ const footerHtml = renderPhileFooterPre(phile);
         <div class="phile-media" set:html={block.html}></div>
       ) : block.kind === "math" ? (
         <div class="phile-media" set:html={block.html}></div>
-      ) : block.html.includes('class="mermaid"') ? (
-        <div class="phile-media mermaid-container" set:html={block.html}></div>
       ) : (
         <div class="textmode-pre phile-body" set:html={block.html}></div>
       )
@@ -74,18 +72,32 @@ const footerHtml = renderPhileFooterPre(phile);
       import { initMermaidDiagrams } from "../../modules/textmode/mermaid/init";
       import { installMermaidLightbox } from "../../modules/textmode/lightbox/mermaid";
 
-      // 等待 DOM 就绪后初始化 mermaid，渲染完成后再安装 lightbox
-      if (document.readyState === "loading") {
-        document.addEventListener("DOMContentLoaded", () => {
-          initMermaidDiagrams().then(() => {
-            installMermaidLightbox();
-          });
+      // 等待打字机动画完成后再初始化 mermaid，
+      // 避免打字机清除 DOM 时销毁未处理的图表元素
+      function whenTypewriterDone(): Promise<void> {
+        return new Promise((resolve) => {
+          if (window.__typewriterDone) {
+            resolve();
+            return;
+          }
+          const handler = () => {
+            window.removeEventListener("typewriter-done", handler);
+            resolve();
+          };
+          window.addEventListener("typewriter-done", handler);
+          // 兜底：若 8 秒内打字机未触发（如无 .textmode-pre 元素），直接初始化
+          setTimeout(() => {
+            window.removeEventListener("typewriter-done", handler);
+            resolve();
+          }, 8000);
         });
-      } else {
+      }
+
+      whenTypewriterDone().then(() => {
         initMermaidDiagrams().then(() => {
           installMermaidLightbox();
         });
-      }
+      });
     </script>
   )
 }

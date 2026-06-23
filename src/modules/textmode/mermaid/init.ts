@@ -18,7 +18,7 @@ declare global {
 function ensureMermaid() {
   if (!window.__mermaidReady) {
     window.__mermaidReady = import("mermaid").then((m) => {
-      const mermaid = m.default;
+      const mermaid = m.default || m;
       mermaid.initialize({
         startOnLoad: false,
         theme: "dark",
