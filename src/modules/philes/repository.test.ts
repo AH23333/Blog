@@ -13,7 +13,12 @@ import { compareByVolumeSort, comparePhiles } from "./sort.ts";
 
 // ── 测试辅助函数 ────────────────────────────────────────────────────────────
 
-function makePhile(overrides: { volume?: number; slug?: string; order?: number; date?: Date }): Phile {
+function makePhile(overrides: {
+  volume?: number;
+  slug?: string;
+  order?: number;
+  date?: Date;
+}): Phile {
   return {
     id: `volume-${overrides.volume ?? 1}/${overrides.slug ?? "test"}.md`,
     data: {
@@ -34,7 +39,7 @@ function makePhile(overrides: { volume?: number; slug?: string; order?: number; 
     collection: "philes" as const,
     filePath: "",
     digest: "",
-    rendered: undefined
+    rendered: undefined,
     // biome-ignore lint/suspicious/noExplicitAny: 测试 mock 不需要完整类型
   } as any;
 }
@@ -93,10 +98,7 @@ describe("compareByVolumeSort", () => {
         const newer = makePhile({ slug: "newer", date: new Date("2026-06-23") });
         const older = makePhile({ slug: "older", date: new Date("2026-01-01") });
         // direction: asc → 日期较早的在前
-        assert.ok(
-          compareByVolumeSort(older, newer, sort) < 0,
-          "both without order, older date should come first (asc)"
-        );
+        assert.ok(compareByVolumeSort(older, newer, sort) < 0, "both without order, older date should come first (asc)");
       });
     });
 
@@ -189,10 +191,6 @@ describe("comparePhiles", () => {
     const sorted = [...philes].sort(comparePhiles);
     const slugs = sorted.map((p) => p.route.slug);
 
-    assert.deepEqual(
-      slugs,
-      ["order-1", "order-2", "no-order"],
-      "articles with order should come first, sorted by order asc"
-    );
+    assert.deepEqual(slugs, ["order-1", "order-2", "no-order"], "articles with order should come first, sorted by order asc");
   });
 });
