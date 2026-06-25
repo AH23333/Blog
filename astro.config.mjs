@@ -23,6 +23,9 @@ export default defineConfig({
   devToolbar: {
     enabled: false
   },
+  build: {
+    inlineStylesheets: "never"
+  },
   vite: {
     plugins: [katexFontFilterPlugin()],
     optimizeDeps: {

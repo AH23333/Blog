@@ -58,8 +58,8 @@ export const volumeConfigs = new Map<number, VolumeConfig>([
         "  Søren Kierkegaard"
       ],
       phileSort: {
-        by: "date",
-        direction: "desc"
+        by: "order",
+        direction: "asc"
       },
       entryPrefix: "A"
     }
@@ -78,10 +78,10 @@ export const volumeConfigs = new Map<number, VolumeConfig>([
         "  Tagore, Stray Birds"
       ],
       phileSort: {
-        by: "date",
-        direction: "desc"
+        by: "order",
+        direction: "asc"
       },
-      entryPrefix: "E",
+      entryPrefix: "E"
       // entryLabel: "year"
     }
   ],

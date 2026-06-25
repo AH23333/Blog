@@ -48,21 +48,34 @@ async function syncMdFile(
   filePath: string,
   untouched: Set<string>
 ): Promise<void> {
-  const source = await fs.readFile(filePath, "utf-8");
   const id = idForPath(baseDir, filePath);
-  const { data, body } = parseFrontmatterFile(source);
-  assertRequiredFrontmatter(id, data);
-  const parsedData = await context.parseData({ id, data, filePath });
-  const relativePath = toPosix(path.relative(fileURLToPath(context.config.root), filePath));
+  let source: string;
 
-  untouched.delete(id);
-  context.store.set({
-    id,
-    data: parsedData,
-    body,
-    filePath: relativePath,
-    digest: context.generateDigest(source)
-  });
+  try {
+    source = await fs.readFile(filePath, "utf-8");
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    throw new Error(`Failed to read phile "${id}": ${message}`);
+  }
+
+  try {
+    const { data, body } = parseFrontmatterFile(source);
+    assertRequiredFrontmatter(id, data);
+    const parsedData = await context.parseData({ id, data, filePath });
+    const relativePath = toPosix(path.relative(fileURLToPath(context.config.root), filePath));
+
+    untouched.delete(id);
+    context.store.set({
+      id,
+      data: parsedData,
+      body,
+      filePath: relativePath,
+      digest: context.generateDigest(source)
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    throw new Error(`Failed to parse phile "${id}": ${message}`);
+  }
 }
 
 function assertRequiredFrontmatter(id: string, data: Frontmatter): void {
@@ -78,7 +91,15 @@ function assertRequiredFrontmatter(id: string, data: Frontmatter): void {
 }
 
 async function listMdFiles(dir: string): Promise<string[]> {
-  const entries = await fs.readdir(dir, { withFileTypes: true });
+  let entries: Dirent[];
+
+  try {
+    entries = await fs.readdir(dir, { withFileTypes: true });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    throw new Error(`Failed to read content directory "${dir}": ${message}`);
+  }
+
   const files = await Promise.all(
     entries.map((entry: Dirent<string>) => {
       const entryPath = path.join(dir, entry.name);
