@@ -28,8 +28,8 @@ export const volumeConfigs = new Map<number, VolumeConfig>([
   [
     0,
     {
-      title: "Site Function Test Articles and Syntax Explanation",
-      listLabel: "Volume 0 - 站点功能测试文章及语法解释",
+      title: "Function Test Articles and Syntax Explanation",
+      listLabel: "Volume 0 - 功能测试文章及语法解释",
       phileSort: {
         by: "order",
         direction: "asc"
@@ -40,7 +40,8 @@ export const volumeConfigs = new Map<number, VolumeConfig>([
         "  What is this unseen flame of darkness whose sparks are the stars?",
         "",
         "  Tagore, Stray Birds"
-      ]
+      ],
+      entryPrefix: "T"
     }
   ],
   [
@@ -66,8 +67,8 @@ export const volumeConfigs = new Map<number, VolumeConfig>([
   [
     2,
     {
-      title: "Year-End Wrap-ups",
-      listLabel: "Volume 2 - 年度总结",
+      title: "Experience Articles",
+      listLabel: "Volume 2 - 经验之谈",
       postscript: [
         "  ──[ 0x146 ]────────────────────────────────────────────────────────────────//───",
         "",
@@ -80,7 +81,8 @@ export const volumeConfigs = new Map<number, VolumeConfig>([
         by: "date",
         direction: "desc"
       },
-      entryLabel: "year"
+      entryPrefix: "E",
+      // entryLabel: "year"
     }
   ],
   [

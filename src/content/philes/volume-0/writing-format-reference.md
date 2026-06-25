@@ -1,5 +1,5 @@
 ---
-title: "文章书写格式参考手册"
+title: "文章书写格式参考手册-en"
 date: 2026-06-20
 author: "AH"
 order: 0

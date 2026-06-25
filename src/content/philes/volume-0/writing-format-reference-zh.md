@@ -1,8 +1,8 @@
 ---
-title: "文章书写格式参考手册中文版"
+title: "文章书写格式参考手册-zh"
 date: 2026-06-20
 author: "AH"
-order: 1
+order: 0
 lang: zh
 redacted: false
 ---

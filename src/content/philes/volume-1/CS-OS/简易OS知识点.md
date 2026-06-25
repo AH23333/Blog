@@ -1,8 +1,8 @@
 ---
-title: "ds的OS知识点"
+title: "简易OS知识点"
 date: 2026-06-23
 author: "AH"
-order: 0
+order: 1
 lang: zh
 redacted: false
 ---

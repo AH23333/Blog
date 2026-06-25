@@ -80,7 +80,7 @@ export const siteConfig: SiteConfig = {
       ]
     },
     {
-      title: "友链",
+      title: "Friend Links",
       items: [
         {
           label: "blog.pinocchio",

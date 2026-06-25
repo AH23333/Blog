@@ -2,7 +2,7 @@
 title: "Mermaid测试"
 date: 2026-06-21
 author: "AH"
-order: 99
+order: 4
 redacted: false
 ---
 
