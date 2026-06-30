@@ -42,29 +42,7 @@ redacted: false              # 可选 · 设为 true 隐藏文章 (Optional)
 
 ---
 
-## 2.0 Chapter Dividers (章节分隔线)
-
-**Syntax**: `──[ Section Number ]──[ Section Title ]`
-
-**Rules**:
-- Total width = 80 characters (body width)
-- Left bracket: `──[`, right bracket: `]──`
-- Pad with `─` to reach 80 chars
-- Section number format: `X.X` or `X` (e.g., `1.0`, `2.3`)
-
-**Usage**:
-```
-──[ 1.0 ]──────────────────────────────────────────────────────────[ Overview ]
-──[ 2.3 ]────────────────────────────────────────────────────[ Process Sync ]
-──[ 附录 A ]──────────────────────────────────────────────────[ Appendix A ]
-```
-
-**Note**: The rendering engine does NOT parse these — they are pure ASCII art.
-However, AI agents MUST use them consistently as visual section separators.
-
----
-
-## 3.0 ANSI Colour Markers (ANSI 颜色标记)
+## 2.0 ANSI Colour Markers (ANSI 颜色标记)
 
 **Syntax**: `#[role|text]`
 
@@ -210,46 +188,7 @@ This is a critical point that needs emphasis.
 
 ---
 
-## 6.0 Box-Drawing Structures (框线绘制)
-
-**Syntax**: Pure ASCII/Unicode box-drawing characters
-
-**Available Characters**:
-```
-┌ ┐ └ ┘ ├ ┤ ┬ ┴ ┼ │ ─
-```
-
-**Common Patterns**:
-
-**Single-line box**:
-```
-┌─ Title ──────────────────────────────────────────────────────────┐
-│ Content line 1                                                     │
-│ Content line 2                                                     │
-└──────────────────────────────────────────────────────────────────┘
-```
-
-**Tree structure**:
-```
-├─ Branch 1
-│   ├─ Leaf 1.1
-│   └─ Leaf 1.2
-└─ Branch 2
-```
-
-**Bullet with colour**:
-```
-│ #[C|Section A]                                                          │
-│   ├─ #[G|Item 1]  — Description                                       │
-│   └─ #[G|Item 2]  — Description                                       │
-```
-
-**Usage guideline**: Use box-drawing structures to frame key information,
-define sections, or create visual hierarchy. Always keep within 80-char width.
-
----
-
-## 7.0 ```Plain Text Blocks (纯文本块)
+## 6.0 ```Plain Text Blocks (纯文本块)
 
 **Syntax**: ```` ```Plain Text ```` ... ```` ``` ````
 
@@ -463,10 +402,6 @@ Understanding the pipeline helps avoid syntax conflicts:
 │ ---                                                               │
 └──────────────────────────────────────────────────────────────────┘
 
-┌─ Chapter Divider ────────────────────────────────────────────────┐
-│ ──[ X.X ]──────────────────────────────────────────[ Title ]     │
-└──────────────────────────────────────────────────────────────────┘
-
 ┌─ ANSI Colour ────────────────────────────────────────────────────┐
 │ #[r|red] #[g|green] #[y|yellow] #[b|blue] #[m|magenta] #[c|cyan] │
 │ #[R|bright-red] #[G|bright-green] #[Y|bright-yellow]              │
@@ -537,7 +472,7 @@ redacted: false
 
 # Example Article
 
-──[ 1.0 ]──────────────────────────────────────────────────────[ Introduction ]
+## 1.0 Introduction
 
 This article demonstrates #[C|all custom syntax] features in a single example.
 
@@ -546,15 +481,13 @@ This article demonstrates #[C|all custom syntax] features in a single example.
 creates a terminal-inspired visual style that is both #[Y|retro] and #[b|functional].
 :::
 
-──[ 2.0 ]──────────────────────────────────────────────────[ Core Concepts ]
+## 2.0 Core Concepts
 
-┌─ Core Concepts ──────────────────────────────────────────────────┐
-│ #[C|Concept A]  —  Primary mechanism with #[G|validated results]       │
-│ #[C|Concept B]  —  Secondary mechanism with #[R|known limitations]     │
-│ #[Y|Note]  —  All concepts are #[b|order-weighted] for display         │
-└──────────────────────────────────────────────────────────────────┘
+- **#[C|Concept A]** — Primary mechanism with #[G|validated results]
+- **#[C|Concept B]** — Secondary mechanism with #[R|known limitations]
+- **#[Y|Note]** — All concepts are #[b|order-weighted] for display
 
-──[ 3.0 ]──────────────────────────────────────────────────[ Process Flow ]
+## 3.0 Process Flow
 
 ```mermaid
 sequenceDiagram
@@ -568,7 +501,7 @@ sequenceDiagram
     end
 ```
 
-──[ 4.0 ]──────────────────────────────────────────────────[ Code Example ]
+## 4.0 Code Example
 
 ```c
 #include <stdio.h>
@@ -579,7 +512,7 @@ int main() {
 }
 ```
 
-──[ 5.0 ]──────────────────────────────────────────────[ Performance Data ]
+## 5.0 Performance Data
 
 | Metric | Value | Status |
 |--------|-------|--------|
@@ -587,7 +520,7 @@ int main() {
 | Latency | 45ms | #[Y|Elevated] |
 | Error Rate | 0.01% | #[G|Normal] |
 
-──[ 6.0 ]────────────────────────────────────────────────────[ Conclusion ]
+## 6.0 Conclusion
 
 :::note
 This example covers all major syntax elements. For detailed syntax reference,
@@ -602,10 +535,9 @@ see the #[c|editing-guide] and #[c|writing-format-reference] articles.
 When generating or editing an article, AI MUST verify:
 
 - [ ] Frontmatter: `title`, `date`, `author` are present and valid
-- [ ] Chapter dividers: `──[ X.X ]──[ Title ]` used between major sections
+- [ ] Section headings: use `##` Markdown headings for major sections
 - [ ] ANSI colours: semantic convention followed (C=concept, G=correct, Y=warning, R=error)
 - [ ] Containers: `:::important` for key points, `:::warning` for pitfalls, `:::note` for tips
-- [ ] Box-drawing: used to frame structured information (tables, lists, trees)
 - [ ] Mermaid diagrams: `rect` grouping for stages, `Note` for annotations
 - [ ] Code blocks: language tag specified for syntax highlighting
 - [ ] Math: `$$...$$` on separate lines, `$...$` inline

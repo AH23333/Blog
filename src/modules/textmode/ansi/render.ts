@@ -12,48 +12,56 @@ type RenderChunk = {
   role?: string;
 };
 
+const colorAliases: Record<string, string> = {
+  k: "black",
+  r: "red",
+  g: "green",
+  y: "yellow",
+  b: "blue",
+  m: "magenta",
+  c: "cyan",
+  w: "white",
+  K: "bright-black",
+  "br-black": "bright-black",
+  R: "bright-red",
+  "br-red": "bright-red",
+  G: "bright-green",
+  "br-green": "bright-green",
+  Y: "bright-yellow",
+  "br-yellow": "bright-yellow",
+  B: "bright-blue",
+  "br-blue": "bright-blue",
+  M: "bright-magenta",
+  "br-magenta": "bright-magenta",
+  C: "bright-cyan",
+  "br-cyan": "bright-cyan",
+  W: "bright-white",
+  "br-white": "bright-white"
+};
+
 const ansiRoles = new Map<string, string>([
-  ["k", "black"],
   ["black", "black"],
-  ["r", "red"],
   ["red", "red"],
-  ["g", "green"],
   ["green", "green"],
-  ["y", "yellow"],
   ["yellow", "yellow"],
-  ["b", "blue"],
   ["blue", "blue"],
-  ["m", "magenta"],
   ["magenta", "magenta"],
-  ["c", "cyan"],
   ["cyan", "cyan"],
-  ["w", "white"],
   ["white", "white"],
-  ["K", "bright-black"],
-  ["br-black", "bright-black"],
   ["bright-black", "bright-black"],
-  ["R", "bright-red"],
-  ["br-red", "bright-red"],
   ["bright-red", "bright-red"],
-  ["G", "bright-green"],
-  ["br-green", "bright-green"],
   ["bright-green", "bright-green"],
-  ["Y", "bright-yellow"],
-  ["br-yellow", "bright-yellow"],
   ["bright-yellow", "bright-yellow"],
-  ["B", "bright-blue"],
-  ["br-blue", "bright-blue"],
   ["bright-blue", "bright-blue"],
-  ["M", "bright-magenta"],
-  ["br-magenta", "bright-magenta"],
   ["bright-magenta", "bright-magenta"],
-  ["C", "bright-cyan"],
-  ["br-cyan", "bright-cyan"],
   ["bright-cyan", "bright-cyan"],
-  ["W", "bright-white"],
-  ["br-white", "bright-white"],
   ["bright-white", "bright-white"]
 ]);
+
+function resolveColorRole(alias: string): string | undefined {
+  const standardKey = colorAliases[alias] ?? alias;
+  return ansiRoles.get(standardKey);
+}
 
 const inkBlockPattern = /^\s*--\[ ink \]--\s*$/;
 const inkMaskPrefixPattern = /^~(.*)$/;
@@ -370,7 +378,7 @@ function parseMarker(input: string, start: number): { role: string; text: string
   }
 
   const alias = input.slice(start + 2, pipe).trim();
-  const role = ansiRoles.get(alias);
+  const role = resolveColorRole(alias);
 
   if (!role) {
     // 未知角色：降级为普通文本（不抛异常，避免阻塞渲染）
@@ -408,7 +416,7 @@ function roleForMask(char: string | undefined): string | undefined {
     return undefined;
   }
 
-  const role = ansiRoles.get(char);
+  const role = resolveColorRole(char);
 
   if (!role) {
     // 未知掩码字符：降级为无颜色（不抛异常，避免阻塞渲染）

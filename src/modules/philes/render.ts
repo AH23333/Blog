@@ -292,6 +292,8 @@ async function renderTextBlock(text: string, inlineMath: Map<string, string>): P
       // 渲染容器内部 Markdown 内容，并处理语法高亮
       let innerHtml = renderMarkdownToHtml(segment.content);
       innerHtml = highlightCodeBlocks(innerHtml);
+      // 恢复 ANSI 行内标记：Unicode 占位符 → HTML span
+      innerHtml = restoreAnsiInlineMarkup(innerHtml, ansiMarkers);
       const typeLabel = segment.type.toUpperCase();
       const displayLabel = segment.title ? `${typeLabel}: ${escapeHtml(segment.title)}` : typeLabel;
       parts.push(
