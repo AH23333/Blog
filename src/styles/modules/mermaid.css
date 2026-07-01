@@ -25,12 +25,6 @@ pre.mermaid::-webkit-scrollbar-thumb {
   border-radius: 3px;
 }
 
-/* lightbox 内 SVG（须在 pre.mermaid[data-processed] svg 之前，避免降序优先级） */
-.mermaid-lightbox .mermaid-lightbox-inner svg {
-  display: block;
-  height: auto;
-}
-
 /* 已渲染的 SVG 自适应容器 */
 pre.mermaid[data-processed] svg {
   display: block;
@@ -54,69 +48,206 @@ pre.mermaid[data-processed] svg {
 
 /* ── 点击放大 Lightbox（由 JS 动态创建并插入 body） ── */
 
+body.mermaid-lightbox-open {
+  overflow: hidden;
+  touch-action: none;
+}
+
 .mermaid-lightbox {
-  display: none;
   position: fixed;
   inset: 0;
-  z-index: 9999;
-  background: rgba(0, 0, 0, 0.85);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-  cursor: zoom-out;
-  overflow: auto;
-  padding: 32px;
+  width: 100vw;
+  max-width: none;
+  height: 100vh;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--fg);
+  cursor: default;
+  overflow: hidden;
+  overscroll-behavior: contain;
+  touch-action: none;
   box-sizing: border-box;
 }
 
-.mermaid-lightbox.mermaid-lightbox-active {
+.mermaid-lightbox::backdrop {
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  transition: background 0.2s ease;
+}
+
+/* ─── SVG 容器 ──────────────────────────────────────────────────────── */
+
+.mermaid-lightbox-svg-wrapper {
+  position: relative;
+  width: 100%;
+  height: calc(100% - 78px);
   display: flex;
-  align-items: flex-start;
   justify-content: center;
+  align-items: center;
+  overflow: hidden;
+  touch-action: none;
 }
 
-.mermaid-lightbox .mermaid-lightbox-inner {
-  width: 90vw;
-  max-width: 90vw;
-  max-height: 90vh;
-  overflow: auto;
-  padding: 24px;
-  background: #0c0d10;
-  border: 1px solid #414868;
-  border-radius: 4px;
-  /* 滚动条暗色主题 */
-  scrollbar-width: thin;
-  scrollbar-color: #414868 transparent;
+/*
+ * 高清渲染策略：
+ *
+ * SVG 不设置 max-width/max-height，让 viewBox 控制自然尺寸。
+ * 这样 transform scale 的基准是原始矢量尺寸，不会产生"双重缩放"失真。
+ *
+ * viewBox 是 SVG 的矢量坐标系，由 Mermaid 渲染时设置。
+ * 当 SVG 没有固定 width/height 时，浏览器会根据 viewBox 计算自然尺寸。
+ *
+ * scale=1 = 原始矢量尺寸（高清）
+ * scale>1 = 在原始尺寸上放大（矢量清晰）
+ * scale<1 = 在原始尺寸上缩小（可能需要滚动查看大图）
+ */
+.mermaid-lightbox-svg-wrapper svg {
+  /* 居中定位 */
+  position: absolute;
+  inset: 0;
+  margin: auto;
+
+  /* 不限制尺寸，让 viewBox 决定自然尺寸 */
+  /* 移除 max-width/max-height，避免 CSS 预压缩 */
+
+  /* 交互样式 */
+  cursor: grab;
+  user-select: none;
+  -webkit-user-select: none;
+
+  /* 变换控制 */
+  will-change: transform;
+  transform-origin: center center;
+  transition: transform 0.15s ease-out;
+
+  /* 渲染优化 — 确保矢量图形清晰 */
+  shape-rendering: crispEdges;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-.mermaid-lightbox .mermaid-lightbox-inner::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-.mermaid-lightbox .mermaid-lightbox-inner::-webkit-scrollbar-track {
-  background: transparent;
-}
-.mermaid-lightbox .mermaid-lightbox-inner::-webkit-scrollbar-thumb {
-  background: #414868;
-  border-radius: 3px;
+/* 拖拽时禁用过渡动画，确保流畅响应 */
+.mermaid-lightbox-svg-wrapper.mermaid-lightbox-dragging svg {
+  cursor: grabbing;
+  /* biome-ignore lint/complexity/noImportantStyles: necessary to override transition during drag */
+  transition: none !important;
 }
 
-.mermaid-lightbox .mermaid-lightbox-close {
-  position: fixed;
-  top: 16px;
-  right: 24px;
-  z-index: 10000;
-  width: 36px;
-  height: 36px;
-  border: 1px solid #565f89;
-  background: #1a1b26;
-  color: #c0caf5;
-  font-size: 20px;
-  line-height: 34px;
-  text-align: center;
-  border-radius: 4px;
+/* ─── 控制栏 ────────────────────────────────────────────────────────── */
+
+.mermaid-lightbox-controls {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 72px;
+  padding: 0 18px;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 10;
+  opacity: 1;
+  transition: opacity 0.25s ease;
+}
+
+.mermaid-lightbox-controls-left,
+.mermaid-lightbox-controls-right {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.mermaid-lightbox-controls-left {
+  left: 18px;
+}
+
+.mermaid-lightbox-controls-right {
+  right: 18px;
+}
+
+.mermaid-lightbox-controls-center {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* ─── 按钮 ──────────────────────────────────────────────────────────── */
+
+.mermaid-lightbox-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--fg);
+  font-family: var(--text-font);
+  font-size: 21px;
+  line-height: 1;
   cursor: pointer;
-  transition: background 0.15s;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease;
+  user-select: none;
+  -webkit-user-select: none;
 }
-.mermaid-lightbox .mermaid-lightbox-close:hover {
-  background: #414868;
+
+.mermaid-lightbox-btn:hover {
+  background: rgba(255, 255, 255, 0.18);
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
+.mermaid-lightbox-btn:active {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.mermaid-lightbox-btn:focus-visible {
+  outline: 3px solid var(--link);
+  outline-offset: 3px;
+}
+
+/* ─── 标签 ──────────────────────────────────────────────────────────── */
+
+.mermaid-lightbox-zoom-label {
+  display: inline-block;
+  min-width: 66px;
+  text-align: center;
+  font-family: var(--text-font);
+  font-size: 20px;
+  color: var(--fg);
+  user-select: none;
+}
+
+/* ─── 响应式 ────────────────────────────────────────────────────────── */
+
+@media (max-width: 600px) {
+  .mermaid-lightbox-controls {
+    padding: 0 9px;
+  }
+
+  .mermaid-lightbox-btn {
+    width: 42px;
+    height: 42px;
+    font-size: 18px;
+  }
+
+  .mermaid-lightbox-zoom-label {
+    min-width: 54px;
+    font-size: 17px;
+  }
+
+  .mermaid-lightbox-svg-wrapper {
+    height: calc(100% - 66px);
+  }
 }
