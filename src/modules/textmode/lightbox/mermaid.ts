@@ -76,7 +76,6 @@ let dragState: DragState | undefined;
 let pinchState: PinchState | undefined;
 let tapState: TapState | undefined;
 let suppressClickUntil = 0;
-let boundLightbox: LightboxElements | undefined;
 let lastClickTime = 0;
 
 // ─── 安装入口 ───────────────────────────────────────────────────────────
@@ -115,9 +114,7 @@ export function installMermaidLightbox(root: ParentNode = document): void {
 function ensureLightbox(): LightboxElements {
   const existing = document.querySelector<HTMLDialogElement>(`.${lightboxClass}`);
   if (existing) {
-    const lb = buildLightboxRefs(existing);
-    boundLightbox = lb;
-    return lb;
+    return buildLightboxRefs(existing);
   }
 
   const dialog = document.createElement("dialog");
@@ -144,7 +141,6 @@ function ensureLightbox(): LightboxElements {
   document.body.append(dialog);
 
   const lb = buildLightboxRefs(dialog);
-  boundLightbox = lb;
 
   // ── 按钮直接事件绑定（避免冒泡到 dialog 的关闭逻辑）──
 
@@ -550,10 +546,7 @@ function startPinch(event: TouchEvent, lb: LightboxElements): void {
   lb.svgWrapper.classList.add("mermaid-lightbox-dragging");
 }
 
-function applyPinch(
-  lb: LightboxElements,
-  m: { distance: number; centerX: number; centerY: number } | undefined
-): void {
+function applyPinch(lb: LightboxElements, m: { distance: number; centerX: number; centerY: number } | undefined): void {
   if (!pinchState || !m || pinchState.startDistance === 0) return;
 
   suppressClick();
@@ -642,27 +635,27 @@ function roundToStep(v: number, step: number): number {
   return Math.round(v / step) * step;
 }
 
-function round(v: number): number {
-  return Math.round(v * 1000) / 1000;
-}
-
 function suppressClick(): void {
   suppressClickUntil = Date.now() + clickSuppressMs;
 }
 
 function capturePointer(el: HTMLElement, id: number): void {
-  try { el.setPointerCapture(id); } catch { /* ignore */ }
+  try {
+    el.setPointerCapture(id);
+  } catch {
+    /* ignore */
+  }
 }
 
 function releasePointer(el: HTMLElement, id: number): void {
-  try { el.releasePointerCapture(id); } catch { /* ignore */ }
+  try {
+    el.releasePointerCapture(id);
+  } catch {
+    /* ignore */
+  }
 }
 
-function requireElement<T extends Element>(
-  root: ParentNode,
-  selector: string,
-  type: new (...args: never[]) => T
-): T {
+function requireElement<T extends Element>(root: ParentNode, selector: string, type: new (...args: never[]) => T): T {
   const el = root.querySelector(selector);
   if (!(el instanceof type)) {
     throw new Error(`Missing mermaid lightbox element: ${selector}`);

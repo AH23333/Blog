@@ -108,6 +108,7 @@ body.mermaid-lightbox-open {
  * 注意：CSS 不设置 shape-rendering，由 JS 在 SVG 元素上设置，
  * 因为不同 SVG 内容可能需要不同的渲染策略。
  */
+/* biome-ignore lint/style/noDescendingSpecificity: lightbox SVG is in a different DOM subtree than pre.mermaid[data-processed] svg */
 .mermaid-lightbox-svg-wrapper svg {
   /* 居中定位 */
   position: absolute;
@@ -137,6 +138,7 @@ body.mermaid-lightbox-open {
 }
 
 /* 拖拽时禁用过渡动画，确保流畅响应 */
+/* biome-ignore lint/style/noDescendingSpecificity: lightbox SVG is in a different DOM subtree than pre.mermaid[data-processed] svg */
 .mermaid-lightbox-svg-wrapper.mermaid-lightbox-dragging svg {
   cursor: grabbing;
   /* biome-ignore lint/complexity/noImportantStyles: necessary to override transition during drag */
