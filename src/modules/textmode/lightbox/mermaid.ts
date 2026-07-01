@@ -11,7 +11,7 @@
  * - 拖拽平移（缩放后）
  * - 键盘快捷键：Esc 关闭、+/- 缩放、0 重置
  * - 响应式设计，适配各屏幕尺寸
- * - 高清渲染：保留原始 viewBox，避免双重缩放失真
+ * - 高清渲染：避免 GPU 纹理化、亚像素偏移导致的模糊
  */
 
 const lightboxClass = "mermaid-lightbox";
@@ -225,23 +225,24 @@ function openLightbox(trigger: HTMLElement, lb: LightboxElements): void {
   const svg = trigger.querySelector<SVGElement>("svg");
   if (!svg) return;
 
-  // ── 高清渲染策略：保留原始 viewBox，避免 CSS 预压缩 ──
+  // ── 高清渲染策略（防止模糊）──
   //
-  // 关键点：
-  // 1. 不设置 width/height: 100%，避免 SVG 被 CSS 压缩
-  // 2. 保留原始 viewBox，让 SVG 以自然尺寸渲染
-  // 3. 使用 CSS 的 max-width/max-height 进行视口适应
-  // 4. transform scale 完全独立于 CSS 尺寸
+  // 模糊根源分析：
+  // 1. GPU 纹理化：will-change: transform 触发 GPU 合成，SVG 被转为位图纹理
+  // 2. 亚像素偏移：transform 值非整数像素，触发亚像素抗锯齿
+  // 3. shape-rendering: crispEdges 对曲线/圆角不友好
   //
-  // 这样 scale=1 就是真正的原始尺寸，放大时不会失真
+  // 解决方案：
+  // 1. 移除 will-change，避免 GPU 纹理化
+  // 2. transform 值强制整数像素
+  // 3. 使用 geometricPrecision 而非 crispEdges
 
   const clone = svg.cloneNode(true) as SVGElement;
 
   // 保留 viewBox（SVG 的矢量坐标系）
   // viewBox 由 Mermaid 渲染时设置，反映图表的实际矢量尺寸
 
-  // 移除可能存在的内联 width/height 属性
-  // 这些可能来自原始渲染，会干扰 viewBox 的自然行为
+  // 移除内联尺寸属性，让 viewBox 控制自然尺寸
   clone.removeAttribute("width");
   clone.removeAttribute("height");
 
@@ -251,22 +252,36 @@ function openLightbox(trigger: HTMLElement, lb: LightboxElements): void {
   clone.style.maxWidth = "";
   clone.style.maxHeight = "";
 
-  // 确保 preserveAspectRatio 保持比例居中
-  // 这是 viewBox 缩放时的行为控制
+  // preserveAspectRatio: 保持比例居中
   if (!clone.hasAttribute("preserveAspectRatio")) {
     clone.setAttribute("preserveAspectRatio", "xMidYMid meet");
   }
 
-  // 添加渲染优化属性
-  // crispEdges: 线条和路径渲染更清晰
-  // optimizeLegibility: 文本渲染优先清晰度
-  clone.setAttribute("shape-rendering", "crispEdges");
+  // ── 关键：渲染优化属性 ──
+  //
+  // geometricPrecision（推荐）:
+  // - 精确渲染几何形状，适合 Mermaid 的圆角节点、曲线箭头
+  // - 代价：渲染稍慢，但清晰度最佳
+  //
+  // crispEdges（不推荐）:
+  // - 强制线条对齐像素网格，对水平/垂直线清晰
+  // - 但对曲线/圆角会产生锯齿或模糊
+  //
+  // optimizeSpeed（不推荐）:
+  // - 速度优先，可能牺牲清晰度
+  clone.setAttribute("shape-rendering", "geometricPrecision");
+
+  // 文本渲染优化
+  // optimizeLegibility: 优先清晰度，适合阅读
   clone.setAttribute("text-rendering", "optimizeLegibility");
+
+  // 图像渲染优化（对 SVG 内嵌图片有效）
+  clone.setAttribute("image-rendering", "high-quality");
 
   lb.svgWrapper.innerHTML = "";
   lb.svgWrapper.appendChild(clone);
 
-  // 重置变换
+  // 重置变换（整数像素）
   transform = { scale: 1, x: 0, y: 0 };
   applyTransform(lb);
   updateZoomLabel(lb);
@@ -311,10 +326,14 @@ function zoomToPoint(lb: LightboxElements, cx: number, cy: number, scale: number
   const dy = cy - (vpCy + transform.y);
   const ratio = nextScale / transform.scale;
 
+  // 关键：坐标值强制整数像素，避免亚像素模糊
+  const newX = transform.x + dx * (1 - ratio);
+  const newY = transform.y + dy * (1 - ratio);
+
   transform = {
     scale: nextScale,
-    x: transform.x + dx * (1 - ratio),
-    y: transform.y + dy * (1 - ratio)
+    x: Math.round(newX),
+    y: Math.round(newY)
   };
   applyTransform(lb);
 }
@@ -327,6 +346,7 @@ function zoomWheel(event: WheelEvent, lb: LightboxElements): void {
 }
 
 function resetZoom(lb: LightboxElements): void {
+  // 强制整数像素
   transform = { scale: 1, x: 0, y: 0 };
   applyTransform(lb);
   updateZoomLabel(lb);
@@ -348,7 +368,6 @@ function updateZoomLabel(lb: LightboxElements): void {
 // ─── 拖拽 ───────────────────────────────────────────────────────────────
 
 function startDrag(event: PointerEvent, lb: LightboxElements): void {
-  // 不拦截按钮区域的拖拽
   const target = event.target as HTMLElement;
   if (target.closest(".mermaid-lightbox-controls")) return;
 
@@ -388,10 +407,11 @@ function moveDrag(event: PointerEvent, lb: LightboxElements): void {
     suppressClick();
   }
 
+  // 关键：拖拽坐标强制整数像素
   transform = {
     ...transform,
-    x: dragState.originX + dx,
-    y: dragState.originY + dy
+    x: Math.round(dragState.originX + dx),
+    y: Math.round(dragState.originY + dy)
   };
   applyTransform(lb);
 }
@@ -415,7 +435,6 @@ function stopDrag(event: PointerEvent, lb: LightboxElements): void {
 // ─── 触摸 ───────────────────────────────────────────────────────────────
 
 function startTouch(event: TouchEvent, lb: LightboxElements): void {
-  // 不拦截控制栏区域的触摸
   const target = event.target as HTMLElement;
   if (target.closest(".mermaid-lightbox-controls")) return;
 
@@ -466,10 +485,11 @@ function moveTouch(event: TouchEvent, lb: LightboxElements): void {
     suppressClick();
   }
 
+  // 关键：触摸坐标强制整数像素
   transform = {
     ...transform,
-    x: dragState.originX + dx,
-    y: dragState.originY + dy
+    x: Math.round(dragState.originX + dx),
+    y: Math.round(dragState.originY + dy)
   };
   applyTransform(lb);
 }
@@ -545,10 +565,11 @@ function applyPinch(
   const dy = m.centerY - (vpCy + pinchState.startY);
   const scaleRatio = nextScale / pinchState.startScale;
 
+  // 关键：双指缩放坐标强制整数像素
   transform = {
     scale: nextScale,
-    x: pinchState.startX + dx * (1 - scaleRatio),
-    y: pinchState.startY + dy * (1 - scaleRatio)
+    x: Math.round(pinchState.startX + dx * (1 - scaleRatio)),
+    y: Math.round(pinchState.startY + dy * (1 - scaleRatio))
   };
   applyTransform(lb);
   updateZoomLabel(lb);
@@ -598,8 +619,13 @@ function handleKeyboard(event: KeyboardEvent, lb: LightboxElements): void {
 function applyTransform(lb: LightboxElements): void {
   const svg = lb.svgWrapper.querySelector("svg");
   if (!svg) return;
-  svg.style.transform =
-    `translate(${round(transform.x)}px, ${round(transform.y)}px) scale(${round(transform.scale)})`;
+
+  // 关键：所有 transform 值强制整数像素，避免亚像素模糊
+  const x = Math.round(transform.x);
+  const y = Math.round(transform.y);
+  const scale = roundToStep(transform.scale, 0.01); // 缩放值精确到 0.01
+
+  svg.style.transform = `translate(${x}px, ${y}px) scale(${scale})`;
   svg.style.transformOrigin = "center center";
 }
 
@@ -607,6 +633,13 @@ function applyTransform(lb: LightboxElements): void {
 
 function clamp(v: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, v));
+}
+
+/**
+ * 数值精确到指定步长（避免浮点精度问题）
+ */
+function roundToStep(v: number, step: number): number {
+  return Math.round(v / step) * step;
 }
 
 function round(v: number): number {

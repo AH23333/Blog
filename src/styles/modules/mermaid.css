@@ -93,17 +93,20 @@ body.mermaid-lightbox-open {
 }
 
 /*
- * 高清渲染策略：
+ * ── 高清渲染策略（关键）──
  *
- * SVG 不设置 max-width/max-height，让 viewBox 控制自然尺寸。
- * 这样 transform scale 的基准是原始矢量尺寸，不会产生"双重缩放"失真。
+ * 问题根源：
+ * 1. GPU 纹理化：will-change: transform 触发 GPU 合成层，SVG 被转为位图纹理
+ * 2. 亚像素偏移：transform 值非整数像素，触发浏览器亚像素抗锯齿
+ * 3. 形状渲染：crispEdges 对曲线/圆角产生锯齿或模糊
  *
- * viewBox 是 SVG 的矢量坐标系，由 Mermaid 渲染时设置。
- * 当 SVG 没有固定 width/height 时，浏览器会根据 viewBox 计算自然尺寸。
+ * 解决方案：
+ * 1. 移除 will-change: transform，避免 GPU 纹理化
+ * 2. JS 强制 transform 值为整数像素（已在 mermaid.ts 实现）
+ * 3. 使用 shape-rendering: geometricPrecision（已在 SVG 属性设置）
  *
- * scale=1 = 原始矢量尺寸（高清）
- * scale>1 = 在原始尺寸上放大（矢量清晰）
- * scale<1 = 在原始尺寸上缩小（可能需要滚动查看大图）
+ * 注意：CSS 不设置 shape-rendering，由 JS 在 SVG 元素上设置，
+ * 因为不同 SVG 内容可能需要不同的渲染策略。
  */
 .mermaid-lightbox-svg-wrapper svg {
   /* 居中定位 */
@@ -119,14 +122,16 @@ body.mermaid-lightbox-open {
   user-select: none;
   -webkit-user-select: none;
 
+  /* ── 关键：避免 GPU 纹理化 ── */
+  /* 移除 will-change: transform */
+  /* will-change 会触发 GPU 合成层，将 SVG 转为位图纹理 */
+  /* GPU 纹理在放大时会产生模糊 */
+
   /* 变换控制 */
-  will-change: transform;
   transform-origin: center center;
   transition: transform 0.15s ease-out;
 
-  /* 渲染优化 — 确保矢量图形清晰 */
-  shape-rendering: crispEdges;
-  text-rendering: optimizeLegibility;
+  /* 字体渲染优化 */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
