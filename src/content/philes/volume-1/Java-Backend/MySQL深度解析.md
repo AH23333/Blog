@@ -487,7 +487,7 @@ graph LR
 
 ```mermaid
 graph TB
-    subgraph 数据页结构【16KB】
+    subgraph "数据页结构【16KB】"
         FH["File Header【38B】<br/>页类型、页号、<br/>上一页/下一页指针<br/>LSN、Checksum"]
         PH["Page Header【56B】<br/>槽数量、记录数<br/>Free Space 指针<br/>最后插入位置<br/>页目录槽数"]
         IR["Infimum + Supremum【26B】<br/>最小虚拟记录 + 最大虚拟记录<br/>记录链表的边界"]
@@ -661,7 +661,7 @@ sequenceDiagram
 
 ```mermaid
 graph TB
-    subgraph 联合索引结构【idx_a_b_c】
+    subgraph "联合索引结构【idx_a_b_c】"
         IDX["联合索引 KEY【a, b, c】"]
         NODE1["节点1:【a=1, b=1, c=1 → PK】<br/>节点2:【a=1, b=1, c=2 → PK】<br/>节点3:【a=1, b=2, c=1 → PK】<br/>节点4:【a=2, b=1, c=1 → PK】"]
     end
@@ -1262,13 +1262,13 @@ sequenceDiagram
 
 ```mermaid
 graph TB
-    subgraph NLJ【Nested Loop Join】
+    subgraph "NLJ【Nested Loop Join】"
         NLJ1["嵌套循环连接<br/>外层表每行，扫描内层表"]
         NLJ2["适用场景：<br/>- 内层表有索引<br/>- 外层表结果集小"]
         NLJ3["伪代码：<br/>for each row in outer_table:<br/>  for each row in inner_table:<br/>    if join_condition matches:<br/>      output row"]
     end
 
-    subgraph BNL【Block Nested Loop Join】
+    subgraph "BNL【Block Nested Loop Join】"
         BNL1["块嵌套循环连接<br/>批量读取外层表到 Join Buffer"]
         BNL2["适用场景：<br/>- 内层表无索引<br/>- 减少内层表扫描次数"]
         BNL3["伪代码：<br/>for each block in outer_table:<br/>  load block into join_buffer<br/>  for each row in inner_table:<br/>    match against join_buffer"]
@@ -1279,7 +1279,7 @@ graph TB
         MRR2["优化效果：<br/>- 随机 I/O → 顺序 I/O<br/>- 减少磁盘寻道次数"]
     end
 
-    subgraph BKA【Batched Key Access】
+    subgraph "BKA【Batched Key Access】"
         BKA1["批量键访问<br/>MRR + BNL 的结合"]
         BKA2["流程：<br/>1. 批量获取外层表 JOIN 键<br/>2. 排序后批量回表<br/>3. 使用 JOIN 条件匹配"]
     end

@@ -16,6 +16,26 @@ function signalTypewriterDone(): void {
 }
 
 export function initTypewriter(): void {
+  // 检查用户偏好设置
+  const STORAGE_KEY = "typewriter-enabled";
+  const userPreference = localStorage.getItem(STORAGE_KEY);
+
+  // 如果用户禁用了打字机效果，直接显示所有内容
+  if (userPreference === "false") {
+    const preElements = document.querySelectorAll(".textmode-pre");
+    preElements.forEach((pre) => {
+      const preEl = pre as HTMLElement;
+      preEl.style.visibility = "visible";
+      // 移除任何可能存在的打字机标记
+      if (preEl.hasAttribute("data-typed")) {
+        const cursors = preEl.querySelectorAll(".typewriter-cursor");
+        cursors.forEach((cursor) => cursor.remove());
+      }
+    });
+    signalTypewriterDone();
+    return;
+  }
+
   const preElements = document.querySelectorAll(".textmode-pre");
   if (preElements.length === 0) {
     signalTypewriterDone();

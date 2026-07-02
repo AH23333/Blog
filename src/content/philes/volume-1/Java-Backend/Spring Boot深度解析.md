@@ -1153,7 +1153,7 @@ graph TB
         GROUP["spring.profiles.group"]
     end
 
-    subgraph 配置优先级【高到低】
+    subgraph "配置优先级【高到低】"
         P1["1. 命令行 --参数"]
         P2["2. SPRING_APPLICATION_JSON"]
         P3["3. Servlet 参数"]

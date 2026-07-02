@@ -45,6 +45,12 @@ export const siteConfig: SiteConfig = {
           linkLabel: "@entropic",
           href: "https://github.com/AH23333/entropic.git",
           external: true
+        },
+        {
+          label: "项目地址 AH23333/Blog",
+          linkLabel: "AH23333/Blog",
+          href: "https://github.com/AH23333/Blog",
+          external: true
         }
       ]
     },

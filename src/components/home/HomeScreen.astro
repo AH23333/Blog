@@ -95,6 +95,11 @@ function renderLabel(item: HomeItem, label: string): string {
 ---
 
 <section class="home-shell">
+  <button id="typewriter-toggle" class="typewriter-toggle" type="button" aria-label="切换打字效果" title="切换打字效果">
+    <span class="toggle-icon">⌨</span>
+    <span class="toggle-label">打字效果</span>
+    <span class="toggle-status"></span>
+  </button>
   <div class="ascii-hero">
     <pre
       id="home-ascii"
@@ -113,6 +118,77 @@ function renderLabel(item: HomeItem, label: string): string {
 
 <script>
   import { initHomeAsciiGlitch } from "../../modules/textmode/glitch/home";
+
+  // 打字机效果切换按钮逻辑
+  const STORAGE_KEY = "typewriter-enabled";
+  const toggleBtn = document.getElementById("typewriter-toggle");
+  const statusSpan = toggleBtn?.querySelector(".toggle-status");
+
+  // 获取用户偏好（默认开启）
+  function getTypewriterPreference(): boolean {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored === null) return true; // 默认开启
+    return stored === "true";
+  }
+
+  // 设置用户偏好
+  function setTypewriterPreference(enabled: boolean): void {
+    localStorage.setItem(STORAGE_KEY, enabled.toString());
+  }
+
+  // 更新按钮状态显示
+  function updateToggleUI(enabled: boolean): void {
+    if (!toggleBtn || !statusSpan) return;
+
+    toggleBtn.classList.toggle("enabled", enabled);
+    toggleBtn.classList.toggle("disabled", !enabled);
+
+    if (enabled) {
+      statusSpan.textContent = "开启";
+      toggleBtn.setAttribute("aria-pressed", "true");
+    } else {
+      statusSpan.textContent = "关闭";
+      toggleBtn.setAttribute("aria-pressed", "false");
+    }
+  }
+
+  // 立即初始化按钮状态（不等待 load 事件）
+  const currentPreference = getTypewriterPreference();
+  updateToggleUI(currentPreference);
+
+  // 切换按钮点击事件
+  if (toggleBtn) {
+    toggleBtn.addEventListener("click", () => {
+      const currentPreference = getTypewriterPreference();
+      const newState = !currentPreference;
+      setTypewriterPreference(newState);
+      updateToggleUI(newState);
+
+      // 如果用户禁用打字机效果，立即显示所有内容（不刷新页面）
+      if (!newState) {
+        const preElements = document.querySelectorAll(".textmode-pre");
+        preElements.forEach((pre) => {
+          const preEl = pre as HTMLElement;
+          preEl.style.visibility = "visible";
+          // 移除打字机光标
+          const cursors = preEl.querySelectorAll(".typewriter-cursor");
+          cursors.forEach((cursor) => cursor.remove());
+        });
+
+        // 触发打字完成事件
+        if (!window.__typewriterDone) {
+          window.__typewriterDone = true;
+          window.dispatchEvent(new CustomEvent("typewriter-done"));
+        }
+      } else {
+        // 如果用户启用打字机效果，需要刷新页面才能重新启动
+        // 因为打字机效果在初始化阶段已经完成判断
+        if (!currentPreference) {
+          window.location.reload();
+        }
+      }
+    });
+  }
 
   window.addEventListener(
     "load",

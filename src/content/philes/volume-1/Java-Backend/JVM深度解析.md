@@ -453,7 +453,7 @@ graph TB
         OLD["老年代 Old Gen<br/>大对象 / 长期存活对象"]
     end
 
-    subgraph 方法区【线程共享】
+    subgraph "方法区【线程共享】"
         META_SPACE["元空间 Metaspace<br/>类元数据 / 运行时常量池"]
     end
 
@@ -1487,7 +1487,7 @@ if (TLAB 中有足够空间) {
 
 ```mermaid
 graph LR
-    subgraph 对象内存布局【64位 JVM 开启压缩指针】
+    subgraph "对象内存布局【64位 JVM 开启压缩指针】"
         MW["Mark Word<br/>8 字节"]
         KP["Klass Pointer<br/>4 字节（压缩）"]
         FIELD1["int 字段<br/>4 字节"]
@@ -1543,7 +1543,7 @@ graph TB
         HANDLE_POOL --> TYPE1["类型数据"]
     end
 
-    subgraph 直接指针方式【HotSpot 默认】
+    subgraph "直接指针方式【HotSpot 默认】"
         STACK_REF2["栈引用"] --> INSTANCE2["实例数据"]
         INSTANCE2 --> TYPE2["类型数据"]
     end

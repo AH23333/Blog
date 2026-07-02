@@ -1251,7 +1251,7 @@ graph LR
 sequenceDiagram
     participant JVM as JVM 启动
     participant CL as ClassLoader 类加载器
-    participant LINK as 链接阶段
+    participant LINK_PHASE as 链接阶段
     participant INIT as 初始化阶段
     participant HEAP as 堆内存
     participant META as 方法区/元空间
@@ -1268,16 +1268,16 @@ sequenceDiagram
     end
 
     rect rgba(248, 240, 255, 0.4)
-    Note over CL,LINK: ===== 阶段 2：链接 [JVM] → 验证 + 准备 + 解析 =====
-    CL->>LINK: 链接阶段
-    Note over LINK: 验证 Verify：<br/>1. 文件格式验证：<br/>   魔数 0xCAFEBABE<br/>   版本号检查<br/>2. 元数据验证：<br/>   是否有父类<br/>   是否继承了 final 类<br/>3. 字节码验证：<br/>   类型安全<br/>   跳转指令合法<br/>4. 符号引用验证：<br/>   引用的类是否存在
-    Note over LINK: 准备 Prepare：<br/>1. 为 static 变量分配内存<br/>2. 设置默认零值<br/>   int → 0<br/>   boolean → false<br/>   reference → null<br/>3. static final 常量直接赋值<br/>   static final int MAX = 100 → 100
-    Note over LINK: 解析 Resolve：<br/>1. 符号引用 → 直接引用<br/>2. 类/接口解析<br/>3. 字段解析<br/>4. 方法解析<br/>5. 接口方法解析
+    Note over CL,LINK_PHASE: ===== 阶段 2：链接 [JVM] → 验证 + 准备 + 解析 =====
+    CL->>LINK_PHASE: 链接阶段
+    Note over LINK_PHASE: 验证 Verify：<br/>1. 文件格式验证：<br/>   魔数 0xCAFEBABE<br/>   版本号检查<br/>2. 元数据验证：<br/>   是否有父类<br/>   是否继承了 final 类<br/>3. 字节码验证：<br/>   类型安全<br/>   跳转指令合法<br/>4. 符号引用验证：<br/>   引用的类是否存在
+    Note over LINK_PHASE: 准备 Prepare：<br/>1. 为 static 变量分配内存<br/>2. 设置默认零值<br/>   int → 0<br/>   boolean → false<br/>   reference → null<br/>3. static final 常量直接赋值<br/>   static final int MAX = 100 → 100
+    Note over LINK_PHASE: 解析 Resolve：<br/>1. 符号引用 → 直接引用<br/>2. 类/接口解析<br/>3. 字段解析<br/>4. 方法解析<br/>5. 接口方法解析
     end
 
     rect rgba(255, 248, 240, 0.4)
-    Note over LINK,INIT: ===== 阶段 3：初始化 [JVM] → clinit 方法执行 =====
-    LINK->>INIT: 初始化阶段
+    Note over LINK_PHASE,INIT: ===== 阶段 3：初始化 [JVM] → clinit 方法执行 =====
+    LINK_PHASE->>INIT: 初始化阶段
     Note over INIT: 初始化时机（主动引用）：<br/>1. new 创建实例<br/>2. 访问 static 变量<br/>3. 调用 static 方法<br/>4. 反射调用<br/>5. 初始化子类触发父类初始化<br/>6. main 方法所在类
     Note over INIT: clinit 方法：<br/>1. 编译器自动收集 static 赋值<br/>   和 static 代码块<br/>2. 按源码顺序合并<br/>3. 父类 clinit 先于子类<br/>4. 多线程安全：<br/>   JVM 保证 clinit 只执行一次<br/>   通过加锁实现
     INIT->>HEAP: Spring Boot 容器初始化
