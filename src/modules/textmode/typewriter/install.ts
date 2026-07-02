@@ -29,7 +29,9 @@ export function initTypewriter(): void {
       // 移除任何可能存在的打字机标记
       if (preEl.hasAttribute("data-typed")) {
         const cursors = preEl.querySelectorAll(".typewriter-cursor");
-        cursors.forEach((cursor) => cursor.remove());
+        cursors.forEach((cursor) => {
+          cursor.remove();
+        });
       }
     });
     signalTypewriterDone();

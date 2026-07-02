@@ -109,7 +109,10 @@ html:has(.home-shell) {
   line-height: 1;
   cursor: pointer;
   opacity: 0.6;
-  transition: opacity 0.2s, border-color 0.2s, background-color 0.2s;
+  transition:
+    opacity 0.2s,
+    border-color 0.2s,
+    background-color 0.2s;
   white-space: nowrap;
 }
 
@@ -138,7 +141,9 @@ html:has(.home-shell) {
   border-radius: 3px;
   font-size: 0.75em;
   font-weight: bold;
-  transition: background-color 0.2s, color 0.2s;
+  transition:
+    background-color 0.2s,
+    color 0.2s;
 }
 
 /* 开启状态 */
