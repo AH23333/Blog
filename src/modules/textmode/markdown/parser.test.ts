@@ -231,9 +231,7 @@ describe("renderMarkdownToHtml - 混合内容", () => {
 describe("表格分隔行规范化", () => {
   it("应该规范化多余列的分隔行（截断至表头列数）", () => {
     // 分隔行有 5 列，表头只有 3 列 → 应截断为 3 列
-    const html = renderMarkdownToHtml(
-      "| A | B | C |\n| --- | --- | --- | --- | --- |\n| 1 | 2 | 3 |"
-    );
+    const html = renderMarkdownToHtml("| A | B | C |\n| --- | --- | --- | --- | --- |\n| 1 | 2 | 3 |");
     assert.ok(html.includes("<table>"));
     assert.ok(html.includes("<td>1</td>"));
     assert.ok(html.includes("<td>2</td>"));
@@ -242,9 +240,7 @@ describe("表格分隔行规范化", () => {
 
   it("应该规范化不足列的分隔行（补齐至表头列数）", () => {
     // 分隔行有 2 列，表头有 4 列 → 应补齐为 4 列
-    const html = renderMarkdownToHtml(
-      "| A | B | C | D |\n| --- | --- |\n| 1 | 2 | 3 | 4 |"
-    );
+    const html = renderMarkdownToHtml("| A | B | C | D |\n| --- | --- |\n| 1 | 2 | 3 | 4 |");
     assert.ok(html.includes("<table>"));
     assert.ok(html.includes("<td>1</td>"));
     assert.ok(html.includes("<td>4</td>"));
@@ -260,9 +256,7 @@ describe("表格分隔行规范化", () => {
 
   it("应该支持不同数量破折号混用", () => {
     // 分隔行各列使用不同数量的 - 符号
-    const html = renderMarkdownToHtml(
-      "| Col1 | Col2 | Col3 |\n|-|----|------|\n| a | b | c |"
-    );
+    const html = renderMarkdownToHtml("| Col1 | Col2 | Col3 |\n|-|----|------|\n| a | b | c |");
     assert.ok(html.includes("<table>"));
     assert.ok(html.includes("<td>a</td>"));
     assert.ok(html.includes("<td>b</td>"));
@@ -279,9 +273,7 @@ describe("表格分隔行规范化", () => {
   });
 
   it("应该保留分隔行中的对齐标记 :", () => {
-    const html = renderMarkdownToHtml(
-      "| 左对齐 | 居中 | 右对齐 |\n|:---|---:|:---:|\n| a | b | c |"
-    );
+    const html = renderMarkdownToHtml("| 左对齐 | 居中 | 右对齐 |\n|:---|---:|:---:|\n| a | b | c |");
     assert.ok(html.includes("<table>"));
     // markdown-it 渲染的 td 带有 style 属性，如 <td style="text-align:left">a</td>
     assert.ok(html.includes('">a</td>'), "应包含 a 单元格");
@@ -291,9 +283,7 @@ describe("表格分隔行规范化", () => {
   });
 
   it("不应该影响正常表格（列数匹配的分隔行）", () => {
-    const html = renderMarkdownToHtml(
-      "| A | B | C |\n| --- | --- | --- |\n| 1 | 2 | 3 |"
-    );
+    const html = renderMarkdownToHtml("| A | B | C |\n| --- | --- | --- |\n| 1 | 2 | 3 |");
     assert.ok(html.includes("<table>"));
     assert.ok(html.includes("<td>1</td>"));
     assert.ok(html.includes("<td>2</td>"));

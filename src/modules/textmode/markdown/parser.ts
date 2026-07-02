@@ -133,7 +133,7 @@ function normalizeTableSeparators(text: string): string {
       }
     }
 
-    const normalizedSep = "|" + normalizedSepCells.join("|") + "|";
+    const normalizedSep = `|${normalizedSepCells.join("|")}|`;
 
     result.push(line);
     result.push(normalizedSep);
