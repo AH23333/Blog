@@ -1378,6 +1378,7 @@ sequenceDiagram
     Note over BOOT: 配置作为 PropertySource 加入<br/>优先级高于本地配置
     BOOT->>APP: 传递配置到主 ApplicationContext
     APP->>APP: 正常启动流程
+    end
 
     rect rgba(248, 240, 255, 0.4)
     Note over APP,BUS: ===== 阶段 4：动态刷新 =====

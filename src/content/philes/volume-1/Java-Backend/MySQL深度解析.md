@@ -12,7 +12,7 @@ redacted: false
 > 本文以 MySQL 8.0 为基准，深入剖析 MySQL 内核机制：从连接管理到 SQL 解析，从 InnoDB 存储引擎到 B+树索引原理，从事务与 MVCC 到锁机制，从 SQL 优化到主从复制与分库分表。
 > 每个场景均配备详细的 Mermaid 架构图与时序图，标注核心数据结构、关键参数与源码路径，适合 #[C|3 年以上经验的数据库开发者和后端工程师] 深入研读。
 
-***
+---
 
 ## MySQL 核心架构总览
 
@@ -65,14 +65,14 @@ graph TB
 MySQL 8.0 已移除查询缓存模块，所有涉及查询缓存的讨论仅作为历史参考。
 :::
 
-| 层级 | 组件 | 核心职责 | 关键文件 |
-|------|------|----------|----------|
-| 连接层 | 连接器/线程池 | 认证、权限校验、连接管理 | `sql/conn_handler/` |
-| 服务层 | 分析器/优化器/执行器 | SQL 解析、优化、执行 | `sql/sql_parse.cc`、`sql/sql_optimizer.cc` |
-| 引擎层 | InnoDB/MyISAM/Memory | 数据存储、索引、事务 | `storage/innobase/` |
-| 日志层 | Redo/Undo/Binlog | 崩溃恢复、MVCC、复制 | `storage/innobase/log/` |
+| 层级   | 组件                 | 核心职责                 | 关键文件                                   |
+| ------ | -------------------- | ------------------------ | ------------------------------------------ |
+| 连接层 | 连接器/线程池        | 认证、权限校验、连接管理 | `sql/conn_handler/`                        |
+| 服务层 | 分析器/优化器/执行器 | SQL 解析、优化、执行     | `sql/sql_parse.cc`、`sql/sql_optimizer.cc` |
+| 引擎层 | InnoDB/MyISAM/Memory | 数据存储、索引、事务     | `storage/innobase/`                        |
+| 日志层 | Redo/Undo/Binlog     | 崩溃恢复、MVCC、复制     | `storage/innobase/log/`                    |
 
-***
+---
 
 ## 场景一：MySQL 架构总览
 
@@ -88,13 +88,13 @@ graph LR
     F --> G["返回结果集<br/>逐行发送"]
 ```
 
-| 阶段 | 核心组件 | 关键机制 | 源码位置 |
-|------|----------|----------|----------|
-| 连接管理 | `THD` 线程描述符 | 线程池、连接限制、超时断开 | `sql/conn_handler/connection_handler_manager.cc` |
-| 词法分析 | `MYSQLlex` | 关键字识别、Token 生成 | `sql/sql_lex.cc` |
-| 语法分析 | `MYSQLparse` | 构建 AST 解析树 | `sql/sql_yacc.yy` |
-| 查询优化 | `JOIN::optimize` | 代价估算、索引选择、JOIN 重排 | `sql/sql_optimizer.cc` |
-| 查询执行 | `JOIN::exec` | Nested Loop Join、索引扫描 | `sql/sql_executor.cc` |
+| 阶段     | 核心组件         | 关键机制                      | 源码位置                                         |
+| -------- | ---------------- | ----------------------------- | ------------------------------------------------ |
+| 连接管理 | `THD` 线程描述符 | 线程池、连接限制、超时断开    | `sql/conn_handler/connection_handler_manager.cc` |
+| 词法分析 | `MYSQLlex`       | 关键字识别、Token 生成        | `sql/sql_lex.cc`                                 |
+| 语法分析 | `MYSQLparse`     | 构建 AST 解析树               | `sql/sql_yacc.yy`                                |
+| 查询优化 | `JOIN::optimize` | 代价估算、索引选择、JOIN 重排 | `sql/sql_optimizer.cc`                           |
+| 查询执行 | `JOIN::exec`     | Nested Loop Join、索引扫描    | `sql/sql_executor.cc`                            |
 
 ### 1.1 Server 层与存储引擎层分离架构
 
@@ -111,7 +111,7 @@ sequenceDiagram
     participant HANDLER as Handler接口
     participant INNODB as InnoDB引擎
 
-    rect rgba【240, 248, 255, 0.4】
+    rect rgba(240, 248, 255, 0.4)
     Note over CLIENT,THD: ===== 阶段 1：连接建立 =====
     CLIENT->>THD: TCP 连接请求
     Note over THD: 三次握手 → 创建 THD 对象<br/>THD 包含：<br/>- 连接信息【IP、端口】<br/>- 用户认证信息<br/>- 会话变量<br/>- 查询状态
@@ -119,7 +119,7 @@ sequenceDiagram
     Note over THD: 认证流程：<br/>1. 从 mysql.user 表读取密码<br/>2. caching_sha2_password 验证<br/>3. 加载用户权限到 THD<br/>4. 初始化会话变量
     end
 
-    rect rgba【240, 255, 248, 0.4】
+    rect rgba(240, 255, 248, 0.4)
     Note over DISP,OPTIM: ===== 阶段 2：SQL 解析与优化 =====
     CLIENT->>DISP: 发送 SQL 语句
     DISP->>PARSER: mysql_parse【thd, parser_state】
@@ -130,7 +130,7 @@ sequenceDiagram
     Note over OPTIM: 优化器工作流程：<br/>1. 逻辑优化：<br/>   - 常量折叠<br/>   - 子查询转 Semi-Join<br/>   - 外连接转内连接<br/>   - 条件推导<br/>2. 物理优化：<br/>   - 统计信息估算<br/>   - 索引选择【cost 最小】<br/>   - JOIN 顺序确定<br/>   - 访问方法选择【ref/range/all】
     end
 
-    rect rgba【255, 248, 240, 0.4】
+    rect rgba(255, 248, 240, 0.4)
     Note over EXEC,INNODB: ===== 阶段 3：执行与返回 =====
     OPTIM->>EXEC: 生成执行计划【QEP】
     EXEC->>HANDLER: ha_rnd_init【】/ ha_index_read【】
@@ -175,13 +175,13 @@ graph TB
     LISTENER --> MONITOR
 ```
 
-| 连接参数 | 默认值 | 调优建议 |
-|----------|--------|----------|
-| `max_connections` | 151 | 根据内存和 CPU 核数调整，单连接约 2MB 内存 |
-| `thread_cache_size` | 9 | 设置为 `max_connections` 的 10%-20% |
-| `back_log` | 151 | 短时间内大量连接的队列大小，建议 500-1000 |
-| `wait_timeout` | 28800 | 建议缩短至 600-1800s，释放空闲连接 |
-| `max_connect_errors` | 100 | 防止暴力破解，达到阈值后拒绝连接 |
+| 连接参数             | 默认值 | 调优建议                                   |
+| -------------------- | ------ | ------------------------------------------ |
+| `max_connections`    | 151    | 根据内存和 CPU 核数调整，单连接约 2MB 内存 |
+| `thread_cache_size`  | 9      | 设置为 `max_connections` 的 10%-20%        |
+| `back_log`           | 151    | 短时间内大量连接的队列大小，建议 500-1000  |
+| `wait_timeout`       | 28800  | 建议缩短至 600-1800s，释放空闲连接         |
+| `max_connect_errors` | 100    | 防止暴力破解，达到阈值后拒绝连接           |
 
 ### 1.3 一条 SQL 的执行路径全景
 
@@ -225,7 +225,7 @@ sequenceDiagram
     Note over BINLOG: 如果是写操作：<br/>两阶段提交 2PC<br/>1. Prepare【写 Redo Log】<br/>2. Commit【写 Binlog】<br/>3. 提交【写 Redo Log Commit】
 ```
 
-***
+---
 
 ## 场景二：InnoDB 存储引擎深度剖析
 
@@ -280,21 +280,21 @@ sequenceDiagram
     participant BINLOG as Binlog
     participant DISK as 数据文件
 
-    rect rgba【240, 248, 255, 0.4】
+    rect rgba(240, 248, 255, 0.4)
     Note over USER,BP: ===== 阶段 1：读取数据页到 Buffer Pool =====
     USER->>EXEC: UPDATE t SET c=2 WHERE id=1
     EXEC->>BP: 检查 id=1 所在页是否在 Buffer Pool
     Note over BP: 如果不在 Buffer Pool：<br/>1. 从 Free 链表获取空闲页<br/>2. 如果 Free 链表为空：<br/>   从 LRU 链表淘汰页<br/>3. 从磁盘读取数据页到 Buffer Pool<br/>4. 插入到 LRU 链表【old 区头部】
     end
 
-    rect rgba【240, 255, 248, 0.4】
+    rect rgba(240, 255, 248, 0.4)
     Note over BP,UNDO: ===== 阶段 2：记录 Undo Log =====
     BP->>UNDO: 记录修改前的值【c=1】
     Note over UNDO: Undo Log 记录内容：<br/>- 事务 ID<br/>- 回滚指针【ROLL_PTR】<br/>- 修改前的列值【c=1】<br/>- 形成 Undo 版本链
     UNDO->>BP: 更新行中的 ROLL_PTR<br/>指向 Undo Log 记录
     end
 
-    rect rgba【255, 248, 240, 0.4】
+    rect rgba(255, 248, 240, 0.4)
     Note over BP,LOG_BUF: ===== 阶段 3：修改 Buffer Pool + 写 Redo Log =====
     BP->>BP: 修改 Buffer Pool 中的行数据<br/>c=1 → c=2
     Note over BP: 该页变为脏页<br/>加入 Flush 链表
@@ -302,7 +302,7 @@ sequenceDiagram
     Note over LOG_BUF: Redo Log 记录类型：<br/>MLOG_REC_UPDATE_IN_PLACE<br/>记录：<br/>- 表空间 ID<br/>- 页号【page_no】<br/>- 页内偏移量<br/>- 新值【c=2】
     end
 
-    rect rgba【248, 240, 255, 0.4】
+    rect rgba(248, 240, 255, 0.4)
     Note over REDO,BINLOG: ===== 阶段 4：两阶段提交 =====
     Note over REDO: ===== Prepare 阶段 =====
     EXEC->>REDO: Log Buffer → Redo Log 文件
@@ -314,7 +314,7 @@ sequenceDiagram
     Note over REDO: 事务完成标记<br/>前滚/回滚的依据
     end
 
-    rect rgba【255, 240, 245, 0.4】
+    rect rgba(255, 240, 245, 0.4)
     Note over BP,DISK: ===== 阶段 5：异步刷脏页 =====
     Note over BP: Page Cleaner 线程<br/>异步将脏页写入磁盘<br/>策略：<br/>1. 定时刷【每 10s】<br/>2. 自适应刷【脏页比例 > 10%】<br/>3. 空闲刷【系统空闲时】<br/>4. Checkpoint 触发刷
     BP->>DISK: 将脏页写入 .ibd 文件
@@ -370,15 +370,15 @@ graph TB
     PAGE --> PAGE_FLUSH
 ```
 
-| Buffer Pool 参数 | 默认值 | 说明 |
-|------------------|--------|------|
-| `innodb_buffer_pool_size` | 128MB | Buffer Pool 总大小，建议设为物理内存的 50%-80% |
-| `innodb_buffer_pool_instances` | 8【>=1GB 时】 | 多实例减少锁竞争 |
-| `innodb_buffer_pool_chunk_size` | 128MB | 动态调整 Buffer Pool 时的块大小 |
-| `innodb_old_blocks_pct` | 37 | Old 区占 LRU 链表比例 |
-| `innodb_old_blocks_time` | 1000ms | Old 区页停留时间阈值，超过则移到 New 区 |
-| `innodb_max_dirty_pages_pct` | 90 | 脏页最大比例，超过则强制刷盘 |
-| `innodb_flush_neighbors` | 0【SSD 推荐】 | 刷脏页时是否刷新相邻页 |
+| Buffer Pool 参数                | 默认值        | 说明                                           |
+| ------------------------------- | ------------- | ---------------------------------------------- |
+| `innodb_buffer_pool_size`       | 128MB         | Buffer Pool 总大小，建议设为物理内存的 50%-80% |
+| `innodb_buffer_pool_instances`  | 8【>=1GB 时】 | 多实例减少锁竞争                               |
+| `innodb_buffer_pool_chunk_size` | 128MB         | 动态调整 Buffer Pool 时的块大小                |
+| `innodb_old_blocks_pct`         | 37            | Old 区占 LRU 链表比例                          |
+| `innodb_old_blocks_time`        | 1000ms        | Old 区页停留时间阈值，超过则移到 New 区        |
+| `innodb_max_dirty_pages_pct`    | 90            | 脏页最大比例，超过则强制刷盘                   |
+| `innodb_flush_neighbors`        | 0【SSD 推荐】 | 刷脏页时是否刷新相邻页                         |
 
 ### 2.3 Change Buffer 与 Adaptive Hash Index
 
@@ -404,12 +404,12 @@ graph TB
 
 **Change Buffer 配置参数**：
 
-| 参数 | 默认值 | 说明 |
-|------|--------|------|
-| `innodb_change_buffering` | all | 缓存操作类型：inserts/deletes/purges/changes/all/none |
-| `innodb_change_buffer_max_size` | 25 | 占 Buffer Pool 的最大比例 |
-| `innodb_adaptive_hash_index` | ON | 是否启用自适应哈希索引 |
-| `innodb_adaptive_hash_index_parts` | 8 | 自适应哈希索引分区数 |
+| 参数                               | 默认值 | 说明                                                  |
+| ---------------------------------- | ------ | ----------------------------------------------------- |
+| `innodb_change_buffering`          | all    | 缓存操作类型：inserts/deletes/purges/changes/all/none |
+| `innodb_change_buffer_max_size`    | 25     | 占 Buffer Pool 的最大比例                             |
+| `innodb_adaptive_hash_index`       | ON     | 是否启用自适应哈希索引                                |
+| `innodb_adaptive_hash_index_parts` | 8      | 自适应哈希索引分区数                                  |
 
 ### 2.4 Double Write、Redo Log 与 Undo Log
 
@@ -422,7 +422,7 @@ sequenceDiagram
     participant REDO as Redo Log
     participant UNDO as Undo Log
 
-    rect rgba【240, 248, 255, 0.4】
+    rect rgba(240, 248, 255, 0.4)
     Note over BP,DW: ===== Double Write 机制 =====
     Note over BP: 为什么需要 Double Write？<br/>InnoDB 页大小 16KB<br/>OS 页大小 4KB<br/>写 16KB = 写 4 个 OS 页<br/>如果只写了 2 个页就宕机 → 部分写失效
     BP->>DW: 1. 将脏页顺序写入 Double Write Buffer
@@ -432,14 +432,14 @@ sequenceDiagram
     Note over DATA_FILE: 崩溃恢复时：<br/>检查 Double Write Buffer 中的页<br/>如果有损坏，用 DW 中的完整页恢复
     end
 
-    rect rgba【240, 255, 248, 0.4】
+    rect rgba(240, 255, 248, 0.4)
     Note over REDO: ===== Redo Log 循环写 =====
     Note over REDO: Redo Log 文件组：<br/>ib_logfile0, ib_logfile1<br/>循环写入，固定大小
     Note over REDO: Redo Log 格式：<br/>Log Block【512B】<br/>  ├── Block Header【12B】<br/>  │   ├── block_no【4B】<br/>  │   ├── data_len【2B】<br/>  │   ├── first_rec_group【2B】<br/>  │   └── checkpoint_no【4B】<br/>  ├── Log Body【496B】<br/>  └── Block Tailer【4B】<br/>      └── checksum
     Note over REDO: Redo Log 记录内容：<br/>MLOG_1BYTE/MLOG_2BYTES/MLOG_4BYTES<br/>MLOG_8BYTES：修改 1/2/4/8 字节<br/>MLOG_WRITE_STRING：修改字符串<br/>MLOG_REC_INSERT：插入记录<br/>MLOG_REC_UPDATE_IN_PLACE：原地更新<br/>MLOG_REC_DELETE：删除记录
     end
 
-    rect rgba【255, 248, 240, 0.4】
+    rect rgba(255, 248, 240, 0.4)
     Note over UNDO: ===== Undo Log 版本链 =====
     Note over UNDO: Undo Log 类型：<br/>1. INSERT_UNDO：INSERT 操作的 Undo<br/>   事务提交后直接删除<br/>2. UPDATE_UNDO：UPDATE/DELETE 的 Undo<br/>   用于 MVCC，Purge 线程清理
     Note over UNDO: Undo 记录结构：<br/>- 事务 ID【trx_id】<br/>- 回滚指针【roll_ptr】<br/>  指向上一版本 Undo 记录<br/>- 修改前的列值<br/>- Undo Log 类型标记
@@ -449,14 +449,14 @@ sequenceDiagram
 
 ### 2.5 Checkpoint 机制
 
-| Checkpoint 类型 | 触发条件 | 作用 |
-|-----------------|----------|------|
-| **Sharp Checkpoint** | 数据库正常关闭 | 将所有脏页刷盘，LSN 追上 |
-| **Fuzzy Checkpoint** | 脏页比例 > 阈值 | 部分刷盘，记录 Checkpoint LSN |
-| **Master Thread Checkpoint** | 每 1 秒或每 10 秒 | Master Thread 定时触发 |
-| **FLUSH_LRU_LIST Checkpoint** | Free 链表不足 | 淘汰 LRU 尾部脏页，释放空闲页 |
-| **Async/Sync Flush Checkpoint** | Redo Log 空间不足 | 根据 Redo Log 使用率刷脏页 |
-| **Dirty Page Too Much Checkpoint** | 脏页比例 > `innodb_max_dirty_pages_pct` | 强制刷脏页 |
+| Checkpoint 类型                    | 触发条件                                | 作用                          |
+| ---------------------------------- | --------------------------------------- | ----------------------------- |
+| **Sharp Checkpoint**               | 数据库正常关闭                          | 将所有脏页刷盘，LSN 追上      |
+| **Fuzzy Checkpoint**               | 脏页比例 > 阈值                         | 部分刷盘，记录 Checkpoint LSN |
+| **Master Thread Checkpoint**       | 每 1 秒或每 10 秒                       | Master Thread 定时触发        |
+| **FLUSH_LRU_LIST Checkpoint**      | Free 链表不足                           | 淘汰 LRU 尾部脏页，释放空闲页 |
+| **Async/Sync Flush Checkpoint**    | Redo Log 空间不足                       | 根据 Redo Log 使用率刷脏页    |
+| **Dirty Page Too Much Checkpoint** | 脏页比例 > `innodb_max_dirty_pages_pct` | 强制刷脏页                    |
 
 ```mermaid
 graph LR
@@ -475,13 +475,13 @@ graph LR
     CHECKPOINT --> CRASH
 ```
 
-| Redo Log 参数 | 默认值 | 说明 |
-|---------------|--------|------|
-| `innodb_log_file_size` | 48MB | 单个 Redo Log 文件大小 |
-| `innodb_log_files_in_group` | 2 | Redo Log 文件组数量 |
-| `innodb_log_buffer_size` | 16MB | Log Buffer 大小 |
-| `innodb_flush_log_at_trx_commit` | 1 | 0:每秒刷/1:每次提交刷/2:写OS缓存 |
-| `innodb_flush_log_at_timeout` | 1s | 每秒刷 Log Buffer 间隔 |
+| Redo Log 参数                    | 默认值 | 说明                               |
+| -------------------------------- | ------ | ---------------------------------- |
+| `innodb_log_file_size`           | 48MB   | 单个 Redo Log 文件大小             |
+| `innodb_log_files_in_group`      | 2      | Redo Log 文件组数量                |
+| `innodb_log_buffer_size`         | 16MB   | Log Buffer 大小                    |
+| `innodb_flush_log_at_trx_commit` | 1      | 0:每秒刷/1:每次提交刷/2:写 OS 缓存 |
+| `innodb_flush_log_at_timeout`    | 1s     | 每秒刷 Log Buffer 间隔             |
 
 ### 2.6 InnoDB 数据页结构
 
@@ -507,12 +507,12 @@ graph TB
 
 ### 2.7 InnoDB 行格式
 
-| 行格式 | 特点 | 适用场景 |
-|--------|------|----------|
-| `REDUNDANT` | 最老的格式，兼容性最好 | 旧版本兼容 |
-| `COMPACT` | 紧凑格式，变长字段长度列表 + NULL 位图 | 通用场景 |
-| `DYNAMIC`【默认】 | 长字段溢出页存储，只存 20B 指针 | 包含大字段的表 |
-| `COMPRESSED` | 支持页压缩，节省磁盘空间 | 读多写少的大表 |
+| 行格式            | 特点                                   | 适用场景       |
+| ----------------- | -------------------------------------- | -------------- |
+| `REDUNDANT`       | 最老的格式，兼容性最好                 | 旧版本兼容     |
+| `COMPACT`         | 紧凑格式，变长字段长度列表 + NULL 位图 | 通用场景       |
+| `DYNAMIC`【默认】 | 长字段溢出页存储，只存 20B 指针        | 包含大字段的表 |
+| `COMPRESSED`      | 支持页压缩，节省磁盘空间               | 读多写少的大表 |
 
 ```mermaid
 graph LR
@@ -532,7 +532,7 @@ graph LR
     ROLL --> COLS
 ```
 
-***
+---
 
 ## 场景三：B+树索引原理
 
@@ -571,7 +571,7 @@ sequenceDiagram
     participant LEAF as 叶子节点页
     participant PK_LEAF as 聚簇索引叶子页
 
-    rect rgba【240, 248, 255, 0.4】
+    rect rgba(240, 248, 255, 0.4)
     Note over USER,LEAF: ===== 二级索引查找【回表】 =====
     USER->>BP: SELECT * FROM t WHERE name = 'Alice'
     Note over BP: 假设 name 列有二级索引 idx_name
@@ -596,7 +596,7 @@ sequenceDiagram
     PK_LEAF-->>USER: 返回完整行记录
     end
 
-    rect rgba【240, 255, 248, 0.4】
+    rect rgba(240, 255, 248, 0.4)
     Note over USER,PK_LEAF: ===== 聚簇索引直接查找 =====
     USER->>BP: SELECT * FROM t WHERE id = 1
     BP->>ROOT: 聚簇索引根节点二分查找
@@ -606,7 +606,7 @@ sequenceDiagram
     PK_LEAF-->>USER: 返回完整行记录
     end
 
-    rect rgba【255, 248, 240, 0.4】
+    rect rgba(255, 248, 240, 0.4)
     Note over USER,PK_LEAF: ===== 覆盖索引【避免回表】 =====
     USER->>BP: SELECT name, id FROM t WHERE name = 'Alice'
     Note over BP: idx_name 索引包含【name, PK】<br/>查询列全部在索引中
@@ -625,7 +625,7 @@ sequenceDiagram
     participant NEW_PAGE as 新分配页
     participant PARENT as 父节点页
 
-    rect rgba【240, 248, 255, 0.4】
+    rect rgba(240, 248, 255, 0.4)
     Note over INSERT,PARENT: ===== 页分裂流程 =====
     INSERT->>PAGE: INSERT INTO t VALUES【50】
     Note over PAGE: 检查页空间：<br/>页大小 16KB<br/>当前页使用量 > 页的 15/16【约 1KB 空闲】<br/>触发页分裂
@@ -642,7 +642,7 @@ sequenceDiagram
     Note over PARENT: 页分裂代价：<br/>1. 分配新页的 I/O<br/>2. 数据移动【CPU 开销】<br/>3. 父节点更新<br/>4. 可能导致锁升级<br/>【间隙锁 → 表锁风险】
     end
 
-    rect rgba【240, 255, 248, 0.4】
+    rect rgba(240, 255, 248, 0.4)
     Note over INSERT,PAGE: ===== 页合并流程 =====
     Note over PAGE: 页合并触发条件：<br/>1. DELETE 或 UPDATE 导致页使用率 < 50%<br/>2. MERGE_THRESHOLD = 50%【默认】<br/>3. 检查相邻页是否可以合并
 
@@ -651,11 +651,11 @@ sequenceDiagram
     end
 ```
 
-| 索引参数 | 默认值 | 说明 |
-|----------|--------|------|
-| `innodb_page_size` | 16KB | 页大小，影响 B+树扇出度 |
-| `MERGE_THRESHOLD` | 50% | 页合并阈值，页使用率低于此值时触发合并 |
-| `innodb_fill_factor` | 100% | 页填充因子，预留空间减少页分裂 |
+| 索引参数             | 默认值 | 说明                                   |
+| -------------------- | ------ | -------------------------------------- |
+| `innodb_page_size`   | 16KB   | 页大小，影响 B+树扇出度                |
+| `MERGE_THRESHOLD`    | 50%    | 页合并阈值，页使用率低于此值时触发合并 |
+| `innodb_fill_factor` | 100%   | 页填充因子，预留空间减少页分裂         |
 
 ### 3.3 联合索引与最左前缀原则
 
@@ -697,7 +697,7 @@ sequenceDiagram
     participant IDX as 二级索引
     participant PK as 聚簇索引
 
-    rect rgba【240, 248, 255, 0.4】
+    rect rgba(240, 248, 255, 0.4)
     Note over SERVER,PK: ===== 无 ICP 的传统查找 =====
     SERVER->>ENGINE: SELECT * FROM t WHERE name LIKE 'A%' AND age=25
     Note over ENGINE: idx_name【name】<br/>没有 idx_name_age 联合索引
@@ -710,7 +710,7 @@ sequenceDiagram
     SERVER->>SERVER: 在 Server 层过滤 age=25<br/>浪费了大量回表操作
     end
 
-    rect rgba【240, 255, 248, 0.4】
+    rect rgba(240, 255, 248, 0.4)
     Note over SERVER,PK: ===== ICP 优化后的查找 =====
     SERVER->>ENGINE: SELECT * FROM t WHERE name LIKE 'A%' AND age=25
     Note over ENGINE: ICP 将 age=25 条件下推到引擎层
@@ -722,7 +722,7 @@ sequenceDiagram
     ENGINE-->>SERVER: 只返回 age=25 的行
     end
 
-    rect rgba【255, 248, 240, 0.4】
+    rect rgba(255, 248, 240, 0.4)
     Note over SERVER,PK: ===== MRR 优化 =====
     Note over ENGINE: MRR【Multi-Range Read】<br/>将随机 I/O 转为顺序 I/O
     SERVER->>ENGINE: SELECT * FROM t WHERE name IN【'A','B','C'】
@@ -783,7 +783,7 @@ graph TB
     T6 --> T7
 ```
 
-***
+---
 
 ## 场景四：事务与 MVCC
 
@@ -831,13 +831,13 @@ sequenceDiagram
 
     Note over ROW: 初始状态：id=1, c=10<br/>trx_id=99, roll_ptr=...
 
-    rect rgba【240, 248, 255, 0.4】
+    rect rgba(240, 248, 255, 0.4)
     Note over TRX_A,TRX_B: ===== 时刻 1：事务 A 开始 =====
     TRX_A->>MVCC: BEGIN【创建 Read View A】
     Note over MVCC: Read View A 内容：<br/>- m_ids: 活跃事务列表【100, ...】<br/>- min_trx_id: 100<br/>- max_trx_id: 101<br/>- creator_trx_id: 100
     end
 
-    rect rgba【240, 255, 248, 0.4】
+    rect rgba(240, 255, 248, 0.4)
     Note over TRX_A,TRX_B: ===== 时刻 2：事务 A 更新 =====
     TRX_A->>ROW: UPDATE t SET c=20 WHERE id=1
     Note over ROW: 1. 加 X 锁<br/>2. 记录 Undo Log【c=10, trx_id=99】<br/>3. 修改行：c=20, trx_id=100<br/>4. roll_ptr 指向新 Undo 记录
@@ -845,7 +845,7 @@ sequenceDiagram
     Note over UNDO: Undo 记录：<br/>trx_id=100, c=10<br/>roll_ptr → 上一版本
     end
 
-    rect rgba【255, 248, 240, 0.4】
+    rect rgba(255, 248, 240, 0.4)
     Note over TRX_B,ROW: ===== 时刻 3：事务 B 开始并查询 =====
     TRX_B->>MVCC: BEGIN【创建 Read View B】
     Note over MVCC: Read View B：<br/>- m_ids:【100, 200, ...】<br/>- min_trx_id: 100<br/>- max_trx_id: 201<br/>- creator_trx_id: 200
@@ -858,7 +858,7 @@ sequenceDiagram
     UNDO-->>TRX_B: 返回 c=10【一致性读】
     end
 
-    rect rgba【248, 240, 255, 0.4】
+    rect rgba(248, 240, 255, 0.4)
     Note over TRX_A,UNDO: ===== 时刻 4：事务 A 提交 =====
     TRX_A->>TRX_A: COMMIT
     Note over TRX_A: 事务 A 提交后：<br/>1. 释放锁<br/>2. 写 Redo Log Commit<br/>3. trx_id=100 从活跃列表移除
@@ -900,12 +900,12 @@ graph TB
 
 ### 4.3 四种隔离级别实现原理
 
-| 隔离级别 | 脏读 | 不可重复读 | 幻读 | 实现原理 |
-|----------|------|------------|------|----------|
-| `READ UNCOMMITTED` | 可能 | 可能 | 可能 | 直接读最新数据，不加锁 |
-| `READ COMMITTED` | 不可能 | 可能 | 可能 | 每次查询创建新 Read View |
-| `REPEATABLE READ` | 不可能 | 不可能 | 不可能 | 事务开始时创建 Read View，快照读 + 临键锁防止幻读 |
-| `SERIALIZABLE` | 不可能 | 不可能 | 不可能 | 所有 SELECT 隐式加 LOCK IN SHARE MODE |
+| 隔离级别           | 脏读   | 不可重复读 | 幻读   | 实现原理                                          |
+| ------------------ | ------ | ---------- | ------ | ------------------------------------------------- |
+| `READ UNCOMMITTED` | 可能   | 可能       | 可能   | 直接读最新数据，不加锁                            |
+| `READ COMMITTED`   | 不可能 | 可能       | 可能   | 每次查询创建新 Read View                          |
+| `REPEATABLE READ`  | 不可能 | 不可能     | 不可能 | 事务开始时创建 Read View，快照读 + 临键锁防止幻读 |
+| `SERIALIZABLE`     | 不可能 | 不可能     | 不可能 | 所有 SELECT 隐式加 LOCK IN SHARE MODE             |
 
 ```mermaid
 sequenceDiagram
@@ -914,7 +914,7 @@ sequenceDiagram
     participant ROW as 数据行
     participant UNDO as Undo Log
 
-    rect rgba【240, 248, 255, 0.4】
+    rect rgba(240, 248, 255, 0.4)
     Note over RC,ROW: ===== RC 级别：每次查询创建新 Read View =====
     RC->>ROW: 事务 A：第一次 SELECT<br/>创建 Read View_1
     Note over ROW: 此时 trx_id=100, c=10
@@ -927,7 +927,7 @@ sequenceDiagram
     ROW-->>RC: 返回 c=20【不可重复读】
     end
 
-    rect rgba【240, 255, 248, 0.4】
+    rect rgba(240, 255, 248, 0.4)
     Note over RR,ROW: ===== RR 级别：复用同一个 Read View =====
     RR->>ROW: 事务 A：第一次 SELECT<br/>创建 Read View【复用】
     Note over ROW: 此时 trx_id=100, c=10
@@ -968,14 +968,14 @@ graph TB
     CUR3 --> CUR4
 ```
 
-| 读类型 | SQL 示例 | 读版本 | 加锁 | 使用场景 |
-|--------|----------|--------|------|----------|
-| 快照读 | `SELECT * FROM t WHERE id=1` | 历史版本 | 否 | 普通查询 |
+| 读类型        | SQL 示例                        | 读版本   | 加锁 | 使用场景       |
+| ------------- | ------------------------------- | -------- | ---- | -------------- |
+| 快照读        | `SELECT * FROM t WHERE id=1`    | 历史版本 | 否   | 普通查询       |
 | 当前读-共享锁 | `SELECT ... LOCK IN SHARE MODE` | 最新版本 | S 锁 | 需要读最新数据 |
-| 当前读-排他锁 | `SELECT ... FOR UPDATE` | 最新版本 | X 锁 | 读取后即将修改 |
-| 当前读-写操作 | `UPDATE/DELETE/INSERT` | 最新版本 | X 锁 | 数据修改 |
+| 当前读-排他锁 | `SELECT ... FOR UPDATE`         | 最新版本 | X 锁 | 读取后即将修改 |
+| 当前读-写操作 | `UPDATE/DELETE/INSERT`          | 最新版本 | X 锁 | 数据修改       |
 
-***
+---
 
 ## 场景五：锁机制
 
@@ -1057,20 +1057,20 @@ graph TB
 
 ### 5.2 锁兼容矩阵
 
-| 请求锁 \ 持有锁 | IS | IX | S | X | AUTO_INC |
-|-----------------|-----|-----|-----|-----|----------|
-| **IS** | 兼容 | 兼容 | 兼容 | 冲突 | 兼容 |
-| **IX** | 兼容 | 兼容 | 冲突 | 冲突 | 兼容 |
-| **S** | 兼容 | 冲突 | 兼容 | 冲突 | 冲突 |
-| **X** | 冲突 | 冲突 | 冲突 | 冲突 | 冲突 |
-| **AUTO_INC** | 兼容 | 兼容 | 冲突 | 冲突 | 冲突 |
+| 请求锁 \ 持有锁 | IS   | IX   | S    | X    | AUTO_INC |
+| --------------- | ---- | ---- | ---- | ---- | -------- |
+| **IS**          | 兼容 | 兼容 | 兼容 | 冲突 | 兼容     |
+| **IX**          | 兼容 | 兼容 | 冲突 | 冲突 | 兼容     |
+| **S**           | 兼容 | 冲突 | 兼容 | 冲突 | 冲突     |
+| **X**           | 冲突 | 冲突 | 冲突 | 冲突 | 冲突     |
+| **AUTO_INC**    | 兼容 | 兼容 | 冲突 | 冲突 | 冲突     |
 
 | 请求锁 \ 持有锁 | 记录锁 | 间隙锁 | 临键锁 | 插入意向锁 |
-|-----------------|--------|--------|--------|------------|
-| **记录锁** | 冲突 | 兼容 | 冲突 | 兼容 |
-| **间隙锁** | 兼容 | 兼容 | 兼容 | 冲突 |
-| **临键锁** | 冲突 | 兼容 | 冲突 | 兼容 |
-| **插入意向锁** | 兼容 | 冲突 | 兼容 | 冲突 |
+| --------------- | ------ | ------ | ------ | ---------- |
+| **记录锁**      | 冲突   | 兼容   | 冲突   | 兼容       |
+| **间隙锁**      | 兼容   | 兼容   | 兼容   | 冲突       |
+| **临键锁**      | 冲突   | 兼容   | 冲突   | 兼容       |
+| **插入意向锁**  | 兼容   | 冲突   | 兼容   | 冲突       |
 
 ### 5.3 死锁检测与处理
 
@@ -1081,7 +1081,7 @@ sequenceDiagram
     participant LOCK as 锁管理器
     participant DEADLOCK as 死锁检测器
 
-    rect rgba【240, 248, 255, 0.4】
+    rect rgba(240, 248, 255, 0.4)
     Note over A,B: ===== 死锁产生 =====
     A->>LOCK: SELECT * FROM t WHERE id=1 FOR UPDATE
     Note over LOCK: 事务 A 获取 id=1 的 X 锁
@@ -1096,14 +1096,14 @@ sequenceDiagram
     Note over LOCK: 事务 B 等待 id=1 的 X 锁<br/>【被事务 A 持有】<br/>→ 死锁！
     end
 
-    rect rgba【255, 248, 240, 0.4】
+    rect rgba(255, 248, 240, 0.4)
     Note over LOCK,DEADLOCK: ===== 死锁检测 =====
     LOCK->>DEADLOCK: 等待图检测
     Note over DEADLOCK: 检测算法：<br/>1. 构建等待图【Wait-for Graph】<br/>   节点：事务<br/>   边：A 等待 B → A→B<br/>2. 检测图中是否存在环<br/>3. 如果存在环 → 死锁
     Note over DEADLOCK: 等待图：<br/>事务 A → 事务 B【A 等待 B】<br/>事务 B → 事务 A【B 等待 A】<br/>→ 检测到环！
     end
 
-    rect rgba【248, 240, 255, 0.4】
+    rect rgba(248, 240, 255, 0.4)
     Note over DEADLOCK,B: ===== 死锁处理 =====
     DEADLOCK->>DEADLOCK: 选择回滚代价最小的事务
     Note over DEADLOCK: 选择策略：<br/>1. 回滚 undo log 最少的事务<br/>2. 事务权重最小的事务<br/>3. 事务开始时间最晚的事务
@@ -1114,11 +1114,11 @@ sequenceDiagram
     end
 ```
 
-| 死锁参数 | 默认值 | 说明 |
-|----------|--------|------|
-| `innodb_deadlock_detect` | ON | 是否启用死锁检测 |
-| `innodb_lock_wait_timeout` | 50s | 锁等待超时时间 |
-| `innodb_print_all_deadlocks` | OFF | 是否将所有死锁记录到错误日志 |
+| 死锁参数                     | 默认值 | 说明                         |
+| ---------------------------- | ------ | ---------------------------- |
+| `innodb_deadlock_detect`     | ON     | 是否启用死锁检测             |
+| `innodb_lock_wait_timeout`   | 50s    | 锁等待超时时间               |
+| `innodb_print_all_deadlocks` | OFF    | 是否将所有死锁记录到错误日志 |
 
 ### 5.4 乐观锁 vs 悲观锁
 
@@ -1148,24 +1148,24 @@ graph TB
     OPT3 --> OPT5
 ```
 
-| 对比维度 | 乐观锁 | 悲观锁 |
-|----------|--------|--------|
-| 实现方式 | 版本号/CAS | 数据库行锁 |
-| 加锁时机 | 更新时检查 | 读取时加锁 |
-| 并发性能 | 高 | 低 |
-| 冲突严重时 | 重试次数多 | 效率高 |
-| 死锁风险 | 无 | 有 |
-| 适用场景 | 读多写少 | 写多读少 |
+| 对比维度   | 乐观锁     | 悲观锁     |
+| ---------- | ---------- | ---------- |
+| 实现方式   | 版本号/CAS | 数据库行锁 |
+| 加锁时机   | 更新时检查 | 读取时加锁 |
+| 并发性能   | 高         | 低         |
+| 冲突严重时 | 重试次数多 | 效率高     |
+| 死锁风险   | 无         | 有         |
+| 适用场景   | 读多写少   | 写多读少   |
 
 ### 5.5 自增锁模式
 
-| 模式 | 值 | 行为 | 适用场景 |
-|------|------|------|----------|
-| `innodb_autoinc_lock_mode=0` | 传统模式 | 所有 INSERT 加表级 AUTO-INC 锁，语句结束释放 | 兼容旧版本 |
-| `innodb_autoinc_lock_mode=1` | 连续模式【默认】 | 简单 INSERT 不加锁，批量 INSERT 加锁 | 通用场景 |
-| `innodb_autoinc_lock_mode=2` | 交错模式 | 所有 INSERT 不加锁，自增值可能不连续 | 高并发 INSERT |
+| 模式                         | 值               | 行为                                         | 适用场景      |
+| ---------------------------- | ---------------- | -------------------------------------------- | ------------- |
+| `innodb_autoinc_lock_mode=0` | 传统模式         | 所有 INSERT 加表级 AUTO-INC 锁，语句结束释放 | 兼容旧版本    |
+| `innodb_autoinc_lock_mode=1` | 连续模式【默认】 | 简单 INSERT 不加锁，批量 INSERT 加锁         | 通用场景      |
+| `innodb_autoinc_lock_mode=2` | 交错模式         | 所有 INSERT 不加锁，自增值可能不连续         | 高并发 INSERT |
 
-***
+---
 
 ## 场景六：SQL 优化实战
 
@@ -1193,7 +1193,7 @@ sequenceDiagram
     participant REWRITE as SQL 重写
     participant TEST as 测试验证
 
-    rect rgba【240, 248, 255, 0.4】
+    rect rgba(240, 248, 255, 0.4)
     Note over DBA,SLOW: ===== 阶段 1：发现慢 SQL =====
     DBA->>SLOW: 开启慢查询日志
     Note over SLOW: 配置：<br/>slow_query_log = ON<br/>long_query_time = 1s<br/>log_queries_not_using_indexes = ON
@@ -1202,14 +1202,14 @@ sequenceDiagram
     SLOW-->>DBA: 发现慢 SQL：<br/>SELECT * FROM orders<br/>WHERE status='pending'<br/>ORDER BY create_time DESC<br/>LIMIT 20
     end
 
-    rect rgba【240, 255, 248, 0.4】
+    rect rgba(240, 255, 248, 0.4)
     Note over DBA,EXPLAIN: ===== 阶段 2：EXPLAIN 分析 =====
     DBA->>EXPLAIN: EXPLAIN SELECT ... FROM orders ...
     Note over EXPLAIN: 输出分析：<br/>type: ALL【全表扫描】<br/>rows: 5000000<br/>Extra: Using filesort
     Note over EXPLAIN: 问题诊断：<br/>1. 没有 status 索引 → 全表扫描<br/>2. ORDER BY create_time → 文件排序<br/>3. 500 万行扫描 → 极慢
     end
 
-    rect rgba【255, 248, 240, 0.4】
+    rect rgba(255, 248, 240, 0.4)
     Note over DBA,IDX: ===== 阶段 3：索引优化 =====
     DBA->>IDX: 创建联合索引
     Note over IDX: ALTER TABLE orders<br/>ADD INDEX idx_status_time【status, create_time】
@@ -1217,14 +1217,14 @@ sequenceDiagram
     Note over OPTIM: 新索引 idx_status_time：<br/>1. status='pending' 走索引<br/>2. create_time 在索引中有序<br/>   避免 filesort<br/>3. 覆盖索引：避免回表【如果 SELECT 列少】
     end
 
-    rect rgba【248, 240, 255, 0.4】
+    rect rgba(248, 240, 255, 0.4)
     Note over DBA,REWRITE: ===== 阶段 4：SQL 重写 =====
     DBA->>REWRITE: 优化 SELECT 列
     Note over REWRITE: 改写前：<br/>SELECT * FROM orders<br/>改写后：<br/>SELECT id, order_no, status, amount, create_time<br/>FROM orders
     Note over REWRITE: 如果 idx_status_time 覆盖了所有查询列<br/>→ 覆盖索引，无需回表
     end
 
-    rect rgba【255, 240, 245, 0.4】
+    rect rgba(255, 240, 245, 0.4)
     Note over DBA,TEST: ===== 阶段 5：测试验证 =====
     DBA->>TEST: EXPLAIN 再次分析
     Note over TEST: 优化后 EXPLAIN：<br/>type: ref【索引查找】<br/>key: idx_status_time<br/>rows: 1000【过滤后】<br/>Extra: Using index【覆盖索引】<br/>查询时间：5s → 0.01s
@@ -1233,30 +1233,30 @@ sequenceDiagram
 
 ### 6.2 EXPLAIN 各字段深度解读
 
-| 字段 | 含义 | 常见值 | 优化建议 |
-|------|------|--------|----------|
-| `id` | 查询序号 | 数字 | id 相同从上到下执行，id 越大越先执行 |
-| `select_type` | 查询类型 | SIMPLE/PRIMARY/SUBQUERY/DERIVED/UNION | DERIVED 派生表尽量优化 |
-| `type` | 访问类型 | system > const > eq_ref > ref > range > index > ALL | 至少达到 range 级别 |
-| `possible_keys` | 可能索引 | 索引名列表 | 可能索引越多，优化器选择越困难 |
-| `key` | 实际索引 | 索引名 | NULL 表示未使用索引 |
-| `key_len` | 索引长度 | 字节数 | 越大表示使用索引列越多 |
-| `ref` | 比较的列或常量 | const/列名 | 判断索引匹配方式 |
-| `rows` | 预估扫描行数 | 数字 | 越小越好，越准确越好 |
-| `filtered` | 过滤百分比 | 0-100 | 乘以 rows 得到实际返回行数 |
-| `Extra` | 额外信息 | Using index/Using where/Using filesort/Using temporary | 避免 Using filesort 和 Using temporary |
+| 字段            | 含义           | 常见值                                                 | 优化建议                               |
+| --------------- | -------------- | ------------------------------------------------------ | -------------------------------------- |
+| `id`            | 查询序号       | 数字                                                   | id 相同从上到下执行，id 越大越先执行   |
+| `select_type`   | 查询类型       | SIMPLE/PRIMARY/SUBQUERY/DERIVED/UNION                  | DERIVED 派生表尽量优化                 |
+| `type`          | 访问类型       | system > const > eq_ref > ref > range > index > ALL    | 至少达到 range 级别                    |
+| `possible_keys` | 可能索引       | 索引名列表                                             | 可能索引越多，优化器选择越困难         |
+| `key`           | 实际索引       | 索引名                                                 | NULL 表示未使用索引                    |
+| `key_len`       | 索引长度       | 字节数                                                 | 越大表示使用索引列越多                 |
+| `ref`           | 比较的列或常量 | const/列名                                             | 判断索引匹配方式                       |
+| `rows`          | 预估扫描行数   | 数字                                                   | 越小越好，越准确越好                   |
+| `filtered`      | 过滤百分比     | 0-100                                                  | 乘以 rows 得到实际返回行数             |
+| `Extra`         | 额外信息       | Using index/Using where/Using filesort/Using temporary | 避免 Using filesort 和 Using temporary |
 
 **Extra 字段关键值解读**：
 
-| Extra 值 | 含义 | 严重程度 |
-|----------|------|----------|
-| `Using index` | 覆盖索引，无需回表 | 最佳 |
-| `Using index condition` | 使用 ICP 优化 | 良好 |
-| `Using where` | Server 层过滤 | 一般 |
-| `Using MRR` | 使用 MRR 优化 | 良好 |
-| `Using filesort` | 需要额外排序 | 较差 |
-| `Using temporary` | 需要临时表 | 很差 |
-| `Using join buffer` | JOIN 使用连接缓冲 | 一般 |
+| Extra 值                | 含义               | 严重程度 |
+| ----------------------- | ------------------ | -------- |
+| `Using index`           | 覆盖索引，无需回表 | 最佳     |
+| `Using index condition` | 使用 ICP 优化      | 良好     |
+| `Using where`           | Server 层过滤      | 一般     |
+| `Using MRR`             | 使用 MRR 优化      | 良好     |
+| `Using filesort`        | 需要额外排序       | 较差     |
+| `Using temporary`       | 需要临时表         | 很差     |
+| `Using join buffer`     | JOIN 使用连接缓冲  | 一般     |
 
 ### 6.3 JOIN 优化
 
@@ -1274,7 +1274,7 @@ graph TB
         BNL3["伪代码：<br/>for each block in outer_table:<br/>  load block into join_buffer<br/>  for each row in inner_table:<br/>    match against join_buffer"]
     end
 
-    subgraph MRR【Multi-Range Read】
+    subgraph "MRR【Multi-Range Read】"
         MRR1["多范围读取<br/>批量读取并排序"]
         MRR2["优化效果：<br/>- 随机 I/O → 顺序 I/O<br/>- 减少磁盘寻道次数"]
     end
@@ -1292,12 +1292,12 @@ graph TB
     BKA1 --> BKA2
 ```
 
-| JOIN 算法 | 适用场景 | 索引要求 | 性能 |
-|-----------|----------|----------|------|
-| **NLJ** | 小表 JOIN 大表 | 内层表 JOIN 列有索引 | 高 |
-| **BNL** | 无索引的 JOIN | 无 | 中等 |
-| **BKA** | 批量 JOIN | 内层表有索引 | 较高 |
-| **Hash Join** | 等值 JOIN【8.0.18+】 | 无 | 较高 |
+| JOIN 算法     | 适用场景             | 索引要求             | 性能 |
+| ------------- | -------------------- | -------------------- | ---- |
+| **NLJ**       | 小表 JOIN 大表       | 内层表 JOIN 列有索引 | 高   |
+| **BNL**       | 无索引的 JOIN        | 无                   | 中等 |
+| **BKA**       | 批量 JOIN            | 内层表有索引         | 较高 |
+| **Hash Join** | 等值 JOIN【8.0.18+】 | 无                   | 较高 |
 
 ### 6.4 分页优化
 
@@ -1334,7 +1334,7 @@ sequenceDiagram
     participant TRIGGER as 触发器
     participant BINLOG as Binlog
 
-    rect rgba【240, 248, 255, 0.4】
+    rect rgba(240, 248, 255, 0.4)
     Note over DBA,OLD: ===== 阶段 1：创建新表 =====
     DBA->>PT: pt-online-schema-change<br/>--alter "ADD COLUMN addr VARCHAR【200】"<br/>D=test,t=orders
     PT->>OLD: 分析原表结构
@@ -1342,13 +1342,13 @@ sequenceDiagram
     PT->>NEW: ALTER TABLE _orders_new ADD COLUMN addr VARCHAR【200】
     end
 
-    rect rgba【240, 255, 248, 0.4】
+    rect rgba(240, 255, 248, 0.4)
     Note over PT,TRIGGER: ===== 阶段 2：创建触发器 =====
     PT->>TRIGGER: 创建三个触发器
     Note over TRIGGER: 1. INSERT 触发器：<br/>   新插入原表的数据<br/>   同步插入新表<br/>2. UPDATE 触发器：<br/>   原表更新时同步更新新表<br/>3. DELETE 触发器：<br/>   原表删除时同步删除新表
     end
 
-    rect rgba【255, 248, 240, 0.4】
+    rect rgba(255, 248, 240, 0.4)
     Note over PT,NEW: ===== 阶段 3：数据迁移 =====
     PT->>OLD: 分批读取原表数据
     Note over OLD: 按主键分批：<br/>chunk-size=1000<br/>每批读取 1000 行<br/>低峰期可增大
@@ -1356,7 +1356,7 @@ sequenceDiagram
     Note over NEW: 数据迁移期间：<br/>触发器保证增量数据同步<br/>原表在线可用
     end
 
-    rect rgba【248, 240, 255, 0.4】
+    rect rgba(248, 240, 255, 0.4)
     Note over PT,BINLOG: ===== 阶段 4：原子切换 =====
     PT->>TRIGGER: 检查数据一致性
     Note over PT: 验证行数一致
@@ -1367,27 +1367,27 @@ sequenceDiagram
     end
 ```
 
-| 大表 DDL 工具 | 特点 | 适用场景 |
-|---------------|------|----------|
-| `pt-online-schema-change` | 触发器 + 分批复制 | 通用大表变更 |
-| `gh-ost` | Binlog 同步，无触发器 | 对性能要求更高的场景 |
-| `ALGORITHM=INPLACE` | 原地修改，不复制表 | 修改列默认值等轻量变更 |
-| `ALGORITHM=INSTANT` | 8.0.12+ 即时修改 | 添加列到最后、修改列名 |
+| 大表 DDL 工具             | 特点                  | 适用场景               |
+| ------------------------- | --------------------- | ---------------------- |
+| `pt-online-schema-change` | 触发器 + 分批复制     | 通用大表变更           |
+| `gh-ost`                  | Binlog 同步，无触发器 | 对性能要求更高的场景   |
+| `ALGORITHM=INPLACE`       | 原地修改，不复制表    | 修改列默认值等轻量变更 |
+| `ALGORITHM=INSTANT`       | 8.0.12+ 即时修改      | 添加列到最后、修改列名 |
 
 ### 6.6 索引优化原则总结
 
-| 原则 | 说明 | 示例 |
-|------|------|------|
-| **覆盖索引** | 查询列全部在索引中，避免回表 | `SELECT id,name FROM t WHERE name='A'` 有 idx_name |
-| **最左前缀** | 联合索引从最左列开始匹配 | idx_a_b_c 支持 WHERE a=1 |
-| **避免函数索引** | WHERE 条件列上不要使用函数 | `WHERE DATE(create_time)='2026-01-01'` 无法用索引 |
-| **避免隐式转换** | 类型不匹配导致索引失效 | `WHERE phone=13800138000`【phone 是 varchar】 |
-| **区分度原则** | 高区分度列优先建索引 | 性别列区分度低，不适合索引 |
-| **前缀索引** | 长字符串列使用前缀索引 | `INDEX idx_desc【description【20】】` |
-| **避免冗余索引** | 删除重复和冗余索引 | idx_a 和 idx_a_b 中 idx_a 是冗余的 |
-| **定期维护** | 定期分析表、重建索引 | `ANALYZE TABLE` / `OPTIMIZE TABLE` |
+| 原则             | 说明                         | 示例                                               |
+| ---------------- | ---------------------------- | -------------------------------------------------- |
+| **覆盖索引**     | 查询列全部在索引中，避免回表 | `SELECT id,name FROM t WHERE name='A'` 有 idx_name |
+| **最左前缀**     | 联合索引从最左列开始匹配     | idx_a_b_c 支持 WHERE a=1                           |
+| **避免函数索引** | WHERE 条件列上不要使用函数   | `WHERE DATE(create_time)='2026-01-01'` 无法用索引  |
+| **避免隐式转换** | 类型不匹配导致索引失效       | `WHERE phone=13800138000`【phone 是 varchar】      |
+| **区分度原则**   | 高区分度列优先建索引         | 性别列区分度低，不适合索引                         |
+| **前缀索引**     | 长字符串列使用前缀索引       | `INDEX idx_desc【description【20】】`              |
+| **避免冗余索引** | 删除重复和冗余索引           | idx_a 和 idx_a_b 中 idx_a 是冗余的                 |
+| **定期维护**     | 定期分析表、重建索引         | `ANALYZE TABLE` / `OPTIMIZE TABLE`                 |
 
-***
+---
 
 ## 场景七：主从复制与高可用
 
@@ -1431,7 +1431,7 @@ sequenceDiagram
     participant SLAVE_SQL as Slave SQL Thread
     participant SLAVE as Slave数据库
 
-    rect rgba【240, 248, 255, 0.4】
+    rect rgba(240, 248, 255, 0.4)
     Note over MASTER,SLAVE: ===== 阶段 1：建立复制连接 =====
     SLAVE_IO->>MASTER: 发起复制连接请求
     Note over SLAVE_IO: CHANGE MASTER TO<br/>MASTER_HOST='master_ip'<br/>MASTER_USER='repl'<br/>MASTER_PASSWORD='xxx'<br/>MASTER_LOG_FILE='binlog.000001'<br/>MASTER_LOG_POS=154
@@ -1441,7 +1441,7 @@ sequenceDiagram
     DUMP->>BINLOG: 定位到指定 Binlog 位置
     end
 
-    rect rgba【240, 255, 248, 0.4】
+    rect rgba(240, 255, 248, 0.4)
     Note over DUMP,SLAVE_IO: ===== 阶段 2：Binlog 传输 =====
     Note over MASTER: 用户在 Master 执行：<br/>INSERT INTO t VALUES【1, 'Alice'】
     MASTER->>BINLOG: 写入 Binlog Event
@@ -1453,7 +1453,7 @@ sequenceDiagram
     Note over RELAY: Relay Log 格式：<br/>与 Binlog 格式相同<br/>额外记录 Master 信息
     end
 
-    rect rgba【255, 248, 240, 0.4】
+    rect rgba(255, 248, 240, 0.4)
     Note over SLAVE_SQL,SLAVE: ===== 阶段 3：回放 =====
     SLAVE_SQL->>RELAY: 读取 Relay Log Event
     Note over SLAVE_SQL: SQL 线程解析 Event：<br/>1. 识别 Event 类型<br/>2. 提取 SQL 或行数据<br/>3. 在 Slave 上执行
@@ -1495,13 +1495,13 @@ graph TB
     LOGICAL_CLOCK --> WRITESET
 ```
 
-| MTS 参数 | 默认值 | 说明 |
-|----------|--------|------|
-| `slave_parallel_workers` | 4 | Worker 线程数 |
-| `slave_parallel_type` | LOGICAL_CLOCK | 并行策略 |
-| `slave_preserve_commit_order` | ON | 保持提交顺序 |
-| `binlog_transaction_dependency_tracking` | COMMIT_ORDER | 事务依赖追踪 |
-| `transaction_write_set_extraction` | XXHASH64 | 写集合提取算法 |
+| MTS 参数                                 | 默认值        | 说明           |
+| ---------------------------------------- | ------------- | -------------- |
+| `slave_parallel_workers`                 | 4             | Worker 线程数  |
+| `slave_parallel_type`                    | LOGICAL_CLOCK | 并行策略       |
+| `slave_preserve_commit_order`            | ON            | 保持提交顺序   |
+| `binlog_transaction_dependency_tracking` | COMMIT_ORDER  | 事务依赖追踪   |
+| `transaction_write_set_extraction`       | XXHASH64      | 写集合提取算法 |
 
 ### 7.3 GTID 复制
 
@@ -1512,7 +1512,7 @@ sequenceDiagram
     participant SLAVE as Slave
     participant BINLOG as Binlog
 
-    rect rgba【240, 248, 255, 0.4】
+    rect rgba(240, 248, 255, 0.4)
     Note over MASTER,SLAVE: ===== GTID 复制流程 =====
     Note over GTID: GTID 格式：<br/>server_uuid:transaction_id<br/>示例：<br/>3E11FA47-71CA-11E1-9E33-C80AA9429562:1-100
 
@@ -1528,7 +1528,7 @@ sequenceDiagram
     Note over SLAVE: 无需手动指定<br/>Binlog 文件和位置<br/>自动定位
     end
 
-    rect rgba【240, 255, 248, 0.4】
+    rect rgba(240, 255, 248, 0.4)
     Note over MASTER,SLAVE: ===== GTID 故障切换 =====
     Note over SLAVE: Master 宕机
     SLAVE->>SLAVE: 选择一个 Slave 提升为新 Master
@@ -1539,13 +1539,13 @@ sequenceDiagram
 
 ### 7.4 高可用方案对比
 
-| 方案 | 原理 | 自动切换 | 数据一致性 | 复杂度 | 适用场景 |
-|------|------|----------|------------|--------|----------|
-| **MHA** | Manager 监控 Master，故障时选新主 + 日志补偿 | 半自动 | 较高 | 低 | 中小规模、一主多从 |
-| **MGR** | 基于 Paxos 的组复制，多主/单主模式 | 自动 | 高 | 高 | 强一致性要求 |
-| **Orchestrator** | 拓扑发现 + 自动故障恢复 | 自动 | 中 | 中 | 大规模集群管理 |
-| **MySQL InnoDB Cluster** | MySQL Shell + MGR + Router | 自动 | 高 | 中 | 官方方案、完整生态 |
-| **Keepalived + 脚本** | VIP 漂移 + 自定义检测脚本 | 自动 | 低 | 低 | 简单场景 |
+| 方案                     | 原理                                         | 自动切换 | 数据一致性 | 复杂度 | 适用场景           |
+| ------------------------ | -------------------------------------------- | -------- | ---------- | ------ | ------------------ |
+| **MHA**                  | Manager 监控 Master，故障时选新主 + 日志补偿 | 半自动   | 较高       | 低     | 中小规模、一主多从 |
+| **MGR**                  | 基于 Paxos 的组复制，多主/单主模式           | 自动     | 高         | 高     | 强一致性要求       |
+| **Orchestrator**         | 拓扑发现 + 自动故障恢复                      | 自动     | 中         | 中     | 大规模集群管理     |
+| **MySQL InnoDB Cluster** | MySQL Shell + MGR + Router                   | 自动     | 高         | 中     | 官方方案、完整生态 |
+| **Keepalived + 脚本**    | VIP 漂移 + 自定义检测脚本                    | 自动     | 低         | 低     | 简单场景           |
 
 ### 7.5 读写分离
 
@@ -1580,7 +1580,7 @@ graph TB
     DELAY --> SOLUTION
 ```
 
-***
+---
 
 ## 场景八：分库分表
 
@@ -1616,14 +1616,14 @@ graph TB
 
 ### 8.1 垂直拆分 vs 水平拆分
 
-| 维度 | 垂直拆分 | 水平拆分 |
-|------|----------|----------|
-| **拆分依据** | 按业务模块/按列 | 按数据行 |
-| **示例** | 把用户表拆到 user_db，订单表拆到 order_db | 把订单表按 user_id 拆分到 4 个库 |
-| **优点** | 业务清晰、维护简单 | 解决单表数据量大、支持横向扩展 |
-| **缺点** | 跨库 JOIN 困难 | 跨分片聚合复杂 |
-| **适用场景** | 微服务架构、多业务模块 | 单表数据量大、高并发写入 |
-| **复杂度** | 低 | 高 |
+| 维度         | 垂直拆分                                  | 水平拆分                         |
+| ------------ | ----------------------------------------- | -------------------------------- |
+| **拆分依据** | 按业务模块/按列                           | 按数据行                         |
+| **示例**     | 把用户表拆到 user_db，订单表拆到 order_db | 把订单表按 user_id 拆分到 4 个库 |
+| **优点**     | 业务清晰、维护简单                        | 解决单表数据量大、支持横向扩展   |
+| **缺点**     | 跨库 JOIN 困难                            | 跨分片聚合复杂                   |
+| **适用场景** | 微服务架构、多业务模块                    | 单表数据量大、高并发写入         |
+| **复杂度**   | 低                                        | 高                               |
 
 ```mermaid
 graph TB
@@ -1751,14 +1751,14 @@ sequenceDiagram
     participant NEW_SHARD as 新分片集群
     participant SYNC as 数据同步服务
 
-    rect rgba【240, 248, 255, 0.4】
+    rect rgba(240, 248, 255, 0.4)
     Note over ADMIN,NEW_SHARD: ===== 阶段 1：准备阶段 =====
     ADMIN->>PROXY: 配置新分片规则
     Note over PROXY: 配置双写路由：<br/>旧分片 → 新分片 + 旧分片
     ADMIN->>NEW_SHARD: 创建新分片表结构
     end
 
-    rect rgba【240, 255, 248, 0.4】
+    rect rgba(240, 255, 248, 0.4)
     Note over ADMIN,SYNC: ===== 阶段 2：全量 + 增量同步 =====
     ADMIN->>SYNC: 启动全量数据迁移
     Note over SYNC: 迁移策略：<br/>1. 按主键范围分批导出<br/>2. 写入新分片<br/>3. 记录迁移进度
@@ -1772,7 +1772,7 @@ sequenceDiagram
     Note over SYNC: 增量同步保证：<br/>1. 不漏数据<br/>2. 不丢数据<br/>3. 数据一致性校验
     end
 
-    rect rgba【255, 248, 240, 0.4】
+    rect rgba(255, 248, 240, 0.4)
     Note over ADMIN,PROXY: ===== 阶段 3：灰度切换 =====
     ADMIN->>PROXY: 切换部分流量到新分片
     Note over PROXY: 灰度策略：<br/>1. 按用户 ID 灰度<br/>2. 逐步放量 10% → 50% → 100%<br/>3. 监控异常和性能
@@ -1780,7 +1780,7 @@ sequenceDiagram
     Note over ADMIN: 数据校验：<br/>1. 行数对比<br/>2. 关键字段校验<br/>3. 业务数据抽样
     end
 
-    rect rgba【248, 240, 255, 0.4】
+    rect rgba(248, 240, 255, 0.4)
     Note over ADMIN,PROXY: ===== 阶段 4：全量切换 =====
     ADMIN->>PROXY: 全量切换到新分片
     Note over PROXY: 切换完成：<br/>读写都指向新分片
@@ -1789,7 +1789,7 @@ sequenceDiagram
     end
 ```
 
-***
+---
 
 ## 补充：InnoDB 锁内存结构详解
 
@@ -1834,23 +1834,23 @@ graph TB
     LOCK_IX --> LOCK_AUTO_INC
 ```
 
-| 锁信息查询 | 版本 | 表名 |
-|-----------|------|------|
-| 当前事务锁信息 | 5.7 | `information_schema.INNODB_LOCKS` |
-| 当前锁等待 | 5.7 | `information_schema.INNODB_LOCK_WAITS` |
-| 当前锁信息 | 8.0 | `performance_schema.data_locks` |
-| 当前锁等待 | 8.0 | `performance_schema.data_lock_waits` |
-| 活跃事务 | 全部 | `information_schema.INNODB_TRX` |
+| 锁信息查询     | 版本 | 表名                                   |
+| -------------- | ---- | -------------------------------------- |
+| 当前事务锁信息 | 5.7  | `information_schema.INNODB_LOCKS`      |
+| 当前锁等待     | 5.7  | `information_schema.INNODB_LOCK_WAITS` |
+| 当前锁信息     | 8.0  | `performance_schema.data_locks`        |
+| 当前锁等待     | 8.0  | `performance_schema.data_lock_waits`   |
+| 活跃事务       | 全部 | `information_schema.INNODB_TRX`        |
 
-***
+---
 
 ## 补充：InnoDB 压缩与透明页压缩
 
-| 压缩技术 | 粒度 | 实现方式 | 适用场景 |
-|----------|------|----------|----------|
-| `ROW_FORMAT=COMPRESSED` | 表级 | 页压缩，key_block_size 指定压缩页大小 | 读多写少的大表 |
-| 透明页压缩 | 表空间级 | 8.0+ 支持，通过 `COMPRESSION='zlib'` 或 `lz4` | 通用压缩 |
-| OS 文件系统压缩 | 文件系统级 | NTFS 压缩 / ZFS 压缩 | 简单但性能不可控 |
+| 压缩技术                | 粒度       | 实现方式                                      | 适用场景         |
+| ----------------------- | ---------- | --------------------------------------------- | ---------------- |
+| `ROW_FORMAT=COMPRESSED` | 表级       | 页压缩，key_block_size 指定压缩页大小         | 读多写少的大表   |
+| 透明页压缩              | 表空间级   | 8.0+ 支持，通过 `COMPRESSION='zlib'` 或 `lz4` | 通用压缩         |
+| OS 文件系统压缩         | 文件系统级 | NTFS 压缩 / ZFS 压缩                          | 简单但性能不可控 |
 
 ```ini
 # 行格式压缩配置
@@ -1871,50 +1871,50 @@ COMPRESSION='lz4'；
 压缩会增加 CPU 开销。在 CPU 资源紧张或写入密集型场景下，压缩可能反而降低性能。建议在测试环境验证压缩效果后上线。
 :::
 
-***
+---
 
 ## 补充：MySQL 8.0 关键新特性
 
-| 特性 | 版本 | 说明 |
-|------|------|------|
-| **原子 DDL** | 8.0 | DDL 操作原子化，失败自动回滚 |
-| **不可见索引** | 8.0 | `ALTER TABLE t ALTER INDEX idx INVISIBLE`，测试索引效果 |
-| **降序索引** | 8.0 | `INDEX idx【col1 ASC, col2 DESC】` 真正支持降序 |
-| **窗口函数** | 8.0 | `ROW_NUMBER【】/RANK【】/DENSE_RANK【】/LAG【】/LEAD【】` |
-| **CTE 公共表表达式** | 8.0 | `WITH cte AS【SELECT ...】SELECT ... FROM cte` |
-| **Hash Join** | 8.0.18 | 替代 BNL 用于等值 JOIN |
-| **即时添加列** | 8.0.12 | `ALGORITHM=INSTANT` 添加列立即完成 |
-| **资源组** | 8.0 | 线程绑定到 CPU 资源组 |
-| **克隆插件** | 8.0.17 | 物理克隆数据库实例 |
-| **双密码** | 8.0.14 | 保留旧密码，平滑变更密码 |
+| 特性                 | 版本   | 说明                                                      |
+| -------------------- | ------ | --------------------------------------------------------- |
+| **原子 DDL**         | 8.0    | DDL 操作原子化，失败自动回滚                              |
+| **不可见索引**       | 8.0    | `ALTER TABLE t ALTER INDEX idx INVISIBLE`，测试索引效果   |
+| **降序索引**         | 8.0    | `INDEX idx【col1 ASC, col2 DESC】` 真正支持降序           |
+| **窗口函数**         | 8.0    | `ROW_NUMBER【】/RANK【】/DENSE_RANK【】/LAG【】/LEAD【】` |
+| **CTE 公共表表达式** | 8.0    | `WITH cte AS【SELECT ...】SELECT ... FROM cte`            |
+| **Hash Join**        | 8.0.18 | 替代 BNL 用于等值 JOIN                                    |
+| **即时添加列**       | 8.0.12 | `ALGORITHM=INSTANT` 添加列立即完成                        |
+| **资源组**           | 8.0    | 线程绑定到 CPU 资源组                                     |
+| **克隆插件**         | 8.0.17 | 物理克隆数据库实例                                        |
+| **双密码**           | 8.0.14 | 保留旧密码，平滑变更密码                                  |
 
-***
+---
 
 ## 补充：SQL 优化反模式与案例
 
 ### 常见反模式
 
-| 反模式 | 错误示例 | 正确写法 | 原因 |
-|--------|----------|----------|------|
-| 函数索引 | `WHERE DATE【create_time】= '2026-01-01'` | `WHERE create_time >= '2026-01-01' AND create_time < '2026-01-02'` | 函数导致索引失效 |
-| 隐式转换 | `WHERE phone = 13800138000` | `WHERE phone = '13800138000'` | 类型转换导致索引失效 |
-| 负向查询 | `WHERE status != 'deleted'` | `WHERE status IN【'active','pending'】` | 负向查询无法使用索引 |
-| 前导模糊 | `WHERE name LIKE '%Alice'` | 避免前导 %，或使用全文索引 | 前导 % 无法使用索引 |
-| OR 条件 | `WHERE a=1 OR b=2` | 拆分为 UNION ALL 或使用联合索引 | OR 可能导致全表扫描 |
-| SELECT * | `SELECT * FROM orders` | 明确列出需要的列 | 减少网络传输、便于覆盖索引 |
-| 大事务 | 一个事务处理 100 万行 | 分批处理，每批 1000 行 | 减少锁持有时间 |
-| 大偏移分页 | `LIMIT 1000000, 20` | 延迟关联或游标分页 | 避免扫描大量无用行 |
+| 反模式     | 错误示例                                  | 正确写法                                                           | 原因                       |
+| ---------- | ----------------------------------------- | ------------------------------------------------------------------ | -------------------------- |
+| 函数索引   | `WHERE DATE【create_time】= '2026-01-01'` | `WHERE create_time >= '2026-01-01' AND create_time < '2026-01-02'` | 函数导致索引失效           |
+| 隐式转换   | `WHERE phone = 13800138000`               | `WHERE phone = '13800138000'`                                      | 类型转换导致索引失效       |
+| 负向查询   | `WHERE status != 'deleted'`               | `WHERE status IN【'active','pending'】`                            | 负向查询无法使用索引       |
+| 前导模糊   | `WHERE name LIKE '%Alice'`                | 避免前导 %，或使用全文索引                                         | 前导 % 无法使用索引        |
+| OR 条件    | `WHERE a=1 OR b=2`                        | 拆分为 UNION ALL 或使用联合索引                                    | OR 可能导致全表扫描        |
+| SELECT \*  | `SELECT * FROM orders`                    | 明确列出需要的列                                                   | 减少网络传输、便于覆盖索引 |
+| 大事务     | 一个事务处理 100 万行                     | 分批处理，每批 1000 行                                             | 减少锁持有时间             |
+| 大偏移分页 | `LIMIT 1000000, 20`                       | 延迟关联或游标分页                                                 | 避免扫描大量无用行         |
 
 ### 优化案例：千万级用户表查询优化
 
 **原始场景**：用户表 `users` 1000 万行，查询 `SELECT * FROM users WHERE email = 'alice@example.com'`
 
-| 优化步骤 | 操作 | 效果 |
-|----------|------|------|
-| 1. 创建索引 | `CREATE INDEX idx_email ON users【email】` | type 从 ALL 变为 ref，rows 从 1000 万降到 1 |
-| 2. 覆盖索引 | `SELECT id, email, name FROM users WHERE email = ?` | 避免回表，Extra 显示 Using index |
-| 3. 前缀索引 | `CREATE INDEX idx_email_prefix ON users【email【20】】` | 如果 email 字段很长，减少索引大小 |
-| 4. 分区表 | 按 `create_time` 范围分区 | 分区裁剪，减少扫描范围 |
+| 优化步骤    | 操作                                                    | 效果                                        |
+| ----------- | ------------------------------------------------------- | ------------------------------------------- |
+| 1. 创建索引 | `CREATE INDEX idx_email ON users【email】`              | type 从 ALL 变为 ref，rows 从 1000 万降到 1 |
+| 2. 覆盖索引 | `SELECT id, email, name FROM users WHERE email = ?`     | 避免回表，Extra 显示 Using index            |
+| 3. 前缀索引 | `CREATE INDEX idx_email_prefix ON users【email【20】】` | 如果 email 字段很长，减少索引大小           |
+| 4. 分区表   | 按 `create_time` 范围分区                               | 分区裁剪，减少扫描范围                      |
 
 ```mermaid
 sequenceDiagram
@@ -1922,7 +1922,7 @@ sequenceDiagram
     participant CACHE as Redis 缓存
     participant DB as MySQL
 
-    rect rgba【240, 248, 255, 0.4】
+    rect rgba(240, 248, 255, 0.4)
     Note over APP,DB: ===== 缓存穿透防护 =====
     APP->>CACHE: 查询用户 alice@example.com
     alt 缓存命中
@@ -1937,13 +1937,13 @@ sequenceDiagram
     end
     end
 
-    rect rgba【240, 255, 248, 0.4】
+    rect rgba(240, 255, 248, 0.4)
     Note over APP,DB: ===== 缓存穿透保护 =====
     Note over CACHE: 对于不存在的数据：<br/>1. 缓存空值【TTL=60s】<br/>2. 布隆过滤器预判<br/>3. 限制查询频率
     end
 ```
 
-***
+---
 
 ## 补充：半同步复制与组复制
 
@@ -1956,7 +1956,7 @@ sequenceDiagram
     participant BINLOG as Binlog
     participant SEMI as 半同步插件
 
-    rect rgba【240, 248, 255, 0.4】
+    rect rgba(240, 248, 255, 0.4)
     Note over MASTER,SLAVE: ===== 半同步复制流程 =====
     MASTER->>MASTER: 事务提交
     MASTER->>BINLOG: 写 Binlog
@@ -1968,19 +1968,19 @@ sequenceDiagram
     MASTER->>MASTER: 收到 ACK → 提交事务<br/>返回客户端
     end
 
-    rect rgba【255, 248, 240, 0.4】
+    rect rgba(255, 248, 240, 0.4)
     Note over MASTER,SLAVE: ===== 超时降级 =====
     Note over MASTER: 如果 Slave 未在<br/>rpl_semi_sync_master_timeout<br/>时间内返回 ACK：<br/>1. 自动降级为异步复制<br/>2. Slave 恢复后自动切回半同步
     end
 ```
 
-| 半同步参数 | 默认值 | 说明 |
-|-----------|--------|------|
-| `rpl_semi_sync_master_enabled` | OFF | 主库开启半同步 |
-| `rpl_semi_sync_slave_enabled` | OFF | 从库开启半同步 |
-| `rpl_semi_sync_master_timeout` | 10000ms | 等待 ACK 超时时间 |
-| `rpl_semi_sync_master_wait_for_slave_count` | 1 | 需要等待的 Slave 数量 |
-| `rpl_semi_sync_master_wait_point` | AFTER_SYNC | 等待点：AFTER_SYNC/AFTER_COMMIT |
+| 半同步参数                                  | 默认值     | 说明                            |
+| ------------------------------------------- | ---------- | ------------------------------- |
+| `rpl_semi_sync_master_enabled`              | OFF        | 主库开启半同步                  |
+| `rpl_semi_sync_slave_enabled`               | OFF        | 从库开启半同步                  |
+| `rpl_semi_sync_master_timeout`              | 10000ms    | 等待 ACK 超时时间               |
+| `rpl_semi_sync_master_wait_for_slave_count` | 1          | 需要等待的 Slave 数量           |
+| `rpl_semi_sync_master_wait_point`           | AFTER_SYNC | 等待点：AFTER_SYNC/AFTER_COMMIT |
 
 ### MGR 组复制
 
@@ -2010,46 +2010,46 @@ graph TB
     PAXOS --> FC
 ```
 
-***
+---
 
 ## 补充：分库分表最佳实践
 
 ### 分片键选择原则
 
-| 原则 | 说明 | 好示例 | 坏示例 |
-|------|------|--------|--------|
-| **高区分度** | 数据均匀分布到各分片 | user_id【Hash取模】 | gender【只有 2 个值】 |
-| **查询频率高** | 大多数查询都带这个条件 | order_id【订单查询】 | remark【很少查询】 |
-| **避免跨分片** | 关联数据在同一分片 | user_id【用户+订单同分片】 | 无关联的字段 |
-| **避免热点** | 不存在数据倾斜 | 随机分布的 user_id | 大卖家 ID【热点】 |
-| **业务稳定** | 分片键不会频繁变更 | user_id【不变】 | 手机号【可能变更】 |
+| 原则           | 说明                   | 好示例                     | 坏示例                |
+| -------------- | ---------------------- | -------------------------- | --------------------- |
+| **高区分度**   | 数据均匀分布到各分片   | user_id【Hash 取模】       | gender【只有 2 个值】 |
+| **查询频率高** | 大多数查询都带这个条件 | order_id【订单查询】       | remark【很少查询】    |
+| **避免跨分片** | 关联数据在同一分片     | user_id【用户+订单同分片】 | 无关联的字段          |
+| **避免热点**   | 不存在数据倾斜         | 随机分布的 user_id         | 大卖家 ID【热点】     |
+| **业务稳定**   | 分片键不会频繁变更     | user_id【不变】            | 手机号【可能变更】    |
 
 ### 分库分表中间件对比
 
-| 中间件 | 类型 | 特点 | 适用场景 |
-|--------|------|------|----------|
+| 中间件                   | 类型 | 特点                                   | 适用场景     |
+| ------------------------ | ---- | -------------------------------------- | ------------ |
 | **ShardingSphere-Proxy** | 代理 | 透明接入、支持多种分片算法、分布式事务 | 标准分库分表 |
-| **ShardingSphere-JDBC** | SDK | 无代理层、性能高、与 Java 应用集成 | Java 应用 |
-| **MyCat** | 代理 | 成熟稳定、社区活跃 | 通用分库分表 |
-| **Vitess** | 代理 | 云原生、Kubernetes 友好、YouTube 出品 | 大规模集群 |
-| **DBLE** | 代理 | 基于 MyCat 的企业版 | 企业级需求 |
+| **ShardingSphere-JDBC**  | SDK  | 无代理层、性能高、与 Java 应用集成     | Java 应用    |
+| **MyCat**                | 代理 | 成熟稳定、社区活跃                     | 通用分库分表 |
+| **Vitess**               | 代理 | 云原生、Kubernetes 友好、YouTube 出品  | 大规模集群   |
+| **DBLE**                 | 代理 | 基于 MyCat 的企业版                    | 企业级需求   |
 
 ### 数据迁移 CheckList
 
-| 阶段 | 检查项 | 风险 |
-|------|--------|------|
-| 迁移前 | 备份数据 | 数据丢失 |
-| 迁移前 | 评估迁移时间窗口 | 迁移超时 |
-| 迁移中 | 监控主从延迟 | 数据不一致 |
-| 迁移中 | 监控磁盘 I/O | 磁盘满 |
-| 迁移中 | 监控 CPU 和内存 | 影响线上服务 |
-| 迁移后 | 数据一致性校验 | 数据丢失/重复 |
-| 迁移后 | 业务功能回归测试 | 功能异常 |
-| 迁移后 | 性能对比测试 | 性能下降 |
-| 回滚 | 保留旧库至少 7 天 | 无法回滚 |
-| 回滚 | 准备回滚方案 | 回滚失败 |
+| 阶段   | 检查项            | 风险          |
+| ------ | ----------------- | ------------- |
+| 迁移前 | 备份数据          | 数据丢失      |
+| 迁移前 | 评估迁移时间窗口  | 迁移超时      |
+| 迁移中 | 监控主从延迟      | 数据不一致    |
+| 迁移中 | 监控磁盘 I/O      | 磁盘满        |
+| 迁移中 | 监控 CPU 和内存   | 影响线上服务  |
+| 迁移后 | 数据一致性校验    | 数据丢失/重复 |
+| 迁移后 | 业务功能回归测试  | 功能异常      |
+| 迁移后 | 性能对比测试      | 性能下降      |
+| 回滚   | 保留旧库至少 7 天 | 无法回滚      |
+| 回滚   | 准备回滚方案      | 回滚失败      |
 
-***
+---
 
 ## 补充：Performance Schema 性能诊断
 
@@ -2079,30 +2079,30 @@ graph TB
     EVENTS_TRANSACTIONS --> MEMORY_USAGE
 ```
 
-| 诊断工具 | 功能 | 使用场景 |
-|----------|------|----------|
-| `performance_schema` | 运行时性能指标 | 实时性能分析 |
-| `sys schema` | 基于 P_S 的易用视图 | 日常诊断 |
-| `SHOW ENGINE INNODB STATUS` | InnoDB 引擎状态 | 锁、事务、死锁分析 |
-| `SHOW PROCESSLIST` | 当前连接和查询 | 快速排查慢查询 |
-| `pt-query-digest` | 慢查询日志分析 | 慢 SQL 汇总分析 |
-| `pt-stalk` | 性能问题触发采集 | 偶发性性能问题 |
-| `pt-mysql-summary` | 数据库配置摘要 | 配置审查 |
+| 诊断工具                    | 功能                | 使用场景           |
+| --------------------------- | ------------------- | ------------------ |
+| `performance_schema`        | 运行时性能指标      | 实时性能分析       |
+| `sys schema`                | 基于 P_S 的易用视图 | 日常诊断           |
+| `SHOW ENGINE INNODB STATUS` | InnoDB 引擎状态     | 锁、事务、死锁分析 |
+| `SHOW PROCESSLIST`          | 当前连接和查询      | 快速排查慢查询     |
+| `pt-query-digest`           | 慢查询日志分析      | 慢 SQL 汇总分析    |
+| `pt-stalk`                  | 性能问题触发采集    | 偶发性性能问题     |
+| `pt-mysql-summary`          | 数据库配置摘要      | 配置审查           |
 
 **sys Schema 常用视图**：
 
-| 视图 | 用途 |
-|------|------|
-| `sys.schema_unused_indexes` | 查找未使用的索引 |
-| `sys.schema_redundant_indexes` | 查找冗余索引 |
-| `sys.statements_with_full_table_scans` | 全表扫描的 SQL |
-| `sys.statements_with_sorting` | 需要排序的 SQL |
-| `sys.statements_with_temp_tables` | 使用临时表的 SQL |
-| `sys.io_global_by_file_by_bytes` | 文件 I/O 分布 |
-| `sys.user_summary` | 用户资源消耗汇总 |
-| `sys.host_summary` | 主机资源消耗汇总 |
+| 视图                                   | 用途             |
+| -------------------------------------- | ---------------- |
+| `sys.schema_unused_indexes`            | 查找未使用的索引 |
+| `sys.schema_redundant_indexes`         | 查找冗余索引     |
+| `sys.statements_with_full_table_scans` | 全表扫描的 SQL   |
+| `sys.statements_with_sorting`          | 需要排序的 SQL   |
+| `sys.statements_with_temp_tables`      | 使用临时表的 SQL |
+| `sys.io_global_by_file_by_bytes`       | 文件 I/O 分布    |
+| `sys.user_summary`                     | 用户资源消耗汇总 |
+| `sys.host_summary`                     | 主机资源消耗汇总 |
 
-***
+---
 
 ## 补充：MySQL 备份与恢复策略
 
@@ -2132,60 +2132,60 @@ graph TB
     BINLOG --> RESTORE
 ```
 
-| 备份工具 | 类型 | 特点 | 适用场景 |
-|----------|------|------|----------|
-| `mysqldump` | 逻辑 | 官方工具，简单易用 | 小数据量备份 |
-| `mydumper` | 逻辑 | 多线程并行导出，速度快 | 中大数据量 |
-| `XtraBackup` | 物理 | 热备份，不锁表 | 大数据库备份 |
-| `mysqlbackup` | 物理 | MySQL Enterprise 官方 | 企业版 |
-| `mysqlpump` | 逻辑 | 8.0 官方并行导出 | 中等数据量 |
+| 备份工具      | 类型 | 特点                   | 适用场景     |
+| ------------- | ---- | ---------------------- | ------------ |
+| `mysqldump`   | 逻辑 | 官方工具，简单易用     | 小数据量备份 |
+| `mydumper`    | 逻辑 | 多线程并行导出，速度快 | 中大数据量   |
+| `XtraBackup`  | 物理 | 热备份，不锁表         | 大数据库备份 |
+| `mysqlbackup` | 物理 | MySQL Enterprise 官方  | 企业版       |
+| `mysqlpump`   | 逻辑 | 8.0 官方并行导出       | 中等数据量   |
 
 **mysqldump 常用参数**：
 
-| 参数 | 说明 |
-|------|------|
-| `--single-transaction` | 事务一致性备份，不锁表【InnoDB】 |
-| `--master-data=2` | 记录 Binlog 位置，注释形式 |
-| `--routines` | 备份存储过程和函数 |
-| `--triggers` | 备份触发器 |
-| `--events` | 备份事件 |
-| `--set-gtid-purged=OFF` | 导出时不包含 GTID 信息 |
-| `--databases db1 db2` | 指定备份的数据库 |
-| `--all-databases` | 备份所有数据库 |
-| `--where='id > 1000'` | 条件导出，按条件过滤 |
+| 参数                    | 说明                             |
+| ----------------------- | -------------------------------- |
+| `--single-transaction`  | 事务一致性备份，不锁表【InnoDB】 |
+| `--master-data=2`       | 记录 Binlog 位置，注释形式       |
+| `--routines`            | 备份存储过程和函数               |
+| `--triggers`            | 备份触发器                       |
+| `--events`              | 备份事件                         |
+| `--set-gtid-purged=OFF` | 导出时不包含 GTID 信息           |
+| `--databases db1 db2`   | 指定备份的数据库                 |
+| `--all-databases`       | 备份所有数据库                   |
+| `--where='id > 1000'`   | 条件导出，按条件过滤             |
 
-***
+---
 
 ## 补充：常见故障排查手册
 
-| 故障现象 | 可能原因 | 排查步骤 |
-|----------|----------|----------|
-| **连接数满** `Too many connections` | max_connections 太小、连接泄漏 | `SHOW PROCESSLIST` 查看连接数，检查 `wait_timeout` |
-| **锁等待超时** `Lock wait timeout` | 长事务、未提交事务 | `SELECT * FROM information_schema.INNODB_TRX` 查看活跃事务 |
-| **死锁** `Deadlock found` | 事务交叉加锁 | `SHOW ENGINE INNODB STATUS` 查看死锁详情 |
-| **主从延迟** | 大事务、网络延迟、SQL 线程慢 | `SHOW SLAVE STATUS` 查看 `Seconds_Behind_Master` |
-| **CPU 100%** | 慢 SQL、无索引查询 | `SHOW PROCESSLIST` + `performance_schema` 定位高消耗 SQL |
-| **内存 OOM** | Buffer Pool 过大、连接过多 | 降低 `innodb_buffer_pool_size`，减少 `max_connections` |
-| **磁盘 I/O 高** | 刷脏页频繁、Redo Log 太小 | 增大 `innodb_log_file_size`，检查 `innodb_io_capacity` |
-| **表损坏** | 掉电、磁盘故障 | `CHECK TABLE`，`innodb_force_recovery` 参数恢复 |
+| 故障现象                            | 可能原因                       | 排查步骤                                                   |
+| ----------------------------------- | ------------------------------ | ---------------------------------------------------------- |
+| **连接数满** `Too many connections` | max_connections 太小、连接泄漏 | `SHOW PROCESSLIST` 查看连接数，检查 `wait_timeout`         |
+| **锁等待超时** `Lock wait timeout`  | 长事务、未提交事务             | `SELECT * FROM information_schema.INNODB_TRX` 查看活跃事务 |
+| **死锁** `Deadlock found`           | 事务交叉加锁                   | `SHOW ENGINE INNODB STATUS` 查看死锁详情                   |
+| **主从延迟**                        | 大事务、网络延迟、SQL 线程慢   | `SHOW SLAVE STATUS` 查看 `Seconds_Behind_Master`           |
+| **CPU 100%**                        | 慢 SQL、无索引查询             | `SHOW PROCESSLIST` + `performance_schema` 定位高消耗 SQL   |
+| **内存 OOM**                        | Buffer Pool 过大、连接过多     | 降低 `innodb_buffer_pool_size`，减少 `max_connections`     |
+| **磁盘 I/O 高**                     | 刷脏页频繁、Redo Log 太小      | 增大 `innodb_log_file_size`，检查 `innodb_io_capacity`     |
+| **表损坏**                          | 掉电、磁盘故障                 | `CHECK TABLE`，`innodb_force_recovery` 参数恢复            |
 
 **应急恢复参数**：
 
-| 参数 | 值 | 说明 |
-|------|------|------|
-| `innodb_force_recovery` | 1-6 | 强制 InnoDB 启动，跳过某些步骤 |
-| 1【SRV_FORCE_IGNORE_CORRUPT】 | 忽略损坏页 | 让服务器继续运行 |
-| 2【SRV_FORCE_NO_BACKGROUND】 | 禁止后台线程 | 防止 Purge 线程崩溃 |
-| 3【SRV_FORCE_NO_TRX_UNDO】 | 不执行事务回滚 | 跳过未完成事务的回滚 |
-| 4【SRV_FORCE_NO_IBUF_MERGE】 | 不合并 Change Buffer | 跳过 Change Buffer 合并 |
-| 5【SRV_FORCE_NO_UNDO_LOG_SCAN】 | 不扫描 Undo Log | 跳过 Undo 扫描 |
-| 6【SRV_FORCE_NO_LOG_REDO】 | 不执行前滚 | 跳过 Redo Log 前滚 |
+| 参数                            | 值                   | 说明                           |
+| ------------------------------- | -------------------- | ------------------------------ |
+| `innodb_force_recovery`         | 1-6                  | 强制 InnoDB 启动，跳过某些步骤 |
+| 1【SRV_FORCE_IGNORE_CORRUPT】   | 忽略损坏页           | 让服务器继续运行               |
+| 2【SRV_FORCE_NO_BACKGROUND】    | 禁止后台线程         | 防止 Purge 线程崩溃            |
+| 3【SRV_FORCE_NO_TRX_UNDO】      | 不执行事务回滚       | 跳过未完成事务的回滚           |
+| 4【SRV_FORCE_NO_IBUF_MERGE】    | 不合并 Change Buffer | 跳过 Change Buffer 合并        |
+| 5【SRV_FORCE_NO_UNDO_LOG_SCAN】 | 不扫描 Undo Log      | 跳过 Undo 扫描                 |
+| 6【SRV_FORCE_NO_LOG_REDO】      | 不执行前滚           | 跳过 Redo Log 前滚             |
 
 :::warning
 `innodb_force_recovery` 仅在紧急情况下使用，值越大风险越高。恢复数据后应立即重新导出数据并重建实例。
 :::
 
-***
+---
 
 ## 附录：MySQL 核心配置参数速查
 
@@ -2246,53 +2246,53 @@ table_definition_cache = 2000                   # 表定义缓存
 open_files_limit = 65535                        # 文件描述符限制
 ```
 
-***
+---
 
 ## 附录：MySQL 核心源码路径速查
 
-| 模块 | 核心文件 | 说明 |
-|------|----------|------|
-| 连接管理 | `sql/conn_handler/connection_handler_manager.cc` | 连接管理器 |
-| SQL 解析 | `sql/sql_parse.cc` | SQL 解析入口 |
-| 词法分析 | `sql/sql_lex.cc` | 词法分析器 |
-| 语法分析 | `sql/sql_yacc.yy` | 语法分析器【Bison】 |
-| 查询优化 | `sql/sql_optimizer.cc` | 优化器主逻辑 |
-| 查询执行 | `sql/sql_executor.cc` | 执行器 |
-| Handler 接口 | `sql/handler.h` | 存储引擎抽象接口 |
-| Buffer Pool | `storage/innobase/buf/buf0buf.cc` | Buffer Pool 实现 |
-| B+树 | `storage/innobase/btr/btr0btr.cc` | B+树索引操作 |
-| 行锁 | `storage/innobase/lock/lock0lock.cc` | 锁管理器 |
-| Redo Log | `storage/innobase/log/log0log.cc` | Redo Log 实现 |
-| Undo Log | `storage/innobase/trx/trx0undo.cc` | Undo Log 实现 |
-| MVCC | `storage/innobase/trx/trx0sys.cc` | 事务系统 |
-| 行格式 | `storage/innobase/rem/rem0rec.cc` | 行记录管理 |
-| 页结构 | `storage/innobase/include/page0page.h` | 页结构定义 |
-| Binlog | `sql/binlog.cc` | Binlog 实现 |
-| 主从复制 | `sql/rpl_slave.cc` | Slave 复制逻辑 |
-| GTID | `sql/rpl_gtid.h` | GTID 数据结构 |
+| 模块         | 核心文件                                         | 说明                |
+| ------------ | ------------------------------------------------ | ------------------- |
+| 连接管理     | `sql/conn_handler/connection_handler_manager.cc` | 连接管理器          |
+| SQL 解析     | `sql/sql_parse.cc`                               | SQL 解析入口        |
+| 词法分析     | `sql/sql_lex.cc`                                 | 词法分析器          |
+| 语法分析     | `sql/sql_yacc.yy`                                | 语法分析器【Bison】 |
+| 查询优化     | `sql/sql_optimizer.cc`                           | 优化器主逻辑        |
+| 查询执行     | `sql/sql_executor.cc`                            | 执行器              |
+| Handler 接口 | `sql/handler.h`                                  | 存储引擎抽象接口    |
+| Buffer Pool  | `storage/innobase/buf/buf0buf.cc`                | Buffer Pool 实现    |
+| B+树         | `storage/innobase/btr/btr0btr.cc`                | B+树索引操作        |
+| 行锁         | `storage/innobase/lock/lock0lock.cc`             | 锁管理器            |
+| Redo Log     | `storage/innobase/log/log0log.cc`                | Redo Log 实现       |
+| Undo Log     | `storage/innobase/trx/trx0undo.cc`               | Undo Log 实现       |
+| MVCC         | `storage/innobase/trx/trx0sys.cc`                | 事务系统            |
+| 行格式       | `storage/innobase/rem/rem0rec.cc`                | 行记录管理          |
+| 页结构       | `storage/innobase/include/page0page.h`           | 页结构定义          |
+| Binlog       | `sql/binlog.cc`                                  | Binlog 实现         |
+| 主从复制     | `sql/rpl_slave.cc`                               | Slave 复制逻辑      |
+| GTID         | `sql/rpl_gtid.h`                                 | GTID 数据结构       |
 
-***
+---
 
 ## 附录：常用诊断命令速查
 
-| 命令 | 用途 |
-|------|------|
-| `SHOW ENGINE INNODB STATUS\G` | InnoDB 引擎状态（锁、事务、Buffer Pool） |
-| `SHOW PROCESSLIST` | 当前连接和查询状态 |
-| `SHOW VARIABLES LIKE '%innodb%'` | InnoDB 相关参数 |
-| `SHOW STATUS LIKE '%innodb%'` | InnoDB 运行时状态 |
-| `SELECT * FROM information_schema.INNODB_TRX` | 当前活跃事务 |
-| `SELECT * FROM information_schema.INNODB_LOCKS` | 当前锁信息【8.0 之前】 |
-| `SELECT * FROM performance_schema.data_locks` | 当前锁信息【8.0】 |
-| `SELECT * FROM performance_schema.data_lock_waits` | 当前锁等待信息【8.0】 |
-| `SHOW BINARY LOGS` | Binlog 文件列表 |
-| `SHOW SLAVE STATUS\G` | 主从复制状态 |
-| `SHOW MASTER STATUS` | 主库 Binlog 位置 |
-| `ANALYZE TABLE t` | 更新表统计信息 |
-| `OPTIMIZE TABLE t` | 重建表，回收空间 |
-| `CHECK TABLE t` | 检查表完整性 |
+| 命令                                               | 用途                                     |
+| -------------------------------------------------- | ---------------------------------------- |
+| `SHOW ENGINE INNODB STATUS\G`                      | InnoDB 引擎状态（锁、事务、Buffer Pool） |
+| `SHOW PROCESSLIST`                                 | 当前连接和查询状态                       |
+| `SHOW VARIABLES LIKE '%innodb%'`                   | InnoDB 相关参数                          |
+| `SHOW STATUS LIKE '%innodb%'`                      | InnoDB 运行时状态                        |
+| `SELECT * FROM information_schema.INNODB_TRX`      | 当前活跃事务                             |
+| `SELECT * FROM information_schema.INNODB_LOCKS`    | 当前锁信息【8.0 之前】                   |
+| `SELECT * FROM performance_schema.data_locks`      | 当前锁信息【8.0】                        |
+| `SELECT * FROM performance_schema.data_lock_waits` | 当前锁等待信息【8.0】                    |
+| `SHOW BINARY LOGS`                                 | Binlog 文件列表                          |
+| `SHOW SLAVE STATUS\G`                              | 主从复制状态                             |
+| `SHOW MASTER STATUS`                               | 主库 Binlog 位置                         |
+| `ANALYZE TABLE t`                                  | 更新表统计信息                           |
+| `OPTIMIZE TABLE t`                                 | 重建表，回收空间                         |
+| `CHECK TABLE t`                                    | 检查表完整性                             |
 
-***
+---
 
 > **全书总结**：MySQL 是 Java 后端工程师必须深入掌握的数据库。理解其架构分层、InnoDB 存储引擎、B+树索引、MVCC 与事务、锁机制、SQL 优化、主从复制与分库分表的底层原理，是成为 #[C|高级数据库工程师] 和 #[R|后端架构师] 的必经之路。
 > 建议结合本文的 Mermaid 图表，在本地搭建 MySQL 环境，通过 `SHOW ENGINE INNODB STATUS`、`EXPLAIN`、`performance_schema` 等工具，验证和加深对每个知识点的理解。

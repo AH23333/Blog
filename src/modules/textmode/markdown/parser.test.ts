@@ -143,8 +143,8 @@ describe("renderMarkdownToHtml - 代码块", () => {
 
     assert.ok(html.includes("<pre>"));
     assert.ok(html.includes("<code"));
-    // highlight.js 会将 console.log 包裹在 <span> 中，所以检查高亮标记
-    assert.ok(html.includes("hljs"), "应包含 highlight.js 高亮标记");
+    // highlight.js 由 highlightCodeBlocks() 后处理应用，renderMarkdownToHtml 不包含高亮
+    assert.ok(html.includes("language-javascript"), "应包含 language-javascript class");
     assert.ok(html.includes("console"), "应包含 console");
     assert.ok(html.includes("log"), "应包含 log");
   });
@@ -153,8 +153,7 @@ describe("renderMarkdownToHtml - 代码块", () => {
     const html = renderMarkdownToHtml("```python\nprint('hello')\n```");
 
     assert.ok(html.includes("language-python"));
-    // highlight.js 会将 print 包裹在 <span> 中，检查高亮标记和片段
-    assert.ok(html.includes("hljs"), "应包含 highlight.js 高亮标记");
+    // highlight.js 由 highlightCodeBlocks() 后处理应用，renderMarkdownToHtml 不包含高亮
     assert.ok(html.includes("print"), "应包含 print");
   });
 
@@ -219,11 +218,106 @@ describe("renderMarkdownToHtml - 混合内容", () => {
     const html = renderMarkdownToHtml("说明文字\n\n```js\nconst x = 1;\n```");
 
     assert.ok(html.includes("说明文字") || html.includes("cjk"), "应包含说明文字");
-    // highlight.js 会将 const x = 1 包裹在 <span> 中，检查高亮标记和片段
-    assert.ok(html.includes("hljs"), "应包含 highlight.js 高亮标记");
+    // highlight.js 由 highlightCodeBlocks() 后处理应用，renderMarkdownToHtml 不包含高亮
+    assert.ok(html.includes("language-js"), "应包含 language-js class");
     assert.ok(html.includes("const"), "应包含 const");
     assert.ok(html.includes("<pre>"), "应包含代码块包装");
     assert.ok(html.includes("<code"), "应包含代码标签");
+  });
+});
+
+// ── 表格分隔行规范化测试 ─────────────────────────────────────────────────
+
+describe("表格分隔行规范化", () => {
+  it("应该规范化多余列的分隔行（截断至表头列数）", () => {
+    // 分隔行有 5 列，表头只有 3 列 → 应截断为 3 列
+    const html = renderMarkdownToHtml(
+      "| A | B | C |\n| --- | --- | --- | --- | --- |\n| 1 | 2 | 3 |"
+    );
+    assert.ok(html.includes("<table>"));
+    assert.ok(html.includes("<td>1</td>"));
+    assert.ok(html.includes("<td>2</td>"));
+    assert.ok(html.includes("<td>3</td>"));
+  });
+
+  it("应该规范化不足列的分隔行（补齐至表头列数）", () => {
+    // 分隔行有 2 列，表头有 4 列 → 应补齐为 4 列
+    const html = renderMarkdownToHtml(
+      "| A | B | C | D |\n| --- | --- |\n| 1 | 2 | 3 | 4 |"
+    );
+    assert.ok(html.includes("<table>"));
+    assert.ok(html.includes("<td>1</td>"));
+    assert.ok(html.includes("<td>4</td>"));
+  });
+
+  it("应该支持单破折号分隔符 |-|", () => {
+    // 分隔行只用单个 - 符号
+    const html = renderMarkdownToHtml("| A | B |\n|-|-|\n| 1 | 2 |");
+    assert.ok(html.includes("<table>"));
+    assert.ok(html.includes("<td>1</td>"));
+    assert.ok(html.includes("<td>2</td>"));
+  });
+
+  it("应该支持不同数量破折号混用", () => {
+    // 分隔行各列使用不同数量的 - 符号
+    const html = renderMarkdownToHtml(
+      "| Col1 | Col2 | Col3 |\n|-|----|------|\n| a | b | c |"
+    );
+    assert.ok(html.includes("<table>"));
+    assert.ok(html.includes("<td>a</td>"));
+    assert.ok(html.includes("<td>b</td>"));
+    assert.ok(html.includes("<td>c</td>"));
+  });
+
+  it("应该支持大量破折号的分隔行", () => {
+    const html = renderMarkdownToHtml(
+      "| H1 | H2 |\n| --------------------------------------------------------------- | --------------------------------------------------------------- |\n| d1 | d2 |"
+    );
+    assert.ok(html.includes("<table>"));
+    assert.ok(html.includes("<td>d1</td>"));
+    assert.ok(html.includes("<td>d2</td>"));
+  });
+
+  it("应该保留分隔行中的对齐标记 :", () => {
+    const html = renderMarkdownToHtml(
+      "| 左对齐 | 居中 | 右对齐 |\n|:---|---:|:---:|\n| a | b | c |"
+    );
+    assert.ok(html.includes("<table>"));
+    // markdown-it 渲染的 td 带有 style 属性，如 <td style="text-align:left">a</td>
+    assert.ok(html.includes('">a</td>'), "应包含 a 单元格");
+    assert.ok(html.includes("text-align:left"), "应保留左对齐标记");
+    assert.ok(html.includes("text-align:right"), "应保留右对齐标记");
+    assert.ok(html.includes("text-align:center"), "应保留居中对齐标记");
+  });
+
+  it("不应该影响正常表格（列数匹配的分隔行）", () => {
+    const html = renderMarkdownToHtml(
+      "| A | B | C |\n| --- | --- | --- |\n| 1 | 2 | 3 |"
+    );
+    assert.ok(html.includes("<table>"));
+    assert.ok(html.includes("<td>1</td>"));
+    assert.ok(html.includes("<td>2</td>"));
+    assert.ok(html.includes("<td>3</td>"));
+  });
+
+  it("不应该影响非表格内容", () => {
+    const html = renderMarkdownToHtml("这是普通文本\n\n- 列表项\n\n# 标题");
+    assert.ok(!html.includes("<table>"));
+    // CJK 字符被 textHtml() 包裹为 <span class="cjk">，需逐个字符检查
+    assert.ok(html.includes("列"), "应包含 列");
+    assert.ok(html.includes("表"), "应包含 表");
+    assert.ok(html.includes("项"), "应包含 项");
+    assert.ok(html.includes("标"), "应包含 标");
+    assert.ok(html.includes("题"), "应包含 题");
+  });
+
+  it("应该正确处理分隔行有额外列但内容含 ANSI 占位符的表格", () => {
+    // 模拟 ANSI 处理后的文本：分隔行有 5 列，表头有 3 列
+    // 表头中的 ANSI 标记已被替换为占位符
+    const html = renderMarkdownToHtml(
+      "| 维度 | 选项A | 选项B |\n| --- | --- | --- | --- | --- |\n| 1 | \uE400 text | \uE401 more |"
+    );
+    assert.ok(html.includes("<table>"));
   });
 });
 

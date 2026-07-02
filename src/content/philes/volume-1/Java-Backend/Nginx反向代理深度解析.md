@@ -12,7 +12,7 @@ redacted: false
 > 本文以 Nginx 1.24.x 为基准，深入剖析 Nginx 反向代理的全链路机制：从 Master-Worker 多进程模型与事件驱动架构的底层原理，到 HTTP 请求 11 阶段处理管线，再到反向代理、负载均衡、SSL 终止、缓存、限流、性能优化、K8s Ingress 与监控的完整体系。
 > 每个场景均配备详细的 Mermaid 架构图与时序图，标注核心配置指令、内部函数与源码路径，适合 #[C|3 年以上经验的后端开发者和运维工程师] 深入研读。
 
-***
+---
 
 ## Nginx 核心架构总览
 
@@ -82,16 +82,16 @@ graph TB
 本文所有源码分析基于 #[R|Nginx 1.24.x]，核心源码路径为 `src/` 目录。所有 Mermaid 图表中标注的结构体名、函数名与配置指令均为真实 API —— 关键源码文件：`src/core/nginx.c` 主入口、`src/os/unix/ngx_process_cycle.c` 进程模型、`src/event/ngx_event.c` 事件驱动、`src/http/ngx_http_core_module.c` HTTP 核心、`src/http/modules/ngx_http_proxy_module.c` 反向代理、`src/http/ngx_http_upstream.c` 负载均衡、`src/event/ngx_event_openssl.c` SSL 处理。
 :::
 
-| 层级 | 组件 | 核心职责 | 关键源文件 |
-|------|------|----------|------------|
-| 进程管理 | Master / Worker | 配置加载、信号管理、Worker 调度 | `src/os/unix/ngx_process_cycle.c` |
-| 事件驱动 | epoll / kqueue / select | IO 多路复用、连接事件分发 | `src/event/modules/ngx_epoll_module.c` |
-| HTTP 框架 | 11 阶段管线 | 请求解析、阶段处理、响应生成 | `src/http/ngx_http_core_module.c` |
-| 反向代理 | upstream + proxy | 后端连接、负载均衡、健康检查 | `src/http/ngx_http_upstream.c` |
-| 缓存 | proxy_cache | 磁盘缓存管理、缓存策略 | `src/http/ngx_http_file_cache.c` |
-| 限流 | limit_req / limit_conn | 请求频率控制、并发连接限制 | `src/http/modules/ngx_http_limit_req_module.c` |
+| 层级      | 组件                    | 核心职责                        | 关键源文件                                     |
+| --------- | ----------------------- | ------------------------------- | ---------------------------------------------- |
+| 进程管理  | Master / Worker         | 配置加载、信号管理、Worker 调度 | `src/os/unix/ngx_process_cycle.c`              |
+| 事件驱动  | epoll / kqueue / select | IO 多路复用、连接事件分发       | `src/event/modules/ngx_epoll_module.c`         |
+| HTTP 框架 | 11 阶段管线             | 请求解析、阶段处理、响应生成    | `src/http/ngx_http_core_module.c`              |
+| 反向代理  | upstream + proxy        | 后端连接、负载均衡、健康检查    | `src/http/ngx_http_upstream.c`                 |
+| 缓存      | proxy_cache             | 磁盘缓存管理、缓存策略          | `src/http/ngx_http_file_cache.c`               |
+| 限流      | limit_req / limit_conn  | 请求频率控制、并发连接限制      | `src/http/modules/ngx_http_limit_req_module.c` |
 
-***
+---
 
 ## 场景一：Nginx 架构总览 · Master-Worker 多进程模型与事件驱动
 
@@ -109,14 +109,14 @@ graph LR
     H --> I["响应客户端"]
 ```
 
-| 阶段 | 核心函数 | 关键机制 | 源码位置 |
-|------|----------|----------|----------|
-| 进程启动 | `ngx_master_process_cycle` | fork Worker 进程、信号处理循环 | `src/os/unix/ngx_process_cycle.c` |
-| 事件循环 | `ngx_worker_process_cycle` | 初始化事件模块、进入事件循环 | `src/os/unix/ngx_process_cycle.c` |
-| 连接接收 | `ngx_event_accept` | 从监听 socket 接受新连接 | `src/event/ngx_event_accept.c` |
-| 请求解析 | `ngx_http_process_request_line` | 解析 HTTP 请求行、请求头 | `src/http/ngx_http_request.c` |
-| 阶段处理 | `ngx_http_core_run_phases` | 按顺序执行 11 个处理阶段 | `src/http/ngx_http_core_module.c` |
-| 反向代理 | `ngx_http_upstream_send_request` | 连接后端服务器、转发请求 | `src/http/ngx_http_upstream.c` |
+| 阶段     | 核心函数                         | 关键机制                       | 源码位置                          |
+| -------- | -------------------------------- | ------------------------------ | --------------------------------- |
+| 进程启动 | `ngx_master_process_cycle`       | fork Worker 进程、信号处理循环 | `src/os/unix/ngx_process_cycle.c` |
+| 事件循环 | `ngx_worker_process_cycle`       | 初始化事件模块、进入事件循环   | `src/os/unix/ngx_process_cycle.c` |
+| 连接接收 | `ngx_event_accept`               | 从监听 socket 接受新连接       | `src/event/ngx_event_accept.c`    |
+| 请求解析 | `ngx_http_process_request_line`  | 解析 HTTP 请求行、请求头       | `src/http/ngx_http_request.c`     |
+| 阶段处理 | `ngx_http_core_run_phases`       | 按顺序执行 11 个处理阶段       | `src/http/ngx_http_core_module.c` |
+| 反向代理 | `ngx_http_upstream_send_request` | 连接后端服务器、转发请求       | `src/http/ngx_http_upstream.c`    |
 
 ### 1.1 Master-Worker 多进程模型
 
@@ -130,7 +130,7 @@ sequenceDiagram
     participant W2 as Worker进程2
     participant W3 as Worker进程N
 
-    rect rgba【240, 248, 255, 0.4】
+    rect rgba(240, 248, 255, 0.4)
     Note over PROC,MASTER: ===== 阶段 1：启动初始化 =====
     PROC->>MASTER: ./nginx 启动
     Note over MASTER: ngx_init_cycle【】<br/>1. 解析配置文件 nginx.conf<br/>2. 初始化所有模块<br/>3. 创建监听 socket【bind + listen】<br/>4. 初始化共享内存
@@ -138,7 +138,7 @@ sequenceDiagram
     Note over MASTER: Master 主循环：<br/>- sigsuspend【】等待信号<br/>- 收到 SIGCHLD 时处理 Worker 退出<br/>- 收到 SIGHUP 时 reload 配置<br/>- 收到 SIGUSR1 时 reopen 日志<br/>- 收到 SIGTERM/SIGQUIT 时优雅退出
     end
 
-    rect rgba【240, 255, 248, 0.4】
+    rect rgba(240, 255, 248, 0.4)
     Note over MASTER,W3: ===== 阶段 2：fork Worker 进程 =====
     MASTER->>W1: fork【】创建 Worker 进程 1
     MASTER->>W2: fork【】创建 Worker 进程 2
@@ -146,7 +146,7 @@ sequenceDiagram
     Note over W1,W3: 所有 Worker 共享监听 socket<br/>通过 SO_REUSEPORT 或 accept_mutex 分配连接
     end
 
-    rect rgba【255, 248, 240, 0.4】
+    rect rgba(255, 248, 240, 0.4)
     Note over MASTER,W3: ===== 阶段 3：信号管理 =====
     PROC->>MASTER: kill -HUP 【reload】
     Note over MASTER: 1. 重新读取配置文件<br/>2. 启动新的 Worker 进程<br/>3. 通知旧 Worker 优雅退出<br/>4. 实现平滑升级、零停机
@@ -155,18 +155,17 @@ sequenceDiagram
     end
 ```
 
-:::important
-#[R|Worker 进程数] 建议设置为 CPU 核心数，通过 `worker_processes auto;` 自动检测。每个 Worker 进程是单线程的，避免了多线程锁竞争，充分利用 CPU 亲和性【`worker_cpu_affinity`】绑定核心。Nginx 推荐使用 `accept_mutex off` 配合 `reuseport` 以获得更好的负载均衡效果。
+:::important #[R|Worker 进程数] 建议设置为 CPU 核心数，通过 `worker_processes auto;` 自动检测。每个 Worker 进程是单线程的，避免了多线程锁竞争，充分利用 CPU 亲和性【`worker_cpu_affinity`】绑定核心。Nginx 推荐使用 `accept_mutex off` 配合 `reuseport` 以获得更好的负载均衡效果。
 :::
 
-| 配置指令 | 默认值 | 说明 |
-|----------|--------|------|
-| `worker_processes` | `1` | Worker 进程数，建议 `auto` 或 CPU 核心数 |
-| `worker_cpu_affinity` | 无 | CPU 亲和性绑定，避免进程在核心间迁移 |
-| `worker_rlimit_nofile` | 系统限制 | Worker 进程最大打开文件数，建议 65535 |
-| `worker_shutdown_timeout` | 无 | 优雅关闭超时时间 |
-| `accept_mutex` | `off` | 是否使用 accept 互斥锁 |
-| `multi_accept` | `off` | 一次 accept 所有新连接 |
+| 配置指令                  | 默认值   | 说明                                     |
+| ------------------------- | -------- | ---------------------------------------- |
+| `worker_processes`        | `1`      | Worker 进程数，建议 `auto` 或 CPU 核心数 |
+| `worker_cpu_affinity`     | 无       | CPU 亲和性绑定，避免进程在核心间迁移     |
+| `worker_rlimit_nofile`    | 系统限制 | Worker 进程最大打开文件数，建议 65535    |
+| `worker_shutdown_timeout` | 无       | 优雅关闭超时时间                         |
+| `accept_mutex`            | `off`    | 是否使用 accept 互斥锁                   |
+| `multi_accept`            | `off`    | 一次 accept 所有新连接                   |
 
 ### 1.2 事件驱动模型【epoll / kqueue / select】
 
@@ -243,13 +242,13 @@ static ngx_event_module_t  ngx_epoll_module_ctx = {
 };
 ```
 
-| epoll 操作 | Nginx 封装函数 | 对应的 epoll 系统调用 |
-|------------|---------------|----------------------|
-| 创建 epoll 实例 | `ngx_epoll_init` | `epoll_create(cycle->connection_n / 2)` |
-| 添加事件 | `ngx_epoll_add_event` | `epoll_ctl(epfd, EPOLL_CTL_ADD, fd, &ee)` |
-| 删除事件 | `ngx_epoll_del_event` | `epoll_ctl(epfd, EPOLL_CTL_DEL, fd, &ee)` |
-| 修改事件 | `ngx_epoll_add_event` | `epoll_ctl(epfd, EPOLL_CTL_MOD, fd, &ee)` |
-| 等待事件 | `ngx_epoll_process_events` | `epoll_wait(epfd, event_list, nevents, timer)` |
+| epoll 操作      | Nginx 封装函数             | 对应的 epoll 系统调用                          |
+| --------------- | -------------------------- | ---------------------------------------------- |
+| 创建 epoll 实例 | `ngx_epoll_init`           | `epoll_create(cycle->connection_n / 2)`        |
+| 添加事件        | `ngx_epoll_add_event`      | `epoll_ctl(epfd, EPOLL_CTL_ADD, fd, &ee)`      |
+| 删除事件        | `ngx_epoll_del_event`      | `epoll_ctl(epfd, EPOLL_CTL_DEL, fd, &ee)`      |
+| 修改事件        | `ngx_epoll_add_event`      | `epoll_ctl(epfd, EPOLL_CTL_MOD, fd, &ee)`      |
+| 等待事件        | `ngx_epoll_process_events` | `epoll_wait(epfd, event_list, nevents, timer)` |
 
 **事件处理主循环**：
 
@@ -309,13 +308,13 @@ graph TB
     HTTP_M --> THIRD
 ```
 
-| 模块类型 | 核心结构体 | 注册方式 | 示例 |
-|----------|-----------|----------|------|
-| 核心模块 | `ngx_core_module_t` | `NGX_CORE_MODULE` 宏 | `ngx_core_module`、`ngx_errlog_module` |
-| 事件模块 | `ngx_event_module_t` | `NGX_EVENT_MODULE` 宏 | `ngx_epoll_module`、`ngx_kqueue_module` |
-| HTTP 模块 | `ngx_http_module_t` | `NGX_HTTP_MODULE` 宏 | `ngx_http_proxy_module`、`ngx_http_ssl_module` |
-| HTTP 过滤模块 | `ngx_http_module_t` | `NGX_HTTP_MODULE` + 过滤链 | `ngx_http_gzip_filter_module` |
-| 负载均衡模块 | `ngx_http_upstream_module_t` | 注册到 upstream 模块 | `ngx_http_upstream_ip_hash_module` |
+| 模块类型      | 核心结构体                   | 注册方式                   | 示例                                           |
+| ------------- | ---------------------------- | -------------------------- | ---------------------------------------------- |
+| 核心模块      | `ngx_core_module_t`          | `NGX_CORE_MODULE` 宏       | `ngx_core_module`、`ngx_errlog_module`         |
+| 事件模块      | `ngx_event_module_t`         | `NGX_EVENT_MODULE` 宏      | `ngx_epoll_module`、`ngx_kqueue_module`        |
+| HTTP 模块     | `ngx_http_module_t`          | `NGX_HTTP_MODULE` 宏       | `ngx_http_proxy_module`、`ngx_http_ssl_module` |
+| HTTP 过滤模块 | `ngx_http_module_t`          | `NGX_HTTP_MODULE` + 过滤链 | `ngx_http_gzip_filter_module`                  |
+| 负载均衡模块  | `ngx_http_upstream_module_t` | 注册到 upstream 模块       | `ngx_http_upstream_ip_hash_module`             |
 
 **Nginx 配置示例 —— 进程模型与事件驱动**：
 
@@ -359,11 +358,10 @@ http {
 }
 ```
 
-:::warning
-#[R|`worker_connections` 决定每个 Worker 进程的最大并发连接数]。Nginx 的最大并发连接数计算公式为：`worker_processes × worker_connections`。但需要注意，反向代理场景下每个客户端连接会消耗 2 个连接【客户端→Nginx、Nginx→后端】，因此实际可支持的客户端连接数需减半计算。
+:::warning #[R|`worker_connections` 决定每个 Worker 进程的最大并发连接数]。Nginx 的最大并发连接数计算公式为：`worker_processes × worker_connections`。但需要注意，反向代理场景下每个客户端连接会消耗 2 个连接【客户端 →Nginx、Nginx→ 后端】，因此实际可支持的客户端连接数需减半计算。
 :::
 
-***
+---
 
 ## 场景二：HTTP 请求处理全链路 · 11 阶段处理管线
 
@@ -379,7 +377,7 @@ sequenceDiagram
     participant UPSTREAM as 反向代理
     participant BACKEND as 后端服务器
 
-    rect rgba【240, 248, 255, 0.4】
+    rect rgba(240, 248, 255, 0.4)
     Note over CLIENT,EPOLL: ===== 阶段 1：连接建立 =====
     CLIENT->>SOCKET: TCP 三次握手
     SOCKET->>EPOLL: 触发 EPOLLIN 读事件
@@ -387,7 +385,7 @@ sequenceDiagram
     Note over EPOLL: 创建 ngx_connection_t 连接对象<br/>分配 ngx_http_connection_t 连接上下文<br/>注册读事件处理器 ngx_http_wait_request_handler
     end
 
-    rect rgba【240, 255, 248, 0.4】
+    rect rgba(240, 255, 248, 0.4)
     Note over HTTP_PARSE,PHASE: ===== 阶段 2：HTTP 解析 =====
     EPOLL->>HTTP_PARSE: ngx_http_wait_request_handler【】
     HTTP_PARSE->>HTTP_PARSE: ngx_http_process_request_line【】<br/>解析请求行：GET /api/hello HTTP/1.1
@@ -395,7 +393,7 @@ sequenceDiagram
     Note over HTTP_PARSE: 创建 ngx_http_request_t 请求对象<br/>填充 method、uri、args、headers_in 等字段
     end
 
-    rect rgba【255, 248, 240, 0.4】
+    rect rgba(255, 248, 240, 0.4)
     Note over PHASE,UPSTREAM: ===== 阶段 3：11 阶段处理 =====
     HTTP_PARSE->>PHASE: ngx_http_core_run_phases【r】
     Note over PHASE: 按顺序执行 11 个阶段：<br/>POST_READ → SERVER_REWRITE → FIND_CONFIG<br/>→ REWRITE → POST_REWRITE → PREACCESS<br/>→ ACCESS → POST_ACCESS → PRECONTENT<br/>→ CONTENT → LOG
@@ -404,7 +402,7 @@ sequenceDiagram
     BACKEND-->>UPSTREAM: 返回响应数据
     end
 
-    rect rgba【248, 240, 255, 0.4】
+    rect rgba(248, 240, 255, 0.4)
     Note over PHASE,CLIENT: ===== 阶段 4：响应返回 =====
     UPSTREAM->>PHASE: 响应头 + 响应体
     PHASE->>PHASE: 输出过滤器链处理<br/>gzip → charset → ssr → sub → addition
@@ -447,19 +445,19 @@ graph TB
     P10 --> P11
 ```
 
-| 阶段 | 枚举值 | 核心 Hook 模块 | 功能说明 |
-|------|--------|---------------|----------|
-| `POST_READ` | `NGX_HTTP_POST_READ_PHASE` | `realip` | 读取完请求头后，可用于获取真实客户端 IP |
-| `SERVER_REWRITE` | `NGX_HTTP_SERVER_REWRITE_PHASE` | `rewrite` | server 块中的 rewrite 规则，修改 URI |
-| `FIND_CONFIG` | `NGX_HTTP_FIND_CONFIG_PHASE` | 核心框架 | 匹配 location 配置块，不可注册模块 |
-| `REWRITE` | `NGX_HTTP_REWRITE_PHASE` | `rewrite` | location 块中的 rewrite 规则，修改 URI |
-| `POST_REWRITE` | `NGX_HTTP_POST_REWRITE_PHASE` | 核心框架 | 检查 URI 是否被重写，若重写则跳回 FIND_CONFIG |
-| `PREACCESS` | `NGX_HTTP_PREACCESS_PHASE` | `limit_req`、`limit_conn` | 访问控制前预处理，限流检查 |
-| `ACCESS` | `NGX_HTTP_ACCESS_PHASE` | `access`、`auth_basic`、`auth_request` | 访问权限控制，IP 白名单、认证 |
-| `POST_ACCESS` | `NGX_HTTP_POST_ACCESS_PHASE` | 核心框架 | 处理 satisfy 指令逻辑 |
-| `PRECONTENT` | `NGX_HTTP_PRECONTENT_PHASE` | `try_files`、`mirror` | 内容生成前的准备，尝试静态文件 |
-| `CONTENT` | `NGX_HTTP_CONTENT_PHASE` | `index`、`autoindex`、`proxy`、`fastcgi` | 实际内容生成，反向代理或静态文件服务 |
-| `LOG` | `NGX_HTTP_LOG_PHASE` | `log` | 记录访问日志，请求处理收尾 |
+| 阶段             | 枚举值                          | 核心 Hook 模块                           | 功能说明                                      |
+| ---------------- | ------------------------------- | ---------------------------------------- | --------------------------------------------- |
+| `POST_READ`      | `NGX_HTTP_POST_READ_PHASE`      | `realip`                                 | 读取完请求头后，可用于获取真实客户端 IP       |
+| `SERVER_REWRITE` | `NGX_HTTP_SERVER_REWRITE_PHASE` | `rewrite`                                | server 块中的 rewrite 规则，修改 URI          |
+| `FIND_CONFIG`    | `NGX_HTTP_FIND_CONFIG_PHASE`    | 核心框架                                 | 匹配 location 配置块，不可注册模块            |
+| `REWRITE`        | `NGX_HTTP_REWRITE_PHASE`        | `rewrite`                                | location 块中的 rewrite 规则，修改 URI        |
+| `POST_REWRITE`   | `NGX_HTTP_POST_REWRITE_PHASE`   | 核心框架                                 | 检查 URI 是否被重写，若重写则跳回 FIND_CONFIG |
+| `PREACCESS`      | `NGX_HTTP_PREACCESS_PHASE`      | `limit_req`、`limit_conn`                | 访问控制前预处理，限流检查                    |
+| `ACCESS`         | `NGX_HTTP_ACCESS_PHASE`         | `access`、`auth_basic`、`auth_request`   | 访问权限控制，IP 白名单、认证                 |
+| `POST_ACCESS`    | `NGX_HTTP_POST_ACCESS_PHASE`    | 核心框架                                 | 处理 satisfy 指令逻辑                         |
+| `PRECONTENT`     | `NGX_HTTP_PRECONTENT_PHASE`     | `try_files`、`mirror`                    | 内容生成前的准备，尝试静态文件                |
+| `CONTENT`        | `NGX_HTTP_CONTENT_PHASE`        | `index`、`autoindex`、`proxy`、`fastcgi` | 实际内容生成，反向代理或静态文件服务          |
+| `LOG`            | `NGX_HTTP_LOG_PHASE`            | `log`                                    | 记录访问日志，请求处理收尾                    |
 
 **阶段处理核心代码**【`src/http/ngx_http_core_module.c`】：
 
@@ -509,7 +507,7 @@ void ngx_http_core_run_phases(ngx_http_request_t *r) {
 # 在反向代理后面获取真实客户端 IP
 server {
     listen 80;
-    
+
     # POST_READ 阶段：realip 模块
     set_real_ip_from  10.0.0.0/8;       # 信任的代理 IP 段
     set_real_ip_from  172.16.0.0/12;
@@ -542,12 +540,12 @@ server {
 }
 ```
 
-| rewrite 标志 | 行为 | 适用场景 |
-|-------------|------|----------|
-| `last` | 停止当前 rewrite，用新 URI 重新匹配 location | 需要重新匹配 location 块 |
-| `break` | 停止 rewrite，继续在当前 location 中处理 | 不改变 location 上下文 |
-| `redirect` | 返回 302 临时重定向 | 临时 URL 变更 |
-| `permanent` | 返回 301 永久重定向 | SEO 友好的 URL 变更 |
+| rewrite 标志 | 行为                                         | 适用场景                 |
+| ------------ | -------------------------------------------- | ------------------------ |
+| `last`       | 停止当前 rewrite，用新 URI 重新匹配 location | 需要重新匹配 location 块 |
+| `break`      | 停止 rewrite，继续在当前 location 中处理     | 不改变 location 上下文   |
+| `redirect`   | 返回 302 临时重定向                          | 临时 URL 变更            |
+| `permanent`  | 返回 301 永久重定向                          | SEO 友好的 URL 变更      |
 
 **ACCESS 阶段 —— 访问控制**：
 
@@ -644,17 +642,17 @@ graph LR
     B6 --> SOCKET["发送到客户端<br/>ngx_http_writer"]
 ```
 
-| 过滤器 | 类型 | 功能 | 相关指令 |
-|--------|------|------|----------|
-| `not_modified` | Header | 处理 If-Modified-Since，返回 304 | `if_modified_since` |
-| `range` | Header + Body | 处理 Range 请求，断点续传 | `max_ranges` |
-| `charset` | Header + Body | 字符集转换 | `charset`、`charset_types` |
-| `gzip` | Header + Body | Gzip 压缩响应 | `gzip`、`gzip_types` |
-| `copy` | Body | 文件复制优化，支持 sendfile | `sendfile`、`output_buffers` |
-| `ssi` | Body | Server Side Include 处理 | `ssi`、`ssi_types` |
-| `write` | Body | 将数据写入客户端 socket | `sendfile_max_chunk` |
+| 过滤器         | 类型          | 功能                             | 相关指令                     |
+| -------------- | ------------- | -------------------------------- | ---------------------------- |
+| `not_modified` | Header        | 处理 If-Modified-Since，返回 304 | `if_modified_since`          |
+| `range`        | Header + Body | 处理 Range 请求，断点续传        | `max_ranges`                 |
+| `charset`      | Header + Body | 字符集转换                       | `charset`、`charset_types`   |
+| `gzip`         | Header + Body | Gzip 压缩响应                    | `gzip`、`gzip_types`         |
+| `copy`         | Body          | 文件复制优化，支持 sendfile      | `sendfile`、`output_buffers` |
+| `ssi`          | Body          | Server Side Include 处理         | `ssi`、`ssi_types`           |
+| `write`        | Body          | 将数据写入客户端 socket          | `sendfile_max_chunk`         |
 
-***
+---
 
 ## 场景三：反向代理与负载均衡
 
@@ -747,19 +745,19 @@ location /api/ {
 }
 ```
 
-| 代理指令 | 默认值 | 说明 |
-|----------|--------|------|
-| `proxy_pass` | — | 指定后端服务器地址 |
-| `proxy_set_header` | 部分默认 | 设置转发到后端的请求头 |
-| `proxy_connect_timeout` | `60s` | 与后端建立连接的超时时间 |
-| `proxy_send_timeout` | `60s` | 向后端发送请求的超时时间 |
-| `proxy_read_timeout` | `60s` | 从后端读取响应的超时时间 |
-| `proxy_buffering` | `on` | 是否启用代理缓冲 |
-| `proxy_buffer_size` | `4k\|8k` | 响应头缓冲区大小 |
-| `proxy_buffers` | `8 4k\|8k` | 响应体缓冲区数量和大小 |
-| `proxy_next_upstream` | `error timeout` | 何时将请求重试到下一个后端 |
-| `proxy_http_version` | `1.0` | 与后端通信的 HTTP 版本 |
-| `proxy_redirect` | `default` | 修改后端返回的 Location/Refresh 头 |
+| 代理指令                | 默认值          | 说明                               |
+| ----------------------- | --------------- | ---------------------------------- |
+| `proxy_pass`            | —               | 指定后端服务器地址                 |
+| `proxy_set_header`      | 部分默认        | 设置转发到后端的请求头             |
+| `proxy_connect_timeout` | `60s`           | 与后端建立连接的超时时间           |
+| `proxy_send_timeout`    | `60s`           | 向后端发送请求的超时时间           |
+| `proxy_read_timeout`    | `60s`           | 从后端读取响应的超时时间           |
+| `proxy_buffering`       | `on`            | 是否启用代理缓冲                   |
+| `proxy_buffer_size`     | `4k\|8k`        | 响应头缓冲区大小                   |
+| `proxy_buffers`         | `8 4k\|8k`      | 响应体缓冲区数量和大小             |
+| `proxy_next_upstream`   | `error timeout` | 何时将请求重试到下一个后端         |
+| `proxy_http_version`    | `1.0`           | 与后端通信的 HTTP 版本             |
+| `proxy_redirect`        | `default`       | 修改后端返回的 Location/Refresh 头 |
 
 ### 3.2 负载均衡算法
 
@@ -830,15 +828,15 @@ upstream backend {
 }
 ```
 
-| 算法 | 指令 | 适用场景 | 优缺点 |
-|------|------|----------|--------|
-| 轮询 | 默认 | 无状态服务、后端性能相近 | 简单高效，但无法处理性能差异 |
-| 加权轮询 | `weight=N` | 后端性能不均衡 | 灵活分配，但无法感知后端实时负载 |
-| IP Hash | `ip_hash` | 需要会话保持 | 同一 IP 固定后端，但扩缩容影响大 |
-| 最少连接 | `least_conn` | 长连接、WebSocket | 动态感知负载，但需要额外计数器 |
-| URL Hash | `hash $request_uri` | CDN 缓存、静态资源 | 缓存命中率高，但热点 URL 可能不均衡 |
-| Consistent Hash | `hash ... consistent` | 缓存集群 | 节点变更时影响最小 |
-| Fair | 第三方模块 | 响应时间敏感 | 智能分配，但需要额外编译模块 |
+| 算法            | 指令                  | 适用场景                 | 优缺点                              |
+| --------------- | --------------------- | ------------------------ | ----------------------------------- |
+| 轮询            | 默认                  | 无状态服务、后端性能相近 | 简单高效，但无法处理性能差异        |
+| 加权轮询        | `weight=N`            | 后端性能不均衡           | 灵活分配，但无法感知后端实时负载    |
+| IP Hash         | `ip_hash`             | 需要会话保持             | 同一 IP 固定后端，但扩缩容影响大    |
+| 最少连接        | `least_conn`          | 长连接、WebSocket        | 动态感知负载，但需要额外计数器      |
+| URL Hash        | `hash $request_uri`   | CDN 缓存、静态资源       | 缓存命中率高，但热点 URL 可能不均衡 |
+| Consistent Hash | `hash ... consistent` | 缓存集群                 | 节点变更时影响最小                  |
+| Fair            | 第三方模块            | 响应时间敏感             | 智能分配，但需要额外编译模块        |
 
 **Server 指令参数详解**：
 
@@ -846,7 +844,7 @@ upstream backend {
 upstream backend {
     # 完整 server 参数
     server 192.168.1.10:8080 weight=5 max_fails=3 fail_timeout=30s max_conns=1000;
-    
+
     # weight：权重，默认 1
     # max_fails：最大失败次数，默认 1【0 表示禁用】
     # fail_timeout：失败超时时间，默认 10s
@@ -869,7 +867,7 @@ sequenceDiagram
     participant B1 as 后端服务器1【正常】
     participant B2 as 后端服务器2【故障】
 
-    rect rgba【240, 248, 255, 0.4】
+    rect rgba(240, 248, 255, 0.4)
     Note over NGINX,B2: ===== 被动健康检查 =====
     NGINX->>B1: 转发请求
     B1-->>NGINX: 200 OK【正常】
@@ -884,7 +882,7 @@ sequenceDiagram
     Note over NGINX,B2: 后续请求跳过 B2<br/>分配到其他健康的后端
     end
 
-    rect rgba【240, 255, 248, 0.4】
+    rect rgba(240, 255, 248, 0.4)
     Note over NGINX,B2: ===== 故障恢复 =====
     Note over NGINX: fail_timeout 时间到
     NGINX->>B2: 尝试发送请求
@@ -919,7 +917,7 @@ upstream backend {
 server {
     location / {
         proxy_pass http://backend;
-        
+
         # 主动健康检查【Nginx Plus】
         health_check interval=5s fails=3 passes=2 uri=/health;
         # interval=5s：每 5 秒检查一次
@@ -940,7 +938,7 @@ sequenceDiagram
     participant POOL as 连接池
     participant B1 as 后端服务器
 
-    rect rgba【240, 248, 255, 0.4】
+    rect rgba(240, 248, 255, 0.4)
     Note over NGINX,B1: ===== keepalive 连接复用流程 =====
     NGINX->>POOL: 请求空闲连接
     Note over POOL: 检查连接池中是否有空闲连接<br/>空闲连接以队列形式管理
@@ -979,7 +977,7 @@ upstream backend {
 server {
     location / {
         proxy_pass http://backend;
-        
+
         # 必须使用 HTTP/1.1 才能启用 keepalive
         proxy_http_version 1.1;
         proxy_set_header Connection "";
@@ -987,18 +985,17 @@ server {
 }
 ```
 
-| keepalive 指令 | 默认值 | 说明 |
-|----------------|--------|------|
-| `keepalive` | 无 | 每个 Worker 进程到 upstream 的最大空闲连接数 |
-| `keepalive_timeout` | `60s` | 空闲连接的超时时间 |
-| `keepalive_requests` | `1000` | 单个连接可处理的最大请求数 |
-| `keepalive_time` | `1h` | 连接最大存活时间【商业版】 |
+| keepalive 指令       | 默认值 | 说明                                         |
+| -------------------- | ------ | -------------------------------------------- |
+| `keepalive`          | 无     | 每个 Worker 进程到 upstream 的最大空闲连接数 |
+| `keepalive_timeout`  | `60s`  | 空闲连接的超时时间                           |
+| `keepalive_requests` | `1000` | 单个连接可处理的最大请求数                   |
+| `keepalive_time`     | `1h`   | 连接最大存活时间【商业版】                   |
 
-:::warning
-#[R|启用 keepalive 必须同时设置 `proxy_http_version 1.1` 和 `proxy_set_header Connection ""`]。Nginx 默认使用 HTTP/1.0 与后端通信，HTTP/1.0 默认不支持 keepalive。如果不设置这两个指令，keepalive 配置不会生效，每个请求仍会创建新的 TCP 连接。
+:::warning #[R|启用 keepalive 必须同时设置 `proxy_http_version 1.1` 和 `proxy_set_header Connection ""`]。Nginx 默认使用 HTTP/1.0 与后端通信，HTTP/1.0 默认不支持 keepalive。如果不设置这两个指令，keepalive 配置不会生效，每个请求仍会创建新的 TCP 连接。
 :::
 
-***
+---
 
 ## 场景四：SSL/TLS 终止
 
@@ -1077,7 +1074,7 @@ sequenceDiagram
     participant NGINX as Nginx SSL层
     participant BACKEND as 后端服务器
 
-    rect rgba【240, 248, 255, 0.4】
+    rect rgba(240, 248, 255, 0.4)
     Note over CLIENT,NGINX: ===== TLS 1.3 握手【1-RTT】=====
     CLIENT->>NGINX: ClientHello<br/>支持的密码套件、密钥分享、TLS 版本
     Note over NGINX: 选择密码套件<br/>生成会话密钥
@@ -1087,7 +1084,7 @@ sequenceDiagram
     Note over NGINX: TLS 握手完成<br/>后续通信加密传输
     end
 
-    rect rgba【240, 255, 248, 0.4】
+    rect rgba(240, 255, 248, 0.4)
     Note over CLIENT,BACKEND: ===== SSL 终止后的明文转发 =====
     CLIENT->>NGINX: 加密的 HTTP 请求
     Note over NGINX: 解密 HTTP 请求
@@ -1098,16 +1095,16 @@ sequenceDiagram
     end
 ```
 
-| SSL 指令 | 推荐值 | 说明 |
-|----------|--------|------|
-| `ssl_protocols` | `TLSv1.2 TLSv1.3` | 禁用 TLS 1.0/1.1【PCI DSS 合规】 |
-| `ssl_ciphers` | ECDHE 系列优先 | 优先使用前向安全的 ECDHE 密钥交换 |
-| `ssl_session_cache` | `shared:SSL:10m` | 共享内存会话缓存，加速 TLS 恢复 |
-| `ssl_session_timeout` | `10m` | 会话缓存有效期 |
-| `ssl_session_tickets` | `on` | 启用 Session Ticket 减少握手次数 |
-| `ssl_stapling` | `on` | OCSP Stapling 减少客户端证书验证延迟 |
-| `ssl_dhparam` | 2048 位 DH 参数 | 增强 DH 密钥交换安全性 |
-| `ssl_prefer_server_ciphers` | `on` | 由服务器决定加密套件优先级 |
+| SSL 指令                    | 推荐值            | 说明                                 |
+| --------------------------- | ----------------- | ------------------------------------ |
+| `ssl_protocols`             | `TLSv1.2 TLSv1.3` | 禁用 TLS 1.0/1.1【PCI DSS 合规】     |
+| `ssl_ciphers`               | ECDHE 系列优先    | 优先使用前向安全的 ECDHE 密钥交换    |
+| `ssl_session_cache`         | `shared:SSL:10m`  | 共享内存会话缓存，加速 TLS 恢复      |
+| `ssl_session_timeout`       | `10m`             | 会话缓存有效期                       |
+| `ssl_session_tickets`       | `on`              | 启用 Session Ticket 减少握手次数     |
+| `ssl_stapling`              | `on`              | OCSP Stapling 减少客户端证书验证延迟 |
+| `ssl_dhparam`               | 2048 位 DH 参数   | 增强 DH 密钥交换安全性               |
+| `ssl_prefer_server_ciphers` | `on`              | 由服务器决定加密套件优先级           |
 
 ### 4.3 HTTP/2 支持
 
@@ -1157,16 +1154,16 @@ server {
 }
 ```
 
-| mTLS 变量 | 含义 |
-|-----------|------|
-| `$ssl_client_verify` | 客户端证书验证结果【SUCCESS / FAILED / NONE】 |
-| `$ssl_client_s_dn` | 客户端证书的 Subject DN |
-| `$ssl_client_i_dn` | 客户端证书的 Issuer DN |
-| `$ssl_client_serial` | 客户端证书的序列号 |
-| `$ssl_client_fingerprint` | 客户端证书的 SHA1 指纹 |
-| `$ssl_client_escaped_cert` | URL 编码的完整客户端证书 |
+| mTLS 变量                  | 含义                                          |
+| -------------------------- | --------------------------------------------- |
+| `$ssl_client_verify`       | 客户端证书验证结果【SUCCESS / FAILED / NONE】 |
+| `$ssl_client_s_dn`         | 客户端证书的 Subject DN                       |
+| `$ssl_client_i_dn`         | 客户端证书的 Issuer DN                        |
+| `$ssl_client_serial`       | 客户端证书的序列号                            |
+| `$ssl_client_fingerprint`  | 客户端证书的 SHA1 指纹                        |
+| `$ssl_client_escaped_cert` | URL 编码的完整客户端证书                      |
 
-***
+---
 
 ## 场景五：缓存机制
 
@@ -1234,34 +1231,34 @@ http {
 }
 ```
 
-| 缓存指令 | 默认值 | 说明 |
-|----------|--------|------|
-| `proxy_cache_path` | 无 | 定义缓存存储路径和参数 |
-| `proxy_cache` | 无 | 指定使用的缓存区域 |
-| `proxy_cache_key` | `$scheme$proxy_host$request_uri` | 缓存键的组成 |
-| `proxy_cache_valid` | 无 | 不同响应码的缓存时间 |
-| `proxy_cache_methods` | `GET HEAD` | 允许缓存的 HTTP 方法 |
-| `proxy_cache_min_uses` | `1` | 请求多少次后才缓存 |
-| `proxy_cache_lock` | `off` | 缓存锁，防止缓存击穿 |
-| `proxy_cache_bypass` | 无 | 跳过缓存直接回源的条件 |
-| `proxy_no_cache` | 无 | 不缓存响应的条件 |
-| `proxy_cache_background_update` | `off` | 后台更新过期缓存 |
-| `proxy_cache_use_stale` | `off` | 后端不可用时使用过期缓存 |
-| `proxy_cache_revalidate` | `off` | 使用 If-Modified-Since 验证缓存 |
+| 缓存指令                        | 默认值                           | 说明                            |
+| ------------------------------- | -------------------------------- | ------------------------------- |
+| `proxy_cache_path`              | 无                               | 定义缓存存储路径和参数          |
+| `proxy_cache`                   | 无                               | 指定使用的缓存区域              |
+| `proxy_cache_key`               | `$scheme$proxy_host$request_uri` | 缓存键的组成                    |
+| `proxy_cache_valid`             | 无                               | 不同响应码的缓存时间            |
+| `proxy_cache_methods`           | `GET HEAD`                       | 允许缓存的 HTTP 方法            |
+| `proxy_cache_min_uses`          | `1`                              | 请求多少次后才缓存              |
+| `proxy_cache_lock`              | `off`                            | 缓存锁，防止缓存击穿            |
+| `proxy_cache_bypass`            | 无                               | 跳过缓存直接回源的条件          |
+| `proxy_no_cache`                | 无                               | 不缓存响应的条件                |
+| `proxy_cache_background_update` | `off`                            | 后台更新过期缓存                |
+| `proxy_cache_use_stale`         | `off`                            | 后端不可用时使用过期缓存        |
+| `proxy_cache_revalidate`        | `off`                            | 使用 If-Modified-Since 验证缓存 |
 
 ### 5.2 缓存状态变量
 
 Nginx 提供了 `$upstream_cache_status` 变量来指示缓存命中的状态，这对于调试和监控非常有用。
 
-| 缓存状态 | 含义 |
-|----------|------|
-| `MISS` | 缓存未命中，请求发送到后端 |
-| `BYPASS` | 缓存被绕过，请求发送到后端 |
-| `EXPIRED` | 缓存已过期，请求发送到后端验证 |
-| `STALE` | 使用过期缓存【后端不可用】 |
-| `UPDATING` | 使用过期缓存【后台正在更新】 |
+| 缓存状态      | 含义                              |
+| ------------- | --------------------------------- |
+| `MISS`        | 缓存未命中，请求发送到后端        |
+| `BYPASS`      | 缓存被绕过，请求发送到后端        |
+| `EXPIRED`     | 缓存已过期，请求发送到后端验证    |
+| `STALE`       | 使用过期缓存【后端不可用】        |
+| `UPDATING`    | 使用过期缓存【后台正在更新】      |
 | `REVALIDATED` | 缓存已通过 If-Modified-Since 验证 |
-| `HIT` | 缓存命中，直接返回缓存内容 |
+| `HIT`         | 缓存命中，直接返回缓存内容        |
 
 ### 5.3 缓存清除
 
@@ -1324,11 +1321,10 @@ graph TB
     BACKEND --> DISK
 ```
 
-:::note
-#[C|Nginx 缓存采用两级目录结构] 避免单个目录下文件过多。`levels=1:2` 表示取缓存键 MD5 的最后 1 个字符作为一级目录，再取前 2 个字符作为二级目录。例如缓存键的 MD5 为 `b7f54b2df7773722d382f4809d65029c`，则文件路径为 `c/29/b7f54b2df7773722d382f4809d65029c`。
+:::note #[C|Nginx 缓存采用两级目录结构] 避免单个目录下文件过多。`levels=1:2` 表示取缓存键 MD5 的最后 1 个字符作为一级目录，再取前 2 个字符作为二级目录。例如缓存键的 MD5 为 `b7f54b2df7773722d382f4809d65029c`，则文件路径为 `c/29/b7f54b2df7773722d382f4809d65029c`。
 :::
 
-***
+---
 
 ## 场景六：限流与安全
 
@@ -1392,15 +1388,15 @@ graph LR
     end
 ```
 
-| limit_req 指令 | 默认值 | 说明 |
-|----------------|--------|------|
-| `limit_req_zone` | 无 | 定义限流共享内存区域 |
-| `limit_req` | 无 | 在 location 中启用限流 |
-| `limit_req_log_level` | `error` | 限流拒绝时的日志级别 |
-| `limit_req_status` | `503` | 限流拒绝时的 HTTP 状态码 |
-| `burst` | `0` | 突发请求队列大小 |
-| `nodelay` | 无 | 突发请求不延迟，立即处理 |
-| `delay` | 无 | 指定延迟处理的请求数 |
+| limit_req 指令        | 默认值  | 说明                     |
+| --------------------- | ------- | ------------------------ |
+| `limit_req_zone`      | 无      | 定义限流共享内存区域     |
+| `limit_req`           | 无      | 在 location 中启用限流   |
+| `limit_req_log_level` | `error` | 限流拒绝时的日志级别     |
+| `limit_req_status`    | `503`   | 限流拒绝时的 HTTP 状态码 |
+| `burst`               | `0`     | 突发请求队列大小         |
+| `nodelay`             | 无      | 突发请求不延迟，立即处理 |
+| `delay`               | 无      | 指定延迟处理的请求数     |
 
 ### 6.2 并发连接限制【limit_conn】
 
@@ -1421,13 +1417,13 @@ http {
 }
 ```
 
-| limit_conn 指令 | 默认值 | 说明 |
-|-----------------|--------|------|
-| `limit_conn_zone` | 无 | 定义连接限制共享内存区域 |
-| `limit_conn` | 无 | 在 location 中启用连接限制 |
-| `limit_conn_status` | `503` | 连接限制触发时的 HTTP 状态码 |
-| `limit_conn_log_level` | `error` | 连接限制触发时的日志级别 |
-| `limit_conn_dry_run` | `off` | 试运行模式，仅记录日志不拒绝 |
+| limit_conn 指令        | 默认值  | 说明                         |
+| ---------------------- | ------- | ---------------------------- |
+| `limit_conn_zone`      | 无      | 定义连接限制共享内存区域     |
+| `limit_conn`           | 无      | 在 location 中启用连接限制   |
+| `limit_conn_status`    | `503`   | 连接限制触发时的 HTTP 状态码 |
+| `limit_conn_log_level` | `error` | 连接限制触发时的日志级别     |
+| `limit_conn_dry_run`   | `off`   | 试运行模式，仅记录日志不拒绝 |
 
 ### 6.3 下载限速
 
@@ -1576,11 +1572,10 @@ http {
 }
 ```
 
-:::warning
-#[R|`limit_req` 的 `nodelay` 参数] 虽然能立即处理突发队列中的请求，但也意味着瞬时流量可能超过配置的 rate 限制。对于需要严格限流的场景【如登录接口】，建议使用较小的 `burst` 值且不设置 `nodelay`，让请求在队列中排队等待。
+:::warning #[R|`limit_req` 的 `nodelay` 参数] 虽然能立即处理突发队列中的请求，但也意味着瞬时流量可能超过配置的 rate 限制。对于需要严格限流的场景【如登录接口】，建议使用较小的 `burst` 值且不设置 `nodelay`，让请求在队列中排队等待。
 :::
 
-***
+---
 
 ## 场景七：Nginx 性能优化
 
@@ -1733,7 +1728,7 @@ sequenceDiagram
     participant SOCKET as Socket缓冲区
     participant NET as 网络
 
-    rect rgba【240, 248, 255, 0.4】
+    rect rgba(240, 248, 255, 0.4)
     Note over DISK,NET: ===== 传统 read/write 方式 =====
     DISK->>KERNEL: 1. 磁盘 → 内核缓冲区【DMA】
     KERNEL->>USER: 2. 内核缓冲区 → 用户缓冲区【CPU 复制】
@@ -1742,7 +1737,7 @@ sequenceDiagram
     Note over DISK,NET: 4 次上下文切换、2 次 CPU 复制
     end
 
-    rect rgba【240, 255, 248, 0.4】
+    rect rgba(240, 255, 248, 0.4)
     Note over DISK,NET: ===== sendfile 零拷贝方式 =====
     DISK->>KERNEL: 1. 磁盘 → 内核缓冲区【DMA】
     KERNEL->>SOCKET: 2. 内核缓冲区 → Socket 缓冲区【CPU 复制】
@@ -1751,11 +1746,11 @@ sequenceDiagram
     end
 ```
 
-| 指令 | 作用 | 原理 |
-|------|------|------|
-| `sendfile on` | 启用零拷贝 | 直接在内核空间完成文件到 socket 的传输，避免用户态和内核态的切换以及数据复制 |
-| `tcp_nopush on` | 数据包合并 | 仅在 sendfile 模式下生效，将多个数据包合并为一个发送，减少 TCP 头开销 |
-| `tcp_nodelay on` | 禁用 Nagle 算法 | 对于 keepalive 连接，小包立即发送不等待合并，降低延迟 |
+| 指令             | 作用            | 原理                                                                         |
+| ---------------- | --------------- | ---------------------------------------------------------------------------- |
+| `sendfile on`    | 启用零拷贝      | 直接在内核空间完成文件到 socket 的传输，避免用户态和内核态的切换以及数据复制 |
+| `tcp_nopush on`  | 数据包合并      | 仅在 sendfile 模式下生效，将多个数据包合并为一个发送，减少 TCP 头开销        |
+| `tcp_nodelay on` | 禁用 Nagle 算法 | 对于 keepalive 连接，小包立即发送不等待合并，降低延迟                        |
 
 ### 7.3 内核参数优化
 
@@ -1793,28 +1788,27 @@ net.ipv4.tcp_wmem = 4096 65536 16777216 # 发送缓冲区【min, default, max】
 # sysctl -p
 ```
 
-| 内核参数 | 推荐值 | 说明 |
-|----------|--------|------|
-| `net.core.somaxconn` | `65535` | 必须与 Nginx 的 `backlog` 参数配合 |
-| `net.ipv4.tcp_tw_reuse` | `1` | 重用 TIME_WAIT 连接，提高连接复用率 |
-| `net.ipv4.tcp_tw_recycle` | `0` | NAT 环境下必须禁用，否则会导致连接异常 |
-| `fs.file-max` | `655350` | 系统级文件描述符上限 |
-| `net.ipv4.ip_local_port_range` | `1024 65000` | 扩大可用端口范围 |
+| 内核参数                       | 推荐值       | 说明                                   |
+| ------------------------------ | ------------ | -------------------------------------- |
+| `net.core.somaxconn`           | `65535`      | 必须与 Nginx 的 `backlog` 参数配合     |
+| `net.ipv4.tcp_tw_reuse`        | `1`          | 重用 TIME_WAIT 连接，提高连接复用率    |
+| `net.ipv4.tcp_tw_recycle`      | `0`          | NAT 环境下必须禁用，否则会导致连接异常 |
+| `fs.file-max`                  | `655350`     | 系统级文件描述符上限                   |
+| `net.ipv4.ip_local_port_range` | `1024 65000` | 扩大可用端口范围                       |
 
 ### 7.4 性能压测与调优参考
 
-| 并发级别 | worker_processes | worker_connections | keepalive | 典型 QPS |
-|----------|-----------------|-------------------|-----------|----------|
-| 低【< 1000】 | 2 | 1024 | 16 | ~5000 |
-| 中【1000-5000】 | 4 | 4096 | 32 | ~20000 |
-| 高【5000-10000】 | 8 | 10240 | 64 | ~50000 |
-| 超高【> 10000】 | auto | 65535 | 128 | ~100000+ |
+| 并发级别         | worker_processes | worker_connections | keepalive | 典型 QPS |
+| ---------------- | ---------------- | ------------------ | --------- | -------- |
+| 低【< 1000】     | 2                | 1024               | 16        | ~5000    |
+| 中【1000-5000】  | 4                | 4096               | 32        | ~20000   |
+| 高【5000-10000】 | 8                | 10240              | 64        | ~50000   |
+| 超高【> 10000】  | auto             | 65535              | 128       | ~100000+ |
 
-:::note
-#[C|性能调优是一个系统工程]，需要结合业务特性、硬件资源、网络环境综合考量。建议基于实际压测结果进行调优，而非盲目套用推荐值。关键指标包括：QPS、P99 延迟、错误率、CPU 使用率、内存使用率、磁盘 IO 和网络带宽。
+:::note #[C|性能调优是一个系统工程]，需要结合业务特性、硬件资源、网络环境综合考量。建议基于实际压测结果进行调优，而非盲目套用推荐值。关键指标包括：QPS、P99 延迟、错误率、CPU 使用率、内存使用率、磁盘 IO 和网络带宽。
 :::
 
-***
+---
 
 ## 场景八：Nginx 与 K8s Ingress
 
@@ -1852,42 +1846,42 @@ spec:
         app: ingress-nginx
     spec:
       containers:
-      - name: controller
-        image: registry.k8s.io/ingress-nginx/controller:v1.9.4
-        args:
-        - /nginx-ingress-controller
-        - --configmap=$(POD_NAMESPACE)/ingress-nginx-config
-        - --tcp-services-configmap=$(POD_NAMESPACE)/tcp-services
-        - --udp-services-configmap=$(POD_NAMESPACE)/udp-services
-        - --publish-service=$(POD_NAMESPACE)/ingress-nginx
-        ports:
-        - name: http
-          containerPort: 80
-        - name: https
-          containerPort: 443
-        - name: health
-          containerPort: 10254
-        livenessProbe:
-          httpGet:
-            path: /healthz
-            port: 10254
-          initialDelaySeconds: 10
-          periodSeconds: 10
-        readinessProbe:
-          httpGet:
-            path: /healthz
-            port: 10254
-          initialDelaySeconds: 10
-          periodSeconds: 10
-        env:
-        - name: POD_NAME
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.name
-        - name: POD_NAMESPACE
-          valueFrom:
-            fieldRef:
-              fieldPath: metadata.namespace
+        - name: controller
+          image: registry.k8s.io/ingress-nginx/controller:v1.9.4
+          args:
+            - /nginx-ingress-controller
+            - --configmap=$(POD_NAMESPACE)/ingress-nginx-config
+            - --tcp-services-configmap=$(POD_NAMESPACE)/tcp-services
+            - --udp-services-configmap=$(POD_NAMESPACE)/udp-services
+            - --publish-service=$(POD_NAMESPACE)/ingress-nginx
+          ports:
+            - name: http
+              containerPort: 80
+            - name: https
+              containerPort: 443
+            - name: health
+              containerPort: 10254
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 10254
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 10254
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          env:
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
 ---
 # Ingress 资源定义
 apiVersion: networking.k8s.io/v1
@@ -1911,47 +1905,47 @@ metadata:
 spec:
   ingressClassName: nginx
   tls:
-  - hosts:
-    - example.com
-    secretName: example-tls
+    - hosts:
+        - example.com
+      secretName: example-tls
   rules:
-  - host: example.com
-    http:
-      paths:
-      - path: /api(/|$)(.*)
-        pathType: Prefix
-        backend:
-          service:
-            name: api-service
-            port:
-              number: 8080
-      - path: /web(/|$)(.*)
-        pathType: Prefix
-        backend:
-          service:
-            name: web-service
-            port:
-              number: 80
+    - host: example.com
+      http:
+        paths:
+          - path: /api(/|$)(.*)
+            pathType: Prefix
+            backend:
+              service:
+                name: api-service
+                port:
+                  number: 8080
+          - path: /web(/|$)(.*)
+            pathType: Prefix
+            backend:
+              service:
+                name: web-service
+                port:
+                  number: 80
 ```
 
 ### 8.2 Ingress Nginx 常用注解
 
-| 注解 | 说明 | 示例值 |
-|------|------|--------|
-| `nginx.ingress.kubernetes.io/rewrite-target` | 重写目标 URI | `/$2` |
-| `nginx.ingress.kubernetes.io/ssl-redirect` | 强制 HTTPS | `"true"` |
-| `nginx.ingress.kubernetes.io/proxy-body-size` | 请求体大小限制 | `"100m"` |
-| `nginx.ingress.kubernetes.io/proxy-connect-timeout` | 连接后端超时 | `"30"` |
-| `nginx.ingress.kubernetes.io/proxy-read-timeout` | 读取后端响应超时 | `"60"` |
-| `nginx.ingress.kubernetes.io/proxy-send-timeout` | 发送请求到后端超时 | `"60"` |
-| `nginx.ingress.kubernetes.io/limit-rps` | 每秒请求速率限制 | `"100"` |
-| `nginx.ingress.kubernetes.io/limit-connections` | 并发连接限制 | `"50"` |
-| `nginx.ingress.kubernetes.io/whitelist-source-range` | IP 白名单 | `"10.0.0.0/8,192.168.0.0/16"` |
-| `nginx.ingress.kubernetes.io/cors-allow-origin` | CORS 允许源 | `"*"` |
-| `nginx.ingress.kubernetes.io/canary` | 启用金丝雀发布 | `"true"` |
-| `nginx.ingress.kubernetes.io/canary-weight` | 金丝雀流量权重 | `"10"` |
-| `nginx.ingress.kubernetes.io/canary-by-header` | 按 Header 金丝雀 | `"x-canary"` |
-| `nginx.ingress.kubernetes.io/configuration-snippet` | 自定义 Nginx 配置片段 | 见示例 |
+| 注解                                                 | 说明                  | 示例值                        |
+| ---------------------------------------------------- | --------------------- | ----------------------------- |
+| `nginx.ingress.kubernetes.io/rewrite-target`         | 重写目标 URI          | `/$2`                         |
+| `nginx.ingress.kubernetes.io/ssl-redirect`           | 强制 HTTPS            | `"true"`                      |
+| `nginx.ingress.kubernetes.io/proxy-body-size`        | 请求体大小限制        | `"100m"`                      |
+| `nginx.ingress.kubernetes.io/proxy-connect-timeout`  | 连接后端超时          | `"30"`                        |
+| `nginx.ingress.kubernetes.io/proxy-read-timeout`     | 读取后端响应超时      | `"60"`                        |
+| `nginx.ingress.kubernetes.io/proxy-send-timeout`     | 发送请求到后端超时    | `"60"`                        |
+| `nginx.ingress.kubernetes.io/limit-rps`              | 每秒请求速率限制      | `"100"`                       |
+| `nginx.ingress.kubernetes.io/limit-connections`      | 并发连接限制          | `"50"`                        |
+| `nginx.ingress.kubernetes.io/whitelist-source-range` | IP 白名单             | `"10.0.0.0/8,192.168.0.0/16"` |
+| `nginx.ingress.kubernetes.io/cors-allow-origin`      | CORS 允许源           | `"*"`                         |
+| `nginx.ingress.kubernetes.io/canary`                 | 启用金丝雀发布        | `"true"`                      |
+| `nginx.ingress.kubernetes.io/canary-weight`          | 金丝雀流量权重        | `"10"`                        |
+| `nginx.ingress.kubernetes.io/canary-by-header`       | 按 Header 金丝雀      | `"x-canary"`                  |
+| `nginx.ingress.kubernetes.io/configuration-snippet`  | 自定义 Nginx 配置片段 | 见示例                        |
 
 ### 8.3 金丝雀发布
 
@@ -1978,16 +1972,16 @@ metadata:
 spec:
   ingressClassName: nginx
   rules:
-  - host: myapp.example.com
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: myapp-stable
-            port:
-              number: 80
+    - host: myapp.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: myapp-stable
+                port:
+                  number: 80
 ---
 # 金丝雀版本 Ingress
 apiVersion: networking.k8s.io/v1
@@ -1996,22 +1990,22 @@ metadata:
   name: myapp-canary
   annotations:
     nginx.ingress.kubernetes.io/canary: "true"
-    nginx.ingress.kubernetes.io/canary-weight: "10"    # 10% 流量
-    nginx.ingress.kubernetes.io/canary-by-header: "x-version"  # 按 Header 路由
+    nginx.ingress.kubernetes.io/canary-weight: "10" # 10% 流量
+    nginx.ingress.kubernetes.io/canary-by-header: "x-version" # 按 Header 路由
     nginx.ingress.kubernetes.io/canary-by-header-value: "canary"
 spec:
   ingressClassName: nginx
   rules:
-  - host: myapp.example.com
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: myapp-canary
-            port:
-              number: 80
+    - host: myapp.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: myapp-canary
+                port:
+                  number: 80
 ```
 
 ### 8.4 蓝绿部署
@@ -2036,8 +2030,8 @@ spec:
         version: blue
     spec:
       containers:
-      - name: app
-        image: myapp:1.0.0
+        - name: app
+          image: myapp:1.0.0
 ---
 # 绿色环境【新版本】
 apiVersion: apps/v1
@@ -2057,8 +2051,8 @@ spec:
         version: green
     spec:
       containers:
-      - name: app
-        image: myapp:2.0.0
+        - name: app
+          image: myapp:2.0.0
 ---
 # Service 指向蓝色环境
 apiVersion: v1
@@ -2068,19 +2062,19 @@ metadata:
 spec:
   selector:
     app: myapp
-    version: blue   # 切换为 green 即可完成蓝绿切换
+    version: blue # 切换为 green 即可完成蓝绿切换
   ports:
-  - port: 80
-    targetPort: 8080
+    - port: 80
+      targetPort: 8080
 ```
 
-| 发布策略 | 流量切换方式 | 回滚速度 | 适用场景 |
-|----------|-------------|----------|----------|
-| 金丝雀发布 | 按权重逐步切换 | 快速【修改 weight 即可】 | 需要逐步验证新版本 |
-| 蓝绿部署 | 一次性切换 Service | 秒级【修改 selector】 | 需要快速回滚的场景 |
-| A/B 测试 | 按 Header/Cookie 路由 | 快速【修改注解】 | 功能对比测试 |
+| 发布策略   | 流量切换方式          | 回滚速度                 | 适用场景           |
+| ---------- | --------------------- | ------------------------ | ------------------ |
+| 金丝雀发布 | 按权重逐步切换        | 快速【修改 weight 即可】 | 需要逐步验证新版本 |
+| 蓝绿部署   | 一次性切换 Service    | 秒级【修改 selector】    | 需要快速回滚的场景 |
+| A/B 测试   | 按 Header/Cookie 路由 | 快速【修改注解】         | 功能对比测试       |
 
-***
+---
 
 ## 场景九：Nginx 日志与监控
 
@@ -2166,24 +2160,24 @@ location /static/ {
 
 ### 9.2 核心日志变量
 
-| 变量 | 含义 | 示例值 |
-|------|------|--------|
-| `$remote_addr` | 客户端 IP 地址 | `192.168.1.100` |
-| `$time_local` | 本地时间 | `29/Jun/2026:12:00:00 +0800` |
-| `$request` | 完整请求行 | `GET /api/users HTTP/1.1` |
-| `$status` | 响应状态码 | `200` |
-| `$body_bytes_sent` | 发送的响应体字节数 | `1234` |
-| `$request_time` | 请求处理总时间【秒】 | `0.123` |
-| `$upstream_addr` | 后端服务器地址 | `192.168.1.10:8080` |
-| `$upstream_status` | 后端响应状态码 | `200` |
-| `$upstream_response_time` | 后端响应时间【秒】 | `0.050` |
-| `$upstream_connect_time` | 与后端连接时间【秒】 | `0.002` |
-| `$upstream_header_time` | 接收后端响应头时间【秒】 | `0.048` |
-| `$upstream_cache_status` | 缓存状态 | `HIT / MISS / EXPIRED` |
-| `$ssl_protocol` | SSL 协议版本 | `TLSv1.3` |
-| `$ssl_cipher` | SSL 加密套件 | `TLS_AES_256_GCM_SHA384` |
-| `$http_referer` | 请求来源页 | `https://example.com/page` |
-| `$http_user_agent` | 客户端 User-Agent | `Mozilla/5.0 ...` |
+| 变量                      | 含义                     | 示例值                       |
+| ------------------------- | ------------------------ | ---------------------------- |
+| `$remote_addr`            | 客户端 IP 地址           | `192.168.1.100`              |
+| `$time_local`             | 本地时间                 | `29/Jun/2026:12:00:00 +0800` |
+| `$request`                | 完整请求行               | `GET /api/users HTTP/1.1`    |
+| `$status`                 | 响应状态码               | `200`                        |
+| `$body_bytes_sent`        | 发送的响应体字节数       | `1234`                       |
+| `$request_time`           | 请求处理总时间【秒】     | `0.123`                      |
+| `$upstream_addr`          | 后端服务器地址           | `192.168.1.10:8080`          |
+| `$upstream_status`        | 后端响应状态码           | `200`                        |
+| `$upstream_response_time` | 后端响应时间【秒】       | `0.050`                      |
+| `$upstream_connect_time`  | 与后端连接时间【秒】     | `0.002`                      |
+| `$upstream_header_time`   | 接收后端响应头时间【秒】 | `0.048`                      |
+| `$upstream_cache_status`  | 缓存状态                 | `HIT / MISS / EXPIRED`       |
+| `$ssl_protocol`           | SSL 协议版本             | `TLSv1.3`                    |
+| `$ssl_cipher`             | SSL 加密套件             | `TLS_AES_256_GCM_SHA384`     |
+| `$http_referer`           | 请求来源页               | `https://example.com/page`   |
+| `$http_user_agent`        | 客户端 User-Agent        | `Mozilla/5.0 ...`            |
 
 ### 9.3 stub_status 实时监控
 
@@ -2211,15 +2205,15 @@ server accepts handled requests
 Reading: 6 Writing: 179 Waiting: 106
 ```
 
-| 指标 | 含义 | 说明 |
-|------|------|------|
-| `Active connections` | 当前活跃连接数 | 包括 Reading + Writing + Waiting |
-| `accepts` | 累计接受的连接数 | 自 Nginx 启动以来的总数 |
-| `handled` | 累计处理的连接数 | 通常等于 accepts，小于表示连接被丢弃 |
-| `requests` | 累计处理的请求数 | 一个连接可处理多个请求 |
-| `Reading` | 正在读取请求头的连接数 | 接收客户端请求 |
-| `Writing` | 正在发送响应的连接数 | 响应写入客户端 |
-| `Waiting` | 空闲 keepalive 连接数 | 等待下一个请求 |
+| 指标                 | 含义                   | 说明                                 |
+| -------------------- | ---------------------- | ------------------------------------ |
+| `Active connections` | 当前活跃连接数         | 包括 Reading + Writing + Waiting     |
+| `accepts`            | 累计接受的连接数       | 自 Nginx 启动以来的总数              |
+| `handled`            | 累计处理的连接数       | 通常等于 accepts，小于表示连接被丢弃 |
+| `requests`           | 累计处理的请求数       | 一个连接可处理多个请求               |
+| `Reading`            | 正在读取请求头的连接数 | 接收客户端请求                       |
+| `Writing`            | 正在发送响应的连接数   | 响应写入客户端                       |
+| `Waiting`            | 空闲 keepalive 连接数  | 等待下一个请求                       |
 
 ### 9.4 Prometheus Exporter 集成
 
@@ -2238,27 +2232,27 @@ nginx-prometheus-exporter \
 ```yaml
 # prometheus.yml
 scrape_configs:
-  - job_name: 'nginx'
+  - job_name: "nginx"
     static_configs:
-    - targets:
-      - 'nginx-server:9113'
-      labels:
-        env: 'production'
-        app: 'nginx'
+      - targets:
+          - "nginx-server:9113"
+        labels:
+          env: "production"
+          app: "nginx"
 ```
 
 **关键 Prometheus 指标**：
 
-| 指标名称 | 类型 | 说明 |
-|----------|------|------|
-| `nginx_connections_active` | Gauge | 当前活跃连接数 |
-| `nginx_connections_reading` | Gauge | 正在读取的连接数 |
-| `nginx_connections_writing` | Gauge | 正在写入的连接数 |
-| `nginx_connections_waiting` | Gauge | 空闲等待的连接数 |
-| `nginx_http_requests_total` | Counter | 累计请求总数 |
-| `nginx_connections_accepted_total` | Counter | 累计接受的连接数 |
-| `nginx_connections_handled_total` | Counter | 累计处理的连接数 |
-| `nginx_up` | Gauge | Nginx 是否在线【1/0】 |
+| 指标名称                           | 类型    | 说明                  |
+| ---------------------------------- | ------- | --------------------- |
+| `nginx_connections_active`         | Gauge   | 当前活跃连接数        |
+| `nginx_connections_reading`        | Gauge   | 正在读取的连接数      |
+| `nginx_connections_writing`        | Gauge   | 正在写入的连接数      |
+| `nginx_connections_waiting`        | Gauge   | 空闲等待的连接数      |
+| `nginx_http_requests_total`        | Counter | 累计请求总数          |
+| `nginx_connections_accepted_total` | Counter | 累计接受的连接数      |
+| `nginx_connections_handled_total`  | Counter | 累计处理的连接数      |
+| `nginx_up`                         | Gauge   | Nginx 是否在线【1/0】 |
 
 ### 9.5 扩展监控【OpenResty / Lua】
 
@@ -2353,7 +2347,7 @@ graph TB
     ALERT --> RULES
 ```
 
-***
+---
 
 ## 附录：Nginx 配置完整示例
 
@@ -2619,81 +2613,81 @@ http {
 
 ### A.2 常用 Nginx 变量速查
 
-| 变量 | 含义 |
-|------|------|
-| `$arg_NAME` | 请求参数 NAME 的值 |
-| `$binary_remote_addr` | 二进制格式的客户端 IP |
-| `$body_bytes_sent` | 发送的响应体字节数 |
-| `$content_length` | Content-Length 请求头 |
-| `$content_type` | Content-Type 请求头 |
-| `$cookie_NAME` | Cookie NAME 的值 |
-| `$document_root` | 当前请求的 root 指令值 |
-| `$document_uri` | 同 $uri，不包含参数 |
-| `$host` | 请求的 Host 头 |
-| `$hostname` | 主机名 |
-| `$http_NAME` | 任意请求头 NAME 的值 |
-| `$http_referer` | Referer 请求头 |
-| `$http_user_agent` | User-Agent 请求头 |
-| `$http_x_forwarded_for` | X-Forwarded-For 请求头 |
-| `$is_args` | 如果 URI 有参数则为 `?`，否则为空 |
-| `$limit_rate` | 限速值 |
-| `$msec` | 当前时间戳【毫秒精度】 |
-| `$nginx_version` | Nginx 版本号 |
-| `$pid` | Worker 进程 PID |
-| `$pipe` | 请求是否为管道传输 |
-| `$proxy_protocol_addr` | PROXY Protocol 客户端地址 |
-| `$query_string` | 同 $args，请求参数 |
-| `$realip_remote_addr` | realip 模块处理后的原始客户端地址 |
-| `$remote_addr` | 客户端 IP 地址 |
-| `$remote_port` | 客户端端口 |
-| `$remote_user` | 基本认证的用户名 |
-| `$request` | 完整请求行 |
-| `$request_body` | 请求体 |
-| `$request_body_file` | 请求体临时文件路径 |
-| `$request_completion` | 请求是否完成 |
-| `$request_filename` | 当前请求的文件路径 |
-| `$request_id` | 请求唯一 ID |
-| `$request_length` | 请求长度【含请求行、请求头、请求体】 |
-| `$request_method` | HTTP 请求方法 |
-| `$request_time` | 请求处理时间【秒，毫秒精度】 |
-| `$request_uri` | 完整原始请求 URI【含参数】 |
-| `$scheme` | 请求协议【http 或 https】 |
-| `$sent_http_NAME` | 任意响应头 NAME 的值 |
-| `$server_addr` | 服务器 IP 地址 |
-| `$server_name` | 服务器名称 |
-| `$server_port` | 服务器端口 |
-| `$server_protocol` | 服务器协议版本 |
-| `$status` | 响应状态码 |
-| `$tcpinfo_rtt` | TCP RTT 信息 |
-| `$time_iso8601` | ISO 8601 格式时间 |
-| `$time_local` | 本地时间 |
-| `$uid_got` | userid 模块的 Cookie 值 |
-| `$uid_set` | userid 模块设置的 Cookie 值 |
-| `$upstream_addr` | 后端服务器地址 |
-| `$upstream_bytes_received` | 从后端接收的字节数 |
-| `$upstream_bytes_sent` | 发送到后端的字节数 |
-| `$upstream_cache_status` | 缓存状态 |
-| `$upstream_connect_time` | 与后端连接时间 |
-| `$upstream_cookie_NAME` | 后端返回的 Set-Cookie 头 |
-| `$upstream_header_time` | 接收后端响应头时间 |
-| `$upstream_http_NAME` | 后端返回的任意响应头 |
-| `$upstream_response_length` | 后端响应长度 |
-| `$upstream_response_time` | 后端响应时间 |
-| `$upstream_status` | 后端响应状态码 |
-| `$uri` | 当前请求 URI【不含参数，可能被 rewrite 修改】 |
+| 变量                        | 含义                                          |
+| --------------------------- | --------------------------------------------- |
+| `$arg_NAME`                 | 请求参数 NAME 的值                            |
+| `$binary_remote_addr`       | 二进制格式的客户端 IP                         |
+| `$body_bytes_sent`          | 发送的响应体字节数                            |
+| `$content_length`           | Content-Length 请求头                         |
+| `$content_type`             | Content-Type 请求头                           |
+| `$cookie_NAME`              | Cookie NAME 的值                              |
+| `$document_root`            | 当前请求的 root 指令值                        |
+| `$document_uri`             | 同 `$uri`，不包含参数                         |
+| `$host`                     | 请求的 Host 头                                |
+| `$hostname`                 | 主机名                                        |
+| `$http_NAME`                | 任意请求头 NAME 的值                          |
+| `$http_referer`             | Referer 请求头                                |
+| `$http_user_agent`          | User-Agent 请求头                             |
+| `$http_x_forwarded_for`     | X-Forwarded-For 请求头                        |
+| `$is_args`                  | 如果 URI 有参数则为 `?`，否则为空             |
+| `$limit_rate`               | 限速值                                        |
+| `$msec`                     | 当前时间戳【毫秒精度】                        |
+| `$nginx_version`            | Nginx 版本号                                  |
+| `$pid`                      | Worker 进程 PID                               |
+| `$pipe`                     | 请求是否为管道传输                            |
+| `$proxy_protocol_addr`      | PROXY Protocol 客户端地址                     |
+| `$query_string`             | 同 `$args`，请求参数                          |
+| `$realip_remote_addr`       | realip 模块处理后的原始客户端地址             |
+| `$remote_addr`              | 客户端 IP 地址                                |
+| `$remote_port`              | 客户端端口                                    |
+| `$remote_user`              | 基本认证的用户名                              |
+| `$request`                  | 完整请求行                                    |
+| `$request_body`             | 请求体                                        |
+| `$request_body_file`        | 请求体临时文件路径                            |
+| `$request_completion`       | 请求是否完成                                  |
+| `$request_filename`         | 当前请求的文件路径                            |
+| `$request_id`               | 请求唯一 ID                                   |
+| `$request_length`           | 请求长度【含请求行、请求头、请求体】          |
+| `$request_method`           | HTTP 请求方法                                 |
+| `$request_time`             | 请求处理时间【秒，毫秒精度】                  |
+| `$request_uri`              | 完整原始请求 URI【含参数】                    |
+| `$scheme`                   | 请求协议【http 或 https】                     |
+| `$sent_http_NAME`           | 任意响应头 NAME 的值                          |
+| `$server_addr`              | 服务器 IP 地址                                |
+| `$server_name`              | 服务器名称                                    |
+| `$server_port`              | 服务器端口                                    |
+| `$server_protocol`          | 服务器协议版本                                |
+| `$status`                   | 响应状态码                                    |
+| `$tcpinfo_rtt`              | TCP RTT 信息                                  |
+| `$time_iso8601`             | ISO 8601 格式时间                             |
+| `$time_local`               | 本地时间                                      |
+| `$uid_got`                  | userid 模块的 Cookie 值                       |
+| `$uid_set`                  | userid 模块设置的 Cookie 值                   |
+| `$upstream_addr`            | 后端服务器地址                                |
+| `$upstream_bytes_received`  | 从后端接收的字节数                            |
+| `$upstream_bytes_sent`      | 发送到后端的字节数                            |
+| `$upstream_cache_status`    | 缓存状态                                      |
+| `$upstream_connect_time`    | 与后端连接时间                                |
+| `$upstream_cookie_NAME`     | 后端返回的 Set-Cookie 头                      |
+| `$upstream_header_time`     | 接收后端响应头时间                            |
+| `$upstream_http_NAME`       | 后端返回的任意响应头                          |
+| `$upstream_response_length` | 后端响应长度                                  |
+| `$upstream_response_time`   | 后端响应时间                                  |
+| `$upstream_status`          | 后端响应状态码                                |
+| `$uri`                      | 当前请求 URI【不含参数，可能被 rewrite 修改】 |
 
-***
+---
 
 ## 参考资料
 
-| 资料 | 说明 |
-|------|------|
-| Nginx 官方文档 | https://nginx.org/en/docs/ |
-| Nginx 源码仓库 | https://github.com/nginx/nginx |
-| Nginx 开发指南 | https://nginx.org/en/docs/dev/development_guide.html |
-| Ingress Nginx 文档 | https://kubernetes.github.io/ingress-nginx/ |
+| 资料                      | 说明                                                  |
+| ------------------------- | ----------------------------------------------------- |
+| Nginx 官方文档            | https://nginx.org/en/docs/                            |
+| Nginx 源码仓库            | https://github.com/nginx/nginx                        |
+| Nginx 开发指南            | https://nginx.org/en/docs/dev/development_guide.html  |
+| Ingress Nginx 文档        | https://kubernetes.github.io/ingress-nginx/           |
 | Nginx Prometheus Exporter | https://github.com/nginxinc/nginx-prometheus-exporter |
-| ModSecurity for Nginx | https://github.com/SpiderLabs/ModSecurity-nginx |
+| ModSecurity for Nginx     | https://github.com/SpiderLabs/ModSecurity-nginx       |
 
 :::note
 本文所涉及的 Nginx 配置均已通过 Nginx 1.24.x 验证。在生产环境中使用前，请根据实际业务场景调整参数值，并在测试环境充分验证后再上线。本文所有 Mermaid 图表中的函数名、结构体名均来自 Nginx 源码，可作为源码阅读的导航参考。

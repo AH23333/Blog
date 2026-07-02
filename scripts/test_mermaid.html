@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+  <script>
+    mermaid.initialize({ startOnLoad: false, theme: "dark", htmlLabels: false, securityLevel: "loose" });
+  </script>
+</head>
+<body>
+<pre class="mermaid" id="test-diagram"></pre>
+<div id="result"></div>
+<script>
+  const diagram = document.getElementById("test-diagram");
+  diagram.textContent = [
+    "sequenceDiagram",
+    "    participant APP as Spring Boot App",
+    "    participant METER as MeterRegistry",
+    "    participant COUNTER as Counter",
+    "    participant TIMER as Timer",
+    "    participant GAUGE as Gauge",
+    "    participant PROM as Prometheus",
+    "",
+    "    rect rgba(240, 248, 255, 0.4)",
+    "    Note over APP,METER: ===== Phase 1: Register [INF] to Micrometer =====",
+    "    APP->>METER: Create Meter instance",
+    "    Note over METER: Micrometer Core: MeterRegistry, Meter, Tag, MeterFilter",
+    "    end",
+    "",
+    "    rect rgba(248, 240, 255, 0.4)",
+    "    Note over APP,COUNTER: ===== Phase 2: Counter =====",
+    "    APP->>COUNTER: Count request",
+    "    Note over COUNTER: Counter example: seckillCounter.increment()",
+    "    end",
+    "",
+    "    rect rgba(255, 248, 240, 0.4)",
+    "    Note over APP,TIMER: ===== Phase 3: Timer =====",
+    "    APP->>TIMER: Record latency",
+    "    Note over TIMER: Timer example: timer.record(function() { service.execute(); })",
+    "    end",
+    "",
+    "    rect rgba(240, 255, 248, 0.4)",
+    "    Note over APP,GAUGE: ===== Phase 4: Gauge =====",
+    "    APP->>GAUGE: Record queue size",
+    "    Note over GAUGE: Gauge example: queue.size()",
+    "    end",
+    "",
+    "    rect rgba(255, 240, 245, 0.4)",
+    "    Note over APP,PROM: ===== Phase 5: Expose =====",
+    "    APP->>PROM: GET /actuator/prometheus",
+    "    Note over PROM: Exposed metrics: requests_total{status=\"success\"} 12345",
+    "    Note over PROM: Config: app.name=spring-app-name",
+    "    end"
+  ].join("\n");
+
+  mermaid.run({ nodes: [diagram] }).then(() => {
+    document.getElementById("result").textContent = "SUCCESS";
+  }).catch(err => {
+    document.getElementById("result").textContent = "ERROR: " + err.message;
+  });
+</script>
+</body>
+</html>

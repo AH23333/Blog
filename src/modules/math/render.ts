@@ -270,10 +270,17 @@ function protectCodeRegions(text: string): { protected: string; codeBlocks: Map<
 
 /**
  * 恢复代码区域：将占位符替换回原始代码文本。
+ *
+ * 关键：必须按占位符长度降序恢复，避免短占位符误匹配长占位符的前缀。
+ * 例如：\uE100CD372\uE101 以 \uE100 开头，如果先恢复 \uE100，
+ * 长占位符的前缀会被错误替换，导致 mermaid 代码块内容出现在错误位置。
  */
 function restoreCodeRegions(text: string, codeBlocks: Map<string, string>): string {
+  // 按占位符长度降序排序，确保长占位符优先恢复
+  const sortedEntries = [...codeBlocks.entries()].sort((a, b) => b[0].length - a[0].length);
+
   let result = text;
-  for (const [placeholder, code] of codeBlocks) {
+  for (const [placeholder, code] of sortedEntries) {
     result = result.replaceAll(placeholder, code);
   }
   return result;

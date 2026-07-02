@@ -22,7 +22,7 @@ function ensureMermaid() {
       mermaid.initialize({
         startOnLoad: false,
         theme: "dark",
-        htmlLabels: false,
+        htmlLabels: true,
         themeVariables: {
           darkMode: true,
           background: "#0c0d10",

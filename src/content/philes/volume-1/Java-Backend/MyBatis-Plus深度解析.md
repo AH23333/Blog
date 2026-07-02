@@ -12,7 +12,7 @@ redacted: false
 > 本文以 MyBatis-Plus 3.5.x 为基准，深入剖析其核心机制：从 BaseMapper 通用 CRUD 的底层实现，到条件构造器 Wrapper 体系的 SQL 拼接原理，再到分页插件、代码生成器、自动填充、逻辑删除、多数据源、连表查询与插件拦截器链的完整体系。
 > 每个场景均配备详细的 Mermaid 架构图与时序图，标注核心类名、方法签名与源码位置，适合 #[C|3 年以上经验的 Java 后端开发者] 深入研读。
 
-***
+---
 
 ## MyBatis-Plus 核心架构总览
 
@@ -89,15 +89,15 @@ graph TB
 所有 Mermaid 图表中的类名与方法名均为真实 API，关键源码文件在 `com.baomidou.mybatisplus.core` 包下。
 :::
 
-| 层级 | 组件 | 核心职责 | 关键类/包路径 |
-|------|------|----------|---------------|
-| 接口层 | BaseMapper / IService | 提供通用 CRUD 接口 | `com.baomidou.mybatisplus.core.mapper.BaseMapper` |
-| 条件构造器 | AbstractWrapper 体系 | 构建类型安全的 SQL 条件 | `com.baomidou.mybatisplus.core.conditions` |
-| 插件层 | InnerInterceptor 链 | 拦截 SQL 执行、注入逻辑 | `com.baomidou.mybatisplus.extension.plugins` |
-| 代码生成器 | FastAutoGenerator | 一键生成全套代码 | `com.baomidou.mybatisplus.generator` |
-| 扩展功能 | 自动填充/逻辑删除 | 减少样板代码 | `com.baomidou.mybatisplus.extension` |
+| 层级       | 组件                  | 核心职责                | 关键类/包路径                                     |
+| ---------- | --------------------- | ----------------------- | ------------------------------------------------- |
+| 接口层     | BaseMapper / IService | 提供通用 CRUD 接口      | `com.baomidou.mybatisplus.core.mapper.BaseMapper` |
+| 条件构造器 | AbstractWrapper 体系  | 构建类型安全的 SQL 条件 | `com.baomidou.mybatisplus.core.conditions`        |
+| 插件层     | InnerInterceptor 链   | 拦截 SQL 执行、注入逻辑 | `com.baomidou.mybatisplus.extension.plugins`      |
+| 代码生成器 | FastAutoGenerator     | 一键生成全套代码        | `com.baomidou.mybatisplus.generator`              |
+| 扩展功能   | 自动填充/逻辑删除     | 减少样板代码            | `com.baomidou.mybatisplus.extension`              |
 
-***
+---
 
 ## 场景一：MyBatis-Plus 架构总览
 
@@ -113,13 +113,13 @@ graph LR
     F --> G["返回结果<br/>自动映射 Entity"]
 ```
 
-| 阶段 | 核心类 | 关键机制 | 源码位置 |
-|------|--------|----------|----------|
-| Mapper 扫描 | `MapperScannerConfigurer` | 扫描 @Mapper 注解、注册 MapperFactoryBean | `org.mybatis.spring.mapper.MapperScannerConfigurer` |
-| 自动配置 | `MybatisPlusAutoConfiguration` | 自动注入 SqlSessionFactory、SqlSessionTemplate | `com.baomidou.mybatisplus.autoconfigure` |
-| 插件注册 | `MybatisPlusInterceptor` | 拦截器链式组装、按优先级排序 | `com.baomidou.mybatisplus.extension.plugins` |
-| 代理生成 | `MybatisMapperProxy` | JDK 动态代理、拦截 Mapper 方法调用 | `org.apache.ibatis.binding.MapperProxy` |
-| SQL 执行 | `MybatisNormalExecutor` | SimpleExecutor → StatementHandler → ParameterHandler | `com.baomidou.mybatisplus.core.executor` |
+| 阶段        | 核心类                         | 关键机制                                             | 源码位置                                            |
+| ----------- | ------------------------------ | ---------------------------------------------------- | --------------------------------------------------- |
+| Mapper 扫描 | `MapperScannerConfigurer`      | 扫描 @Mapper 注解、注册 MapperFactoryBean            | `org.mybatis.spring.mapper.MapperScannerConfigurer` |
+| 自动配置    | `MybatisPlusAutoConfiguration` | 自动注入 SqlSessionFactory、SqlSessionTemplate       | `com.baomidou.mybatisplus.autoconfigure`            |
+| 插件注册    | `MybatisPlusInterceptor`       | 拦截器链式组装、按优先级排序                         | `com.baomidou.mybatisplus.extension.plugins`        |
+| 代理生成    | `MybatisMapperProxy`           | JDK 动态代理、拦截 Mapper 方法调用                   | `org.apache.ibatis.binding.MapperProxy`             |
+| SQL 执行    | `MybatisNormalExecutor`        | SimpleExecutor → StatementHandler → ParameterHandler | `com.baomidou.mybatisplus.core.executor`            |
 
 ### 1.1 MyBatis vs MyBatis-Plus 对比
 
@@ -150,16 +150,16 @@ graph TB
     MP_AUTO --> MP_GEN
 ```
 
-| 对比维度 | MyBatis 原生 | MyBatis-Plus |
-|----------|-------------|-------------|
-| 单表 CRUD | 需手写 SQL 和 XML | 继承 BaseMapper 即可，零 SQL |
-| 条件查询 | 需在 XML 中写 `<where>` 和 `<if>` | 使用 Wrapper 链式 API，Lambda 表达式 |
-| 分页 | 需手动 count + limit | 一行配置 + Page 对象 |
-| 主键策略 | 需手动设置 | 内置 ASSIGN_ID / UUID / AUTO |
-| 逻辑删除 | 需手写 update flag | @TableLogic 注解自动处理 |
-| 代码生成 | 需第三方工具 | 内置 FastAutoGenerator |
-| 多租户 | 需手写 tenant_id 过滤 | TenantLineInnerInterceptor 自动注入 |
-| SQL 注入 | 无内置保护 | BlockAttackInnerInterceptor 防全表操作 |
+| 对比维度  | MyBatis 原生                      | MyBatis-Plus                           |
+| --------- | --------------------------------- | -------------------------------------- |
+| 单表 CRUD | 需手写 SQL 和 XML                 | 继承 BaseMapper 即可，零 SQL           |
+| 条件查询  | 需在 XML 中写 `<where>` 和 `<if>` | 使用 Wrapper 链式 API，Lambda 表达式   |
+| 分页      | 需手动 count + limit              | 一行配置 + Page 对象                   |
+| 主键策略  | 需手动设置                        | 内置 ASSIGN_ID / UUID / AUTO           |
+| 逻辑删除  | 需手写 update flag                | @TableLogic 注解自动处理               |
+| 代码生成  | 需第三方工具                      | 内置 FastAutoGenerator                 |
+| 多租户    | 需手写 tenant_id 过滤             | TenantLineInnerInterceptor 自动注入    |
+| SQL 注入  | 无内置保护                        | BlockAttackInnerInterceptor 防全表操作 |
 
 ### 1.2 核心设计理念
 
@@ -169,13 +169,13 @@ MyBatis-Plus 的设计遵循三大核心理念：
 
 MyBatis-Plus 默认映射规则极大地减少了配置量：
 
-| 约定项 | 默认规则 | 示例 |
-|--------|----------|------|
-| 类名 → 表名 | 驼峰转下划线 | `UserInfo` → `user_info` |
-| 字段名 → 列名 | 驼峰转下划线 | `userName` → `user_name` |
-| 主键字段 | 名为 `id` 的字段 | `private Long id` |
-| 逻辑删除字段 | 名为 `deleted` 的字段 | `private Integer deleted` |
-| 乐观锁字段 | 名为 `version` 的字段 | `private Integer version` |
+| 约定项        | 默认规则              | 示例                      |
+| ------------- | --------------------- | ------------------------- |
+| 类名 → 表名   | 驼峰转下划线          | `UserInfo` → `user_info`  |
+| 字段名 → 列名 | 驼峰转下划线          | `userName` → `user_name`  |
+| 主键字段      | 名为 `id` 的字段      | `private Long id`         |
+| 逻辑删除字段  | 名为 `deleted` 的字段 | `private Integer deleted` |
+| 乐观锁字段    | 名为 `version` 的字段 | `private Integer version` |
 
 **理念二：Lambda 表达式类型安全**
 
@@ -191,7 +191,7 @@ lambdaQueryWrapper.eq(User::getUserName, "张三");
 
 通过 `MetaObjectHandler` 和 `InnerInterceptor` 接口，将横切关注点【自动填充、分页、多租户、乐观锁】从业务代码中剥离，实现 AOP 式的无侵入增强。
 
-***
+---
 
 ## 场景二：Mapper CRUD 底层原理
 
@@ -221,7 +221,7 @@ sequenceDiagram
     participant EXE as MybatisExecutor
     participant JDBC as JDBC 驱动
 
-    rect rgba【240, 248, 255, 0.4】
+    rect rgba(240, 248, 255, 0.4)
     Note over SVC,MP: ===== 阶段 1：代理拦截 =====
     SVC->>MP: userMapper.insert【user】
     Note over MP: JDK 动态代理拦截<br/>MybatisMapperProxy.invoke【】<br/>从 MapperProxyFactory 缓存中获取
@@ -229,7 +229,7 @@ sequenceDiagram
     Note over MM: 解析方法类型：INSERT<br/>解析返回值类型：int<br/>解析参数：User 实体
     end
 
-    rect rgba【240, 255, 248, 0.4】
+    rect rgba(240, 255, 248, 0.4)
     Note over MM,AF: ===== 阶段 2：自动填充 + 主键生成 =====
     MM->>AF: MetaObjectHandler.insertFill【metaObject】
     Note over AF: 填充 @TableField【fill = FieldFill.INSERT】<br/>createTime → new Date【】<br/>createBy → 当前用户
@@ -238,7 +238,7 @@ sequenceDiagram
     PG-->>MM: 生成主键值
     end
 
-    rect rgba【255, 248, 240, 0.4】
+    rect rgba(255, 248, 240, 0.4)
     Note over MM,JDBC: ===== 阶段 3：SQL 执行 =====
     MM->>SS: sqlSession.insert【statement, parameter】
     SS->>EXE: executor.update【ms, parameter】
@@ -254,27 +254,27 @@ sequenceDiagram
 
 BaseMapper 接口定义了 19 个通用 CRUD 方法，位于 `com.baomidou.mybatisplus.core.mapper.BaseMapper`：
 
-| 分类 | 方法签名 | 功能说明 |
-|------|----------|----------|
-| 插入 | `int insert(T entity)` | 插入一条记录，自动填充 + 主键生成 |
-| 插入 | `int insertBatch(Collection<T> entityList)` | 批量插入【3.5.4+】 |
-| 删除 | `int deleteById(Serializable id)` | 按主键删除 |
-| 删除 | `int deleteByMap(Map<String, Object> columnMap)` | 按 Map 条件删除 |
-| 删除 | `int delete(Wrapper<T> queryWrapper)` | 按 Wrapper 条件删除 |
-| 删除 | `int deleteBatchIds(Collection<?> idList)` | 按主键批量删除 |
-| 更新 | `int updateById(T entity)` | 按主键更新 |
-| 更新 | `int update(T entity, Wrapper<T> updateWrapper)` | 按 Wrapper 条件更新 |
-| 查询 | `T selectById(Serializable id)` | 按主键查询 |
-| 查询 | `List<T> selectBatchIds(Collection<?> idList)` | 按主键批量查询 |
-| 查询 | `List<T> selectByMap(Map<String, Object> columnMap)` | 按 Map 条件查询 |
-| 查询 | `T selectOne(Wrapper<T> queryWrapper)` | 查询单条记录 |
-| 查询 | `boolean exists(Wrapper<T> queryWrapper)` | 判断是否存在 |
-| 查询 | `Long selectCount(Wrapper<T> queryWrapper)` | 统计记录数 |
-| 查询 | `List<T> selectList(Wrapper<T> queryWrapper)` | 按条件查询列表 |
-| 查询 | `List<Map<String, Object>> selectMaps(Wrapper<T> queryWrapper)` | 查询返回 Map 列表 |
-| 查询 | `List<Object> selectObjs(Wrapper<T> queryWrapper)` | 查询返回第一个字段值列表 |
-| 查询 | `<P> IPage<T> selectPage(IPage<T> page, Wrapper<T> queryWrapper)` | 分页查询 |
-| 查询 | `<P> IPage<Map<String, Object>> selectMapsPage(IPage<T> page, Wrapper<T> queryWrapper)` | 分页查询返回 Map |
+| 分类 | 方法签名                                                                                | 功能说明                          |
+| ---- | --------------------------------------------------------------------------------------- | --------------------------------- |
+| 插入 | `int insert(T entity)`                                                                  | 插入一条记录，自动填充 + 主键生成 |
+| 插入 | `int insertBatch(Collection<T> entityList)`                                             | 批量插入【3.5.4+】                |
+| 删除 | `int deleteById(Serializable id)`                                                       | 按主键删除                        |
+| 删除 | `int deleteByMap(Map<String, Object> columnMap)`                                        | 按 Map 条件删除                   |
+| 删除 | `int delete(Wrapper<T> queryWrapper)`                                                   | 按 Wrapper 条件删除               |
+| 删除 | `int deleteBatchIds(Collection<?> idList)`                                              | 按主键批量删除                    |
+| 更新 | `int updateById(T entity)`                                                              | 按主键更新                        |
+| 更新 | `int update(T entity, Wrapper<T> updateWrapper)`                                        | 按 Wrapper 条件更新               |
+| 查询 | `T selectById(Serializable id)`                                                         | 按主键查询                        |
+| 查询 | `List<T> selectBatchIds(Collection<?> idList)`                                          | 按主键批量查询                    |
+| 查询 | `List<T> selectByMap(Map<String, Object> columnMap)`                                    | 按 Map 条件查询                   |
+| 查询 | `T selectOne(Wrapper<T> queryWrapper)`                                                  | 查询单条记录                      |
+| 查询 | `boolean exists(Wrapper<T> queryWrapper)`                                               | 判断是否存在                      |
+| 查询 | `Long selectCount(Wrapper<T> queryWrapper)`                                             | 统计记录数                        |
+| 查询 | `List<T> selectList(Wrapper<T> queryWrapper)`                                           | 按条件查询列表                    |
+| 查询 | `List<Map<String, Object>> selectMaps(Wrapper<T> queryWrapper)`                         | 查询返回 Map 列表                 |
+| 查询 | `List<Object> selectObjs(Wrapper<T> queryWrapper)`                                      | 查询返回第一个字段值列表          |
+| 查询 | `<P> IPage<T> selectPage(IPage<T> page, Wrapper<T> queryWrapper)`                       | 分页查询                          |
+| 查询 | `<P> IPage<Map<String, Object>> selectMapsPage(IPage<T> page, Wrapper<T> queryWrapper)` | 分页查询返回 Map                  |
 
 ### 2.3 主键策略详解
 
@@ -297,12 +297,12 @@ graph TB
     BIT --> CLOCK
 ```
 
-| 策略 | 注解配置 | 适用场景 | 优点 | 缺点 |
-|------|----------|----------|------|------|
-| ASSIGN_ID | `@TableId(type = IdType.ASSIGN_ID)` | 分布式系统 | 全局唯一、趋势递增 | 依赖机器时钟 |
-| ASSIGN_UUID | `@TableId(type = IdType.ASSIGN_UUID)` | 分布式系统 | 绝对唯一、无时钟依赖 | 无序、索引性能差 |
-| AUTO | `@TableId(type = IdType.AUTO)` | 单库小项目 | 简单、自增有序 | 分库分表冲突 |
-| INPUT | `@TableId(type = IdType.INPUT)` | 自定义 ID 生成 | 灵活 | 需自行保证唯一 |
+| 策略        | 注解配置                              | 适用场景       | 优点                 | 缺点             |
+| ----------- | ------------------------------------- | -------------- | -------------------- | ---------------- |
+| ASSIGN_ID   | `@TableId(type = IdType.ASSIGN_ID)`   | 分布式系统     | 全局唯一、趋势递增   | 依赖机器时钟     |
+| ASSIGN_UUID | `@TableId(type = IdType.ASSIGN_UUID)` | 分布式系统     | 绝对唯一、无时钟依赖 | 无序、索引性能差 |
+| AUTO        | `@TableId(type = IdType.AUTO)`        | 单库小项目     | 简单、自增有序       | 分库分表冲突     |
+| INPUT       | `@TableId(type = IdType.INPUT)`       | 自定义 ID 生成 | 灵活                 | 需自行保证唯一   |
 
 ```java
 // 配置示例
@@ -329,7 +329,7 @@ sequenceDiagram
     participant SS as SqlSession
     participant JDBC as JDBC
 
-    rect rgba【240, 248, 255, 0.4】
+    rect rgba(240, 248, 255, 0.4)
     Note over SVC,IM: ===== 批量插入：saveBatch【】 =====
     SVC->>IS: userService.saveBatch【userList】
     IS->>IM: ServiceImpl.saveBatch【list, batchSize】
@@ -338,7 +338,7 @@ sequenceDiagram
     Note over BM: 每条记录单独执行 SQL<br/>每批共用同一个 SqlSession
     end
 
-    rect rgba【240, 255, 248, 0.4】
+    rect rgba(240, 255, 248, 0.4)
     Note over SVC,JDBC: ===== 批量更新：updateBatchById【】 =====
     SVC->>IS: userService.updateBatchById【userList】
     IS->>IM: ServiceImpl.updateBatchById【list, batchSize】
@@ -351,7 +351,7 @@ sequenceDiagram
 `saveBatch` 默认是逐条执行 INSERT 语句，并非真正的 JDBC 批量提交。如需高性能批量插入，建议使用 `insertBatchSomeColumn` 方法或自定义 SQL 的 `INSERT INTO ... VALUES ...` 语句。可通过 `rewriteBatchedStatements=true` JDBC 参数启用 MySQL 驱动级别的批量重写。
 :::
 
-***
+---
 
 ## 场景三：条件构造器 Wrapper 体系
 
@@ -368,9 +368,9 @@ graph TB
     end
 
     subgraph SQL 输出
-        SQL_WHERE["WHERE 子句<br/>WHERE user_name = ？<br/>AND age &gt; ？<br/>ORDER BY create_time DESC"]
-        SQL_SET["SET 子句<br/>SET age = ？<br/>SET user_name = ？"]
-        SQL_GROUP["GROUP BY / HAVING<br/>GROUP BY dept_id<br/>HAVING COUNT【*】&gt; 5"]
+        SQL_WHERE["WHERE 子句<br/>WHERE user_name = ?<br/>AND age &gt; ?<br/>ORDER BY create_time DESC"]
+        SQL_SET["SET 子句<br/>SET age = ?<br/>SET user_name = ?"]
+        SQL_GROUP["GROUP BY / HAVING<br/>GROUP BY dept_id<br/>HAVING COUNT(*)&gt; 5"]
     end
 
     AW --> QW
@@ -393,62 +393,62 @@ sequenceDiagram
     participant SEG as 条件片段收集器
     participant SQL as SQL 生成器
 
-    rect rgba【240, 248, 255, 0.4】
+    rect rgba(240, 248, 255, 0.4)
     Note over CTRL,LQW: ===== 阶段 1：构建条件 =====
-    CTRL->>SVC: userService.list【wrapper】
-    SVC->>LQW: new LambdaQueryWrapper&lt;User&gt;【】
-    SVC->>LQW: .eq【User::getAge, 18】
+    CTRL->>SVC: userService list wrapper
+    SVC->>LQW: create LambdaQueryWrapper
+    SVC->>LQW: add condition age=18
     Note over LQW: Lambda 解析：<br/>1. SFunction 序列化获取方法名<br/>2. SerializedLambda 解析<br/>3. 方法名转字段名：getAge → age<br/>4. 驼峰转下划线：age → age
-    SVC->>LQW: .like【User::getUserName, 张】
-    SVC->>LQW: .gt【User::getCreateTime, startTime】
-    SVC->>LQW: .orderByDesc【User::getCreateTime】
+    SVC->>LQW: add condition name like 张
+    SVC->>LQW: add condition createTime gt startTime
+    SVC->>LQW: add orderBy createTime DESC
     end
 
-    rect rgba【240, 255, 248, 0.4】
+    rect rgba(240, 255, 248, 0.4)
     Note over LQW,SQL: ===== 阶段 2：SQL 片段生成 =====
     LQW->>AW: 调用父类 addCondition 方法
     Note over AW: 条件收集：<br/>1. 将条件加入 expression 列表<br/>2. 构建 NormalSegmentList<br/>3. 管理参数值 paramNameValuePairs
     AW->>SEG: 生成 SQL 片段
-    Note over SEG: 片段内容：<br/>age = #{ew.paramNameValuePairs.MPGENVAL1}<br/>AND user_name LIKE CONCAT【%】, #{...},【%】<br/>AND create_time &gt; #{...}<br/>ORDER BY create_time DESC
+    Note over SEG: SQL fragments:<br/>age = param1<br/>AND name LIKE param2<br/>AND time gt param3<br/>ORDER BY time DESC
     end
 
-    rect rgba【255, 248, 240, 0.4】
+    rect rgba(255, 248, 240, 0.4)
     Note over SEG,SQL: ===== 阶段 3：SQL 最终拼接 =====
     SEG->>SQL: 生成完整 SQL
-    Note over SQL: SELECT * FROM user<br/>WHERE age = ？<br/>AND user_name LIKE ？<br/>AND create_time &gt; ？<br/>ORDER BY create_time DESC
+    Note over SQL: SELECT FROM user<br/>WHERE age equals param1<br/>AND name like param2<br/>AND time gt param3<br/>ORDER BY time
     SQL-->>SVC: 执行 SQL 返回 List
     end
 ```
 
 ### 3.2 常用条件方法速查
 
-| 方法 | 说明 | 示例 | 生成 SQL |
-|------|------|------|----------|
-| `eq` | 等于 = | `eq(User::getAge, 18)` | `age = 18` |
-| `ne` | 不等于 <> | `ne(User::getStatus, 0)` | `status <> 0` |
-| `gt` | 大于 > | `gt(User::getAge, 18)` | `age > 18` |
-| `ge` | 大于等于 >= | `ge(User::getAge, 18)` | `age >= 18` |
-| `lt` | 小于 < | `lt(User::getAge, 60)` | `age < 60` |
-| `le` | 小于等于 <= | `le(User::getAge, 60)` | `age <= 60` |
-| `like` | 模糊查询 LIKE | `like(User::getName, "张")` | `name LIKE '%张%'` |
-| `likeLeft` | 左模糊 LIKE | `likeLeft(User::getName, "张")` | `name LIKE '%张'` |
-| `likeRight` | 右模糊 LIKE | `likeRight(User::getName, "张")` | `name LIKE '张%'` |
-| `between` | 区间 BETWEEN | `between(User::getAge, 18, 60)` | `age BETWEEN 18 AND 60` |
-| `notBetween` | 非区间 | `notBetween(User::getAge, 18, 60)` | `age NOT BETWEEN 18 AND 60` |
-| `in` | 包含 IN | `in(User::getId, ids)` | `id IN 【1, 2, 3】` |
-| `notIn` | 不包含 NOT IN | `notIn(User::getId, ids)` | `id NOT IN 【1, 2, 3】` |
-| `isNull` | 为空 IS NULL | `isNull(User::getEmail)` | `email IS NULL` |
-| `isNotNull` | 非空 IS NOT NULL | `isNotNull(User::getEmail)` | `email IS NOT NULL` |
-| `groupBy` | 分组 GROUP BY | `groupBy(User::getDeptId)` | `GROUP BY dept_id` |
-| `orderByAsc` | 升序 ASC | `orderByAsc(User::getAge)` | `ORDER BY age ASC` |
-| `orderByDesc` | 降序 DESC | `orderByDesc(User::getAge)` | `ORDER BY age DESC` |
-| `having` | HAVING 条件 | `having("COUNT(*) > {0}", 5)` | `HAVING COUNT【*】> 5` |
-| `or` | 或条件 | `eq(...).or().eq(...)` | `【...】 OR 【...】` |
-| `and` | 与条件嵌套 | `and(w -> w.eq(...))` | `AND 【...】` |
-| `nested` | 嵌套条件 | `nested(w -> ...)` | ` 【...】 ` |
-| `exists` | EXISTS 子查询 | `exists("select 1 from ...")` | `EXISTS 【select ...】` |
-| `notExists` | NOT EXISTS | `notExists("select 1 from ...")` | `NOT EXISTS 【select ...】` |
-| `apply` | 自定义 SQL 片段 | `apply("date_format(...)")` | 直接拼接 |
+| 方法          | 说明             | 示例                               | 生成 SQL                    |
+| ------------- | ---------------- | ---------------------------------- | --------------------------- |
+| `eq`          | 等于 =           | `eq(User::getAge, 18)`             | `age = 18`                  |
+| `ne`          | 不等于 <>        | `ne(User::getStatus, 0)`           | `status <> 0`               |
+| `gt`          | 大于 >           | `gt(User::getAge, 18)`             | `age > 18`                  |
+| `ge`          | 大于等于 >=      | `ge(User::getAge, 18)`             | `age >= 18`                 |
+| `lt`          | 小于 <           | `lt(User::getAge, 60)`             | `age < 60`                  |
+| `le`          | 小于等于 <=      | `le(User::getAge, 60)`             | `age <= 60`                 |
+| `like`        | 模糊查询 LIKE    | `like(User::getName, "张")`        | `name LIKE '%张%'`          |
+| `likeLeft`    | 左模糊 LIKE      | `likeLeft(User::getName, "张")`    | `name LIKE '%张'`           |
+| `likeRight`   | 右模糊 LIKE      | `likeRight(User::getName, "张")`   | `name LIKE '张%'`           |
+| `between`     | 区间 BETWEEN     | `between(User::getAge, 18, 60)`    | `age BETWEEN 18 AND 60`     |
+| `notBetween`  | 非区间           | `notBetween(User::getAge, 18, 60)` | `age NOT BETWEEN 18 AND 60` |
+| `in`          | 包含 IN          | `in(User::getId, ids)`             | `id IN 【1, 2, 3】`         |
+| `notIn`       | 不包含 NOT IN    | `notIn(User::getId, ids)`          | `id NOT IN 【1, 2, 3】`     |
+| `isNull`      | 为空 IS NULL     | `isNull(User::getEmail)`           | `email IS NULL`             |
+| `isNotNull`   | 非空 IS NOT NULL | `isNotNull(User::getEmail)`        | `email IS NOT NULL`         |
+| `groupBy`     | 分组 GROUP BY    | `groupBy(User::getDeptId)`         | `GROUP BY dept_id`          |
+| `orderByAsc`  | 升序 ASC         | `orderByAsc(User::getAge)`         | `ORDER BY age ASC`          |
+| `orderByDesc` | 降序 DESC        | `orderByDesc(User::getAge)`        | `ORDER BY age DESC`         |
+| `having`      | HAVING 条件      | `having("COUNT(*) > {0}", 5)`      | `HAVING COUNT(*)> 5`        |
+| `or`          | 或条件           | `eq(...).or().eq(...)`             | `【...】 OR 【...】`        |
+| `and`         | 与条件嵌套       | `and(w -> w.eq(...))`              | `AND 【...】`               |
+| `nested`      | 嵌套条件         | `nested(w -> ...)`                 | `【...】`                   |
+| `exists`      | EXISTS 子查询    | `exists("select 1 from ...")`      | `EXISTS 【select ...】`     |
+| `notExists`   | NOT EXISTS       | `notExists("select 1 from ...")`   | `NOT EXISTS 【select ...】` |
+| `apply`       | 自定义 SQL 片段  | `apply("date_format(...)")`        | 直接拼接                    |
 
 ### 3.3 嵌套条件实战
 
@@ -505,15 +505,15 @@ sequenceDiagram
     participant Handler as TableNameHandler
     participant SQL as SQL 执行器
 
-    rect rgba【240, 248, 255, 0.4】
+    rect rgba(240, 248, 255, 0.4)
     Note over SVC,Handler: ===== 动态表名替换流程 =====
     SVC->>DTN: 拦截器 beforePrepare 回调
     Note over DTN: 检查当前 SQL 涉及的表名<br/>匹配已注册的 TableNameHandler
-    DTN->>Handler: dynamicTableName【sql, tableName】
-    Note over Handler: 自定义替换逻辑：<br/>user → user_2026<br/>user → user_01【分表】
-    Handler-->>DTN: 返回替换后的表名
+    DTN->>Handler: call dynamicTableName handler
+    Note over Handler: 自定义替换逻辑：<br/>user → user_2026<br/>user → user_01 分表
+    Handler-->>DTN: return replaced table name
     DTN->>SQL: 执行替换后的 SQL
-    Note over SQL: SELECT * FROM user_2026<br/>WHERE age &gt; 18
+    Note over SQL: SQL result:<br/>SELECT FROM user_2026<br/>WHERE age greater than 18
     end
 ```
 
@@ -538,7 +538,7 @@ public class MybatisPlusConfig {
 }
 ```
 
-***
+---
 
 ## 场景四：分页插件原理
 
@@ -548,7 +548,7 @@ public class MybatisPlusConfig {
 graph TB
     subgraph 分页请求
         PAGE["Page&lt;T&gt; 对象<br/>pageNum: 1<br/>pageSize: 10<br/>orders: age DESC"]
-        COUNT["自动 count 查询<br/>SELECT COUNT【*】FROM ..."]
+        COUNT["自动 count 查询<br/>SELECT COUNT(*)FROM ..."]
         DATA["数据查询<br/>SELECT * FROM ... LIMIT ？, ？"]
     end
 
@@ -573,54 +573,54 @@ sequenceDiagram
     participant EXE as MybatisExecutor
     participant JDBC as JDBC
 
-    rect rgba【240, 248, 255, 0.4】
+    rect rgba(240, 248, 255, 0.4)
     Note over SVC,PAG: ===== 阶段 1：分页请求 =====
-    SVC->>BM: userMapper.selectPage【page, wrapper】
-    Note over SVC: Page 对象：<br/>pageNum = 1<br/>pageSize = 10<br/>orders = 【OrderItem.desc【create_time】】
+    SVC->>BM: call selectPage with Page and Wrapper
+    Note over SVC: Page 对象：<br/>pageNum = 1<br/>pageSize = 10<br/>orders = [OrderItem.desc(create_time)]
     BM->>MP: 拦截器链 beforeQuery 回调
-    MP->>PAG: PaginationInnerInterceptor.beforeQuery
+    MP->>PAG: PaginationInnerInterceptor beforeQuery
     end
 
-    rect rgba【240, 255, 248, 0.4】
+    rect rgba(240, 255, 248, 0.4)
     Note over PAG,COUNT: ===== 阶段 2：拦截器处理 =====
     PAG->>PAG: 判断是否需要分页
     Note over PAG: 检查 pageSize > 0<br/>如果 pageSize < 0 则查询全部
     PAG->>COUNT: 生成 count SQL
-    Note over COUNT: CountSqlParser.smartCount【】：<br/>1. 移除 ORDER BY 子句<br/>2. 移除不必要的 JOIN<br/>3. 包装为 SELECT COUNT【*】<br/>4. 优化子查询为 COUNT【*】
+    Note over COUNT: CountSqlParser.smartCount()：<br/>1. 移除 ORDER BY 子句<br/>2. 移除不必要的 JOIN<br/>3. 包装为 SELECT COUNT(*)<br/>4. 优化子查询为 COUNT(*)
     PAG->>EXE: 执行 count SQL
-    EXE->>JDBC: SELECT COUNT【*】 FROM user WHERE age &gt; 18
+    EXE->>JDBC: 执行 COUNT 查询
     JDBC-->>EXE: count = 100
     EXE-->>PAG: 总数：100
     end
 
-    rect rgba【255, 248, 240, 0.4】
+    rect rgba(255, 248, 240, 0.4)
     Note over PAG,JDBC: ===== 阶段 3：分页查询数据 =====
     PAG->>PAG: 计算分页参数
-    Note over PAG: offset =【pageNum - 1】* pageSize = 0<br/>limit = pageSize = 10
+    Note over PAG: offset = (pageNum - 1)* pageSize = 0<br/>limit = pageSize = 10
     PAG->>EXE: 拼接 LIMIT 子句
     Note over EXE: 原始 SQL + LIMIT 0, 10<br/>根据数据库方言自动适配：<br/>MySQL → LIMIT 0, 10<br/>PostgreSQL → LIMIT 10 OFFSET 0<br/>Oracle → ROWNUM 嵌套
-    EXE->>JDBC: SELECT * FROM user WHERE age &gt; 18<br/>ORDER BY create_time DESC LIMIT 0, 10
+    EXE->>JDBC: 执行分页查询
     JDBC-->>EXE: 10 条数据
     EXE-->>PAG: 返回数据列表
     end
 
-    rect rgba【248, 240, 255, 0.4】
+    rect rgba(248, 240, 255, 0.4)
     Note over PAG,SVC: ===== 阶段 4：封装结果 =====
     PAG->>PAG: 组装 Page 对象
-    Note over PAG: page.setTotal【100】<br/>page.setRecords【list】<br/>page.setPages【10】<br/>page.setCurrent【1】<br/>page.setSize【10】<br/>page.hasNext【】= true
-    PAG-->>SVC: 返回 Page&lt;User&gt;
+    Note over PAG: page.setTotal(100)<br/>page.setRecords(list)<br/>page.setPages(10)<br/>page.setCurrent(1)<br/>page.setSize(10)<br/>page.hasNext()= true
+    PAG-->>SVC: return Page object
     end
 ```
 
 ### 4.2 物理分页 vs 内存分页
 
-| 对比维度 | 物理分页 | 内存分页 |
-|----------|----------|----------|
-| 实现方式 | SQL 层 LIMIT/OFFSET | 查询全部数据后在内存中截取 |
-| SQL 执行 | 仅查询所需页的数据 | 查询全部数据 |
-| 网络开销 | 仅传输当前页数据 | 传输全部数据 |
-| 内存占用 | 仅当前页数据量 | 全部数据量 |
-| 性能 | 高【大数据量优势明显】 | 低【数据量大时 OOM 风险】 |
+| 对比维度          | 物理分页                  | 内存分页                    |
+| ----------------- | ------------------------- | --------------------------- |
+| 实现方式          | SQL 层 LIMIT/OFFSET       | 查询全部数据后在内存中截取  |
+| SQL 执行          | 仅查询所需页的数据        | 查询全部数据                |
+| 网络开销          | 仅传输当前页数据          | 传输全部数据                |
+| 内存占用          | 仅当前页数据量            | 全部数据量                  |
+| 性能              | 高【大数据量优势明显】    | 低【数据量大时 OOM 风险】   |
 | MyBatis-Plus 行为 | `pageSize > 0` 时自动启用 | `pageSize < 0` 时走内存分页 |
 
 ### 4.3 分页配置
@@ -656,11 +656,11 @@ public class MybatisPlusConfig {
 ```mermaid
 sequenceDiagram
     participant T1 as 事务 T1
-    participant OPT as OptimisticLockerInnerInterceptor
+    participant LOCK as OptimisticLockerInnerInterceptor
     participant DB as 数据库
     participant T2 as 事务 T2
 
-    rect rgba【240, 248, 255, 0.4】
+    rect rgba(240, 248, 255, 0.4)
     Note over T1,DB: ===== 乐观锁更新流程 =====
     T1->>DB: SELECT id, name, version FROM user WHERE id=1
     DB-->>T1: version = 1
@@ -668,15 +668,15 @@ sequenceDiagram
     DB-->>T2: version = 1
 
     T1->>T1: 修改 name = 张三_new
-    T1->>OPT: UPDATE user SET name=?, version=version+1<br/>WHERE id=1 AND version=1
-    Note over OPT: 拦截器自动处理：<br/>1. 在 SET 子句中 version = version + 1<br/>2. 在 WHERE 子句中 version = 原值
-    OPT->>DB: 执行 UPDATE
-    DB-->>T1: affectedRows = 1【更新成功】
+    T1->>LOCK: UPDATE with version check
+    Note over LOCK: 拦截器自动处理：<br/>1. 在 SET 子句中 version = version + 1<br/>2. 在 WHERE 子句中 version = 原值
+    LOCK->>DB: 执行 UPDATE
+    DB-->>T1: affectedRows = 1 更新成功
 
     T2->>T2: 修改 name = 张三_v2
-    T2->>OPT: UPDATE user SET name=?, version=version+1<br/>WHERE id=1 AND version=1
-    OPT->>DB: 执行 UPDATE
-    DB-->>T2: affectedRows = 0【version 已变为 2，更新失败】
+    T2->>LOCK: UPDATE with version check
+    LOCK->>DB: 执行 UPDATE
+    DB-->>T2: affectedRows = 0 更新失败
     Note over T2: 乐观锁冲突：<br/>抛出 OptimisticLockerException<br/>需重试或提示用户
     end
 ```
@@ -695,7 +695,7 @@ public class User {
 }
 ```
 
-***
+---
 
 ## 场景五：代码生成器
 
@@ -725,14 +725,14 @@ sequenceDiagram
     participant TE as TemplateEngine
     participant OUT as 文件输出
 
-    rect rgba【240, 248, 255, 0.4】
+    rect rgba(240, 248, 255, 0.4)
     Note over DEV,DS: ===== 阶段 1：配置数据源 =====
     DEV->>FAG: FastAutoGenerator.create【url, username, password】
     FAG->>DS: 构建 DataSourceConfig
     Note over DS: 从数据库获取：<br/>1. 表列表【TABLE_NAME】<br/>2. 列信息【COLUMN_NAME/TYPE/COMMENT】<br/>3. 主键信息【PRIMARY_KEY】<br/>4. 索引信息【INDEX_INFO】
     end
 
-    rect rgba【240, 255, 248, 0.4】
+    rect rgba(240, 255, 248, 0.4)
     Note over DS,SC: ===== 阶段 2：全局配置 =====
     DS->>FAG: globalConfig【builder ->】
     Note over FAG: 全局配置项：<br/>- 作者信息<br/>- 输出目录<br/>- 是否覆盖已有文件<br/>- 日期格式<br/>- 是否开启 Swagger 注解
@@ -740,13 +740,13 @@ sequenceDiagram
     Note over FAG: 包名配置：<br/>- parent【com.example】<br/>- moduleName【system】<br/>- controller【controller】<br/>- service【service】<br/>- mapper【mapper】<br/>- entity【entity】
     end
 
-    rect rgba【255, 248, 240, 0.4】
+    rect rgba(255, 248, 240, 0.4)
     Note over FAG,SC: ===== 阶段 3：策略配置 =====
     FAG->>SC: strategyConfig【builder ->】
     Note over SC: 策略配置：<br/>1. addInclude【表名列表】<br/>2. addTablePrefix【表前缀去除】<br/>3. entityBuilder【】<br/>   - enableLombok【】<br/>   - enableTableFieldAnnotation【】<br/>   - logicDeleteColumnName【deleted】<br/>   - versionColumnName【version】<br/>4. controllerBuilder【】<br/>   - enableRestStyle【】<br/>5. mapperBuilder【】<br/>   - enableBaseResultMap【】<br/>   - enableBaseColumnList【】
     end
 
-    rect rgba【248, 240, 255, 0.4】
+    rect rgba(248, 240, 255, 0.4)
     Note over SC,OUT: ===== 阶段 4：模板渲染 =====
     SC->>TE: 执行模板引擎
     Note over TE: 渲染文件列表：<br/>1. controller.java.ftl → Controller<br/>2. service.java.ftl → Service 接口<br/>3. serviceImpl.java.ftl → Service 实现<br/>4. mapper.java.ftl → Mapper 接口<br/>5. mapper.xml.ftl → XML 映射文件<br/>6. entity.java.ftl → Entity 实体
@@ -855,7 +855,7 @@ FastAutoGenerator.create(...)
     .execute();
 ```
 
-***
+---
 
 ## 场景六：自动填充与逻辑删除
 
@@ -886,7 +886,7 @@ sequenceDiagram
     participant AF as MetaObjectHandler
     participant SS as SqlSession
 
-    rect rgba【240, 248, 255, 0.4】
+    rect rgba(240, 248, 255, 0.4)
     Note over SVC,AF: ===== insert 操作自动填充 =====
     SVC->>BM: userMapper.insert【user】
     BM->>MP: 代理拦截→ MapperMethod.execute
@@ -898,7 +898,7 @@ sequenceDiagram
     AF-->>MP: 填充完成
     end
 
-    rect rgba【240, 255, 248, 0.4】
+    rect rgba(240, 255, 248, 0.4)
     Note over MP,SS: ===== update 操作自动填充 =====
     MP->>AF: MetaObjectHandler.updateFill【metaObject】
     Note over AF: 检查 @TableField【fill = UPDATE】<br/>或 fill = INSERT_UPDATE
@@ -974,7 +974,7 @@ sequenceDiagram
     participant LD as 逻辑删除处理
     participant SQL as SQL 执行器
 
-    rect rgba【240, 248, 255, 0.4】
+    rect rgba(240, 248, 255, 0.4)
     Note over SVC,LD: ===== 删除操作 → 逻辑删除 =====
     SVC->>BM: userMapper.deleteById【1】
     Note over BM: 原始意图：DELETE FROM user WHERE id=1
@@ -984,7 +984,7 @@ sequenceDiagram
     LD->>SQL: 执行 UPDATE 语句
     end
 
-    rect rgba【240, 255, 248, 0.4】
+    rect rgba(240, 255, 248, 0.4)
     Note over SVC,SQL: ===== 查询操作 → 自动过滤 =====
     SVC->>BM: userMapper.selectList【wrapper】
     Note over BM: 自动拼接 WHERE 条件<br/>WHERE deleted = 0
@@ -993,28 +993,28 @@ sequenceDiagram
     end
 ```
 
-| 配置方式 | 说明 | 示例 |
-|----------|------|------|
-| 注解配置 | `@TableLogic` 标注逻辑删除字段 | `@TableLogic private Integer deleted;` |
-| 全局配置 | `application.yml` 中配置 | `mybatis-plus.global-config.db-config.logic-delete-field: deleted` |
-| 删除值 | 默认 1 表示已删除 | `@TableLogic(value = "0", delval = "1")` |
-| 未删除值 | 默认 0 表示未删除 | `logic-not-delete-value: 0` |
+| 配置方式 | 说明                           | 示例                                                               |
+| -------- | ------------------------------ | ------------------------------------------------------------------ |
+| 注解配置 | `@TableLogic` 标注逻辑删除字段 | `@TableLogic private Integer deleted;`                             |
+| 全局配置 | `application.yml` 中配置       | `mybatis-plus.global-config.db-config.logic-delete-field: deleted` |
+| 删除值   | 默认 1 表示已删除              | `@TableLogic(value = "0", delval = "1")`                           |
+| 未删除值 | 默认 0 表示未删除              | `logic-not-delete-value: 0`                                        |
 
 ```yaml
 # application.yml 逻辑删除全局配置
 mybatis-plus:
   global-config:
     db-config:
-      logic-delete-field: deleted      # 全局逻辑删除字段名
-      logic-delete-value: 1            # 逻辑已删除值
-      logic-not-delete-value: 0        # 逻辑未删除值
+      logic-delete-field: deleted # 全局逻辑删除字段名
+      logic-delete-value: 1 # 逻辑已删除值
+      logic-not-delete-value: 0 # 逻辑未删除值
 ```
 
 :::warning
 逻辑删除仅对 `BaseMapper` 的内置方法生效【deleteById、deleteBatchIds、delete、deleteByMap】。如果手动在 XML 中编写 DELETE 语句，不会自动应用逻辑删除，需手动改为 UPDATE。
 :::
 
-***
+---
 
 ## 场景七：多数据源与读写分离
 
@@ -1056,13 +1056,13 @@ sequenceDiagram
     participant DDS as DynamicRoutingDataSource
     participant DS as 目标数据源
 
-    rect rgba【240, 248, 255, 0.4】
+    rect rgba(240, 248, 255, 0.4)
     Note over SVC,DS_ASP: ===== 阶段 1：注解声明 =====
     SVC->>SVC: @DS【master】标注 Service 方法
     Note over SVC: 方法被 AOP 拦截<br/>DataSourceAspect 切面
     end
 
-    rect rgba【240, 255, 248, 0.4】
+    rect rgba(240, 255, 248, 0.4)
     Note over DS_ASP,DCH: ===== 阶段 2：数据源 Key 切换 =====
     SVC->>DS_ASP: 方法调用前 →@Around 增强
     DS_ASP->>DS_ASP: 解析 @DS 注解 value
@@ -1071,7 +1071,7 @@ sequenceDiagram
     Note over DCH: ThreadLocal 存储：<br/>LOOKUP_KEY_HOLDER.set【master】<br/>确保同一线程内数据源隔离
     end
 
-    rect rgba【255, 248, 240, 0.4】
+    rect rgba(255, 248, 240, 0.4)
     Note over DCH,DS: ===== 阶段 3：数据源路由 =====
     DCH->>DDS: determineCurrentLookupKey【】
     Note over DDS: 从 ThreadLocal 获取当前 key<br/>返回 master
@@ -1081,7 +1081,7 @@ sequenceDiagram
     DS-->>SVC: 执行业务 SQL
     end
 
-    rect rgba【248, 240, 255, 0.4】
+    rect rgba(248, 240, 255, 0.4)
     Note over SVC,DCH: ===== 阶段 4：清理上下文 =====
     SVC->>DS_ASP: 方法执行完毕 →@AfterReturning
     DS_ASP->>DCH: DynamicDataSourceContextHolder.poll【】
@@ -1096,20 +1096,20 @@ sequenceDiagram
 spring:
   datasource:
     dynamic:
-      primary: master                    # 默认数据源
-      strict: false                      # 严格模式：找不到数据源时是否抛异常
+      primary: master # 默认数据源
+      strict: false # 严格模式：找不到数据源时是否抛异常
       datasource:
-        master:                          # 主库【写】
+        master: # 主库【写】
           url: jdbc:mysql://192.168.1.100:3306/db_master
           username: root
           password: master123
           driver-class-name: com.mysql.cj.jdbc.Driver
-        slave-1:                         # 从库1【读】
+        slave-1: # 从库1【读】
           url: jdbc:mysql://192.168.1.101:3306/db_master
           username: root
           password: slave123
           driver-class-name: com.mysql.cj.jdbc.Driver
-        slave-2:                         # 从库2【读】
+        slave-2: # 从库2【读】
           url: jdbc:mysql://192.168.1.102:3306/db_master
           username: root
           password: slave123
@@ -1160,15 +1160,15 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
 
 ### 7.4 多数据源高级特性
 
-| 特性 | 说明 | 配置示例 |
-|------|------|----------|
-| 一主多从 | 写走主库，读走从库 | `@DS("master")` / `@DS("slave-1")` |
-| 多主多从 | 多组主从，按业务拆分 | `@DS("order_master")` / `@DS("product_master")` |
-| 负载均衡 | 从库负载均衡策略 | `spring.datasource.dynamic.seata: false` |
-| 本地事务 | 单数据源事务 | `@Transactional` + `@DS` |
-| 分布式事务 | 跨数据源事务 | 集成 Seata AT 模式 |
-| 动态添加 | 运行时动态添加数据源 | `DynamicDataSourceEvent` 事件监听 |
-| 加密配置 | 数据库密码加密 | `public-key` + `encrypt` 配置 |
+| 特性       | 说明                 | 配置示例                                        |
+| ---------- | -------------------- | ----------------------------------------------- |
+| 一主多从   | 写走主库，读走从库   | `@DS("master")` / `@DS("slave-1")`              |
+| 多主多从   | 多组主从，按业务拆分 | `@DS("order_master")` / `@DS("product_master")` |
+| 负载均衡   | 从库负载均衡策略     | `spring.datasource.dynamic.seata: false`        |
+| 本地事务   | 单数据源事务         | `@Transactional` + `@DS`                        |
+| 分布式事务 | 跨数据源事务         | 集成 Seata AT 模式                              |
+| 动态添加   | 运行时动态添加数据源 | `DynamicDataSourceEvent` 事件监听               |
+| 加密配置   | 数据库密码加密       | `public-key` + `encrypt` 配置                   |
 
 ```java
 // 动态添加数据源示例
@@ -1193,7 +1193,7 @@ public class DataSourceController {
 }
 ```
 
-***
+---
 
 ## 场景八：MyBatis-Plus Join 连表查询
 
@@ -1354,7 +1354,7 @@ wrapper.apply("DATE_FORMAT(create_time, '%Y-%m-%d') = {0}", "2026-06-29")
 // LIMIT 10
 ```
 
-***
+---
 
 ## 场景九：插件拦截器体系
 
@@ -1392,35 +1392,35 @@ sequenceDiagram
     participant BA_INT as BlockAttackInnerInterceptor
     participant EXE as Mybatis Executor
 
-    rect rgba【240, 248, 255, 0.4】
+    rect rgba(240, 248, 255, 0.4)
     Note over BM,MPI: ===== 阶段 1：拦截器链入口 =====
     BM->>MPI: executor.update【ms, parameter】
     Note over MPI: MybatisPlusInterceptor 实现<br/>org.apache.ibatis.plugin.Interceptor<br/>通过 @Intercepts 注解拦截 Executor
     MPI->>CHAIN: 遍历拦截器链【按 @Order 排序】
     end
 
-    rect rgba【240, 255, 248, 0.4】
+    rect rgba(240, 255, 248, 0.4)
     Note over CHAIN,PAG_INT: ===== 阶段 2：分页拦截器 =====
     CHAIN->>PAG_INT: beforeQuery【boundSql, ...】
     Note over PAG_INT: 检查 Page 对象参数<br/>修改 SQL 添加 COUNT 子句<br/>添加 LIMIT/OFFSET 子句
     PAG_INT-->>CHAIN: 返回修改后的 SQL
     end
 
-    rect rgba【255, 248, 240, 0.4】
+    rect rgba(255, 248, 240, 0.4)
     Note over CHAIN,OPT_INT: ===== 阶段 3：乐观锁拦截器 =====
     CHAIN->>OPT_INT: beforeUpdate【parameter】
     Note over OPT_INT: 检查 @Version 字段<br/>SQL 中追加 version = version + 1<br/>WHERE 条件中追加 version = 原值
     OPT_INT-->>CHAIN: 返回修改后的 SQL
     end
 
-    rect rgba【248, 240, 255, 0.4】
+    rect rgba(248, 240, 255, 0.4)
     Note over CHAIN,TN_INT: ===== 阶段 4：多租户拦截器 =====
     CHAIN->>TN_INT: beforeQuery【boundSql】
     Note over TN_INT: 解析 SQL 涉及的表<br/>对每个表注入 tenant_id 条件<br/>WHERE tenant_id = 当前租户ID
     TN_INT-->>CHAIN: 返回修改后的 SQL
     end
 
-    rect rgba【255, 240, 245, 0.4】
+    rect rgba(255, 240, 245, 0.4)
     Note over CHAIN,EXE: ===== 阶段 5：防全表操作拦截器 =====
     CHAIN->>BA_INT: beforeUpdate【boundSql】
     Note over BA_INT: 检查 UPDATE/DELETE 语句<br/>是否包含 WHERE 条件<br/>若无 WHERE 则抛异常阻止
@@ -1490,16 +1490,16 @@ sequenceDiagram
     participant Handler as TenantLineHandler
     participant SQL as SQL 执行器
 
-    rect rgba【240, 248, 255, 0.4】
+    rect rgba(240, 248, 255, 0.4)
     Note over APP,Handler: ===== 多租户 SQL 注入 =====
     APP->>TN: 拦截器 beforeQuery 回调
-    TN->>Handler: getTenantIdColumn【】
+    TN->>Handler: get tenant id column name
     Handler-->>TN: tenant_id
-    TN->>Handler: getTenantId【】
+    TN->>Handler: get current tenant id
     Handler-->>TN: 从 TenantContextHolder 获取
 
     TN->>TN: 解析 SQL 来源表
-    Note over TN: 原始 SQL：<br/>SELECT * FROM user WHERE age &gt; 18<br/><br/>注入后：<br/>SELECT * FROM user<br/>WHERE tenant_id = 1001<br/>AND age &gt; 18
+    Note over TN: inject tenant_id condition<br/>original SQL: SELECT FROM user WHERE age > 18<br/>injected: add tenant_id = 1001
     TN->>SQL: 执行注入后的 SQL
     end
 ```
@@ -1551,14 +1551,14 @@ sequenceDiagram
     participant BA as BlockAttackInnerInterceptor
     participant SQL as SQL 执行器
 
-    rect rgba【240, 248, 255, 0.4】
+    rect rgba(240, 248, 255, 0.4)
     Note over APP,BA: ===== 正常 UPDATE 含 WHERE =====
     APP->>BA: UPDATE user SET name=? WHERE id=?
     Note over BA: 检查 SQL 包含 WHERE 子句<br/>检查通过，放行
     BA->>SQL: 执行 SQL
     end
 
-    rect rgba【255, 240, 245, 0.4】
+    rect rgba(255, 240, 245, 0.4)
     Note over APP,BA: ===== 危险 UPDATE 无 WHERE =====
     APP->>BA: UPDATE user SET name=?
     Note over BA: 检查 SQL 不包含 WHERE 子句<br/>检查失败，抛出异常
@@ -1654,17 +1654,17 @@ public class MybatisPlusConfig {
 
 ### 9.6 InnerInterceptor 接口方法
 
-| 方法 | 触发时机 | 用途 |
-|------|----------|------|
-| `willDoQuery` | 查询执行前 | 可返回 false 阻止查询 |
-| `willDoUpdate` | 更新执行前 | 可返回 false 阻止更新 |
-| `beforePrepare` | StatementHandler 准备后 | 修改 SQL 语句 |
-| `beforeQuery` | 查询 SQL 执行前 | 修改查询 SQL、记录日志 |
-| `beforeUpdate` | 更新 SQL 执行前 | 修改更新 SQL、乐观锁注入 |
-| `afterQuery` | 查询 SQL 执行后 | 记录耗时、结果处理 |
-| `afterUpdate` | 更新 SQL 执行后 | 记录耗时、影响行数 |
+| 方法            | 触发时机                | 用途                     |
+| --------------- | ----------------------- | ------------------------ |
+| `willDoQuery`   | 查询执行前              | 可返回 false 阻止查询    |
+| `willDoUpdate`  | 更新执行前              | 可返回 false 阻止更新    |
+| `beforePrepare` | StatementHandler 准备后 | 修改 SQL 语句            |
+| `beforeQuery`   | 查询 SQL 执行前         | 修改查询 SQL、记录日志   |
+| `beforeUpdate`  | 更新 SQL 执行前         | 修改更新 SQL、乐观锁注入 |
+| `afterQuery`    | 查询 SQL 执行后         | 记录耗时、结果处理       |
+| `afterUpdate`   | 更新 SQL 执行后         | 记录耗时、影响行数       |
 
-***
+---
 
 ## 场景十：高级特性与进阶技巧
 
@@ -1971,12 +1971,12 @@ public class ActiveRecordDemo {
 
 ### 10.7 多租户数据隔离方案对比
 
-| 隔离方案 | 实现方式 | 优点 | 缺点 | 适用场景 |
-|----------|----------|------|------|----------|
-| 独立数据库 | 每个租户独立数据库 | 最强隔离、简单 | 成本高、维护复杂 | 高安全要求 |
-| 共享数据库独立 Schema | 同一数据库不同 Schema | 隔离较好、成本适中 | 跨租户查询困难 | 中型 SaaS |
-| 共享数据库共享表 | 通过 tenant_id 区分 | 成本最低、维护简单 | 隔离最弱 | 小型 SaaS |
-| 混合模式 | 大租户独立库、小租户共享表 | 灵活 | 实现复杂 | 混合型 SaaS |
+| 隔离方案              | 实现方式                   | 优点               | 缺点             | 适用场景    |
+| --------------------- | -------------------------- | ------------------ | ---------------- | ----------- |
+| 独立数据库            | 每个租户独立数据库         | 最强隔离、简单     | 成本高、维护复杂 | 高安全要求  |
+| 共享数据库独立 Schema | 同一数据库不同 Schema      | 隔离较好、成本适中 | 跨租户查询困难   | 中型 SaaS   |
+| 共享数据库共享表      | 通过 tenant_id 区分        | 成本最低、维护简单 | 隔离最弱         | 小型 SaaS   |
+| 混合模式              | 大租户独立库、小租户共享表 | 灵活               | 实现复杂         | 混合型 SaaS |
 
 ```java
 // 多租户混合模式实现
@@ -2027,15 +2027,15 @@ graph TB
     Q5 --> D5
 ```
 
-| 问题 | 现象 | 排查步骤 | 解决方案 |
-|------|------|----------|----------|
-| 分页不生效 | 返回全部数据 | 检查拦截器配置、检查 pageSize 是否 > 0 | 添加 PaginationInnerInterceptor |
-| 逻辑删除不生效 | 数据被物理删除 | 检查 @TableLogic 注解、检查 XML 语句 | 注解 + 全局配置双重保障 |
-| 自动填充不生效 | createTime 为 null | 检查 @TableField fill 值、检查 Handler | 实现 MetaObjectHandler 并注册 |
-| 多数据源切换失败 | 始终走主库 | 检查 @DS 位置、检查事务传播 | 确认注解在 public 方法上 |
-| Lambda 报错 | SFunction 序列化异常 | 检查是否使用了 getter 方法引用 | 确保使用实体类 getter 方法 |
+| 问题             | 现象                 | 排查步骤                               | 解决方案                        |
+| ---------------- | -------------------- | -------------------------------------- | ------------------------------- |
+| 分页不生效       | 返回全部数据         | 检查拦截器配置、检查 pageSize 是否 > 0 | 添加 PaginationInnerInterceptor |
+| 逻辑删除不生效   | 数据被物理删除       | 检查 @TableLogic 注解、检查 XML 语句   | 注解 + 全局配置双重保障         |
+| 自动填充不生效   | createTime 为 null   | 检查 @TableField fill 值、检查 Handler | 实现 MetaObjectHandler 并注册   |
+| 多数据源切换失败 | 始终走主库           | 检查 @DS 位置、检查事务传播            | 确认注解在 public 方法上        |
+| Lambda 报错      | SFunction 序列化异常 | 检查是否使用了 getter 方法引用         | 确保使用实体类 getter 方法      |
 
-***
+---
 
 ## 最佳实践总结
 
@@ -2047,14 +2047,14 @@ mybatis-plus:
   # 全局配置
   global-config:
     db-config:
-      id-type: ASSIGN_ID              # 主键策略：雪花算法
-      logic-delete-field: deleted     # 逻辑删除字段
-      logic-delete-value: 1           # 删除值
-      logic-not-delete-value: 0       # 未删除值
-      table-underline: true           # 表名驼峰转下划线
-      update-strategy: NOT_NULL       # 更新策略：仅非 NULL 字段
-      insert-strategy: NOT_NULL       # 插入策略：仅非 NULL 字段
-      where-strategy: NOT_NULL        # WHERE 策略：仅非 NULL 条件
+      id-type: ASSIGN_ID # 主键策略：雪花算法
+      logic-delete-field: deleted # 逻辑删除字段
+      logic-delete-value: 1 # 删除值
+      logic-not-delete-value: 0 # 未删除值
+      table-underline: true # 表名驼峰转下划线
+      update-strategy: NOT_NULL # 更新策略：仅非 NULL 字段
+      insert-strategy: NOT_NULL # 插入策略：仅非 NULL 字段
+      where-strategy: NOT_NULL # WHERE 策略：仅非 NULL 条件
   # 配置扫描
   mapper-locations: classpath*:mapper/**/*.xml
   type-aliases-package: com.example.entity
@@ -2062,23 +2062,23 @@ mybatis-plus:
   configuration:
     log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
     map-underscore-to-camel-case: true
-    cache-enabled: false              # 默认关闭二级缓存
-    call-setters-on-nulls: false      # 不映射 NULL 值
+    cache-enabled: false # 默认关闭二级缓存
+    call-setters-on-nulls: false # 不映射 NULL 值
     jdbc-type-for-null: NULL
 ```
 
 ### 开发规范
 
-| 规范项 | 推荐做法 | 避免做法 |
-|--------|----------|----------|
-| 条件构造 | 优先使用 `LambdaQueryWrapper` | 避免字符串硬编码字段名 |
-| 分页查询 | 始终设置 `maxLimit` 防止大分页 | 不限制 pageSize |
-| 批量操作 | 控制 `batchSize` 为 500-1000 | 一次提交过多数据 |
-| 逻辑删除 | 统一使用 `@TableLogic` | 手动写 UPDATE 标记删除 |
-| 多租户 | 使用 `TenantLineInnerInterceptor` | 每个查询手动拼接 tenant_id |
-| 更新操作 | 使用 `UpdateWrapper` 精确更新 | 全量更新所有字段 |
-| 连表查询 | 简单连表用 MPJ，复杂用 XML | 所有查询都用 MPJ |
-| 插件注册 | 注意拦截器优先级顺序 | 随意添加不排序 |
+| 规范项   | 推荐做法                          | 避免做法                   |
+| -------- | --------------------------------- | -------------------------- |
+| 条件构造 | 优先使用 `LambdaQueryWrapper`     | 避免字符串硬编码字段名     |
+| 分页查询 | 始终设置 `maxLimit` 防止大分页    | 不限制 pageSize            |
+| 批量操作 | 控制 `batchSize` 为 500-1000      | 一次提交过多数据           |
+| 逻辑删除 | 统一使用 `@TableLogic`            | 手动写 UPDATE 标记删除     |
+| 多租户   | 使用 `TenantLineInnerInterceptor` | 每个查询手动拼接 tenant_id |
+| 更新操作 | 使用 `UpdateWrapper` 精确更新     | 全量更新所有字段           |
+| 连表查询 | 简单连表用 MPJ，复杂用 XML        | 所有查询都用 MPJ           |
+| 插件注册 | 注意拦截器优先级顺序              | 随意添加不排序             |
 
 ### 性能优化建议
 
@@ -2095,15 +2095,15 @@ graph TB
 
 ### 从 MyBatis 迁移到 MyBatis-Plus 指南
 
-| 迁移步骤 | 操作 | 注意事项 |
-|----------|------|----------|
-| 1. 替换依赖 | 将 `mybatis-spring-boot-starter` 替换为 `mybatis-plus-boot-starter` | 版本兼容性检查 |
-| 2. 修改 Mapper | 继承 `BaseMapper<T>` 接口 | 保留自定义 XML 方法 |
-| 3. 修改 Entity | 添加 `@TableName`、`@TableId`、`@TableField` 注解 | 字段映射检查 |
-| 4. 配置拦截器 | 添加 `MybatisPlusInterceptor` Bean | 分页、乐观锁等 |
-| 5. 替换分页逻辑 | 使用 `Page<T>` 替换手动分页 | SQL 中移除 LIMIT 子句 |
-| 6. 添加逻辑删除 | 添加 `deleted` 字段 + `@TableLogic` | 历史数据迁移 |
-| 7. 逐步替换 | 单表 CRUD 逐步替换为 BaseMapper 方法 | 保留复杂查询的 XML |
+| 迁移步骤        | 操作                                                                | 注意事项              |
+| --------------- | ------------------------------------------------------------------- | --------------------- |
+| 1. 替换依赖     | 将 `mybatis-spring-boot-starter` 替换为 `mybatis-plus-boot-starter` | 版本兼容性检查        |
+| 2. 修改 Mapper  | 继承 `BaseMapper<T>` 接口                                           | 保留自定义 XML 方法   |
+| 3. 修改 Entity  | 添加 `@TableName`、`@TableId`、`@TableField` 注解                   | 字段映射检查          |
+| 4. 配置拦截器   | 添加 `MybatisPlusInterceptor` Bean                                  | 分页、乐观锁等        |
+| 5. 替换分页逻辑 | 使用 `Page<T>` 替换手动分页                                         | SQL 中移除 LIMIT 子句 |
+| 6. 添加逻辑删除 | 添加 `deleted` 字段 + `@TableLogic`                                 | 历史数据迁移          |
+| 7. 逐步替换     | 单表 CRUD 逐步替换为 BaseMapper 方法                                | 保留复杂查询的 XML    |
 
 ```java
 // 迁移前后对比
@@ -2156,46 +2156,46 @@ src/main/java/com/example/
 
 ### 核心依赖版本对照
 
-| 组件 | 推荐版本 | 说明 |
-|------|----------|------|
-| mybatis-plus-boot-starter | 3.5.5 | 核心启动器 |
-| mybatis-plus-generator | 3.5.5 | 代码生成器 |
-| dynamic-datasource | 4.3.1 | 多数据源 |
-| mybatis-plus-join | 1.4.5 | 连表查询插件 |
-| MySQL Connector | 8.0.33 | 数据库驱动 |
-| HikariCP | 随 Spring Boot 管理 | 连接池 |
-| Freemarker / Velocity | 按需 | 模板引擎 |
+| 组件                      | 推荐版本            | 说明         |
+| ------------------------- | ------------------- | ------------ |
+| mybatis-plus-boot-starter | 3.5.5               | 核心启动器   |
+| mybatis-plus-generator    | 3.5.5               | 代码生成器   |
+| dynamic-datasource        | 4.3.1               | 多数据源     |
+| mybatis-plus-join         | 1.4.5               | 连表查询插件 |
+| MySQL Connector           | 8.0.33              | 数据库驱动   |
+| HikariCP                  | 随 Spring Boot 管理 | 连接池       |
+| Freemarker / Velocity     | 按需                | 模板引擎     |
 
 ### 核心类路径速查
 
-| 功能 | 核心类 | 包路径 |
-|------|--------|--------|
-| Mapper 基类 | `BaseMapper<T>` | `com.baomidou.mybatisplus.core.mapper` |
-| Service 基类 | `ServiceImpl<M, T>` | `com.baomidou.mybatisplus.extension.service.impl` |
-| 查询构造器 | `LambdaQueryWrapper<T>` | `com.baomidou.mybatisplus.core.conditions.query` |
-| 更新构造器 | `LambdaUpdateWrapper<T>` | `com.baomidou.mybatisplus.core.conditions.update` |
-| 分页对象 | `Page<T>` | `com.baomidou.mybatisplus.extension.plugins.pagination` |
-| 拦截器链 | `MybatisPlusInterceptor` | `com.baomidou.mybatisplus.extension.plugins` |
-| 自动填充 | `MetaObjectHandler` | `com.baomidou.mybatisplus.core.handlers` |
-| 代码生成器 | `FastAutoGenerator` | `com.baomidou.mybatisplus.generator` |
-| 主键策略 | `IdType` | `com.baomidou.mybatisplus.annotation` |
-| 填充策略 | `FieldFill` | `com.baomidou.mybatisplus.annotation` |
-| 逻辑删除 | `@TableLogic` | `com.baomidou.mybatisplus.annotation` |
-| 乐观锁 | `@Version` | `com.baomidou.mybatisplus.annotation` |
-| 数据源切换 | `@DS` | `com.baomidou.dynamic.datasource.annotation` |
-| 拦截器忽略 | `@InterceptorIgnore` | `com.baomidou.mybatisplus.annotation` |
+| 功能         | 核心类                   | 包路径                                                  |
+| ------------ | ------------------------ | ------------------------------------------------------- |
+| Mapper 基类  | `BaseMapper<T>`          | `com.baomidou.mybatisplus.core.mapper`                  |
+| Service 基类 | `ServiceImpl<M, T>`      | `com.baomidou.mybatisplus.extension.service.impl`       |
+| 查询构造器   | `LambdaQueryWrapper<T>`  | `com.baomidou.mybatisplus.core.conditions.query`        |
+| 更新构造器   | `LambdaUpdateWrapper<T>` | `com.baomidou.mybatisplus.core.conditions.update`       |
+| 分页对象     | `Page<T>`                | `com.baomidou.mybatisplus.extension.plugins.pagination` |
+| 拦截器链     | `MybatisPlusInterceptor` | `com.baomidou.mybatisplus.extension.plugins`            |
+| 自动填充     | `MetaObjectHandler`      | `com.baomidou.mybatisplus.core.handlers`                |
+| 代码生成器   | `FastAutoGenerator`      | `com.baomidou.mybatisplus.generator`                    |
+| 主键策略     | `IdType`                 | `com.baomidou.mybatisplus.annotation`                   |
+| 填充策略     | `FieldFill`              | `com.baomidou.mybatisplus.annotation`                   |
+| 逻辑删除     | `@TableLogic`            | `com.baomidou.mybatisplus.annotation`                   |
+| 乐观锁       | `@Version`               | `com.baomidou.mybatisplus.annotation`                   |
+| 数据源切换   | `@DS`                    | `com.baomidou.dynamic.datasource.annotation`            |
+| 拦截器忽略   | `@InterceptorIgnore`     | `com.baomidou.mybatisplus.annotation`                   |
 
 ### 安全最佳实践
 
-| 安全项 | 推荐做法 | 说明 |
-|--------|----------|------|
-| SQL 注入防护 | 使用 LambdaQueryWrapper 参数化查询 | 避免 `apply()` 拼接用户输入 |
-| 全表操作防护 | 始终启用 BlockAttackInnerInterceptor | 防止误操作导致数据丢失 |
-| 敏感字段加密 | 使用自定义 TypeHandler 加密存储 | 手机号、身份证等个人信息 |
-| 数据源密码 | 使用配置中心或加密存储 | 避免明文写在配置文件中 |
-| 租户数据隔离 | 使用 TenantLineInnerInterceptor | 确保多租户数据严格隔离 |
-| 乐观锁 | 关键业务表添加 @Version 字段 | 防止并发更新覆盖 |
-| SQL 日志 | 生产环境关闭 SQL 日志或脱敏 | 避免敏感数据泄露到日志 |
+| 安全项       | 推荐做法                             | 说明                        |
+| ------------ | ------------------------------------ | --------------------------- |
+| SQL 注入防护 | 使用 LambdaQueryWrapper 参数化查询   | 避免 `apply()` 拼接用户输入 |
+| 全表操作防护 | 始终启用 BlockAttackInnerInterceptor | 防止误操作导致数据丢失      |
+| 敏感字段加密 | 使用自定义 TypeHandler 加密存储      | 手机号、身份证等个人信息    |
+| 数据源密码   | 使用配置中心或加密存储               | 避免明文写在配置文件中      |
+| 租户数据隔离 | 使用 TenantLineInnerInterceptor      | 确保多租户数据严格隔离      |
+| 乐观锁       | 关键业务表添加 @Version 字段         | 防止并发更新覆盖            |
+| SQL 日志     | 生产环境关闭 SQL 日志或脱敏          | 避免敏感数据泄露到日志      |
 
 ### 测试建议
 

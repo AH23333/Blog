@@ -7,7 +7,7 @@ lang: zh
 redacted: false
 ---
 
-# Java后端生态全景 · 从请求到响应的全链路深度剖析
+# Java 后端生态全景 · 从请求到响应的全链路深度剖析
 
 > **目标：** 用一个 #[C|典型电商秒杀系统] 的完整请求链路，串联 #[C|Spring Boot]、#[G|Spring Cloud]、#[Y|MySQL]、#[R|Redis]、#[C|MyBatis-Plus]、#[G|Nginx]、#[Y|Docker/K8s]、#[R|Kafka/RabbitMQ]、#[C|Elasticsearch]、#[G|Netty]、#[Y|JVM]、#[R|Prometheus/Grafana] 等 Java 后端生态的全部核心组件。
 > 每一阶段都标注了内部架构、核心数据结构、关键机制与源码路径，体现"组件协同、全栈贯通"的工程全景。
@@ -104,7 +104,7 @@ graph TB
 以下十七场景覆盖 #[R|Java 后端工程师] 全部核心技术栈。每个场景中标注了 `[SB]` Spring Boot、`[SC]` Spring Cloud、`[SQL]` MySQL/PostgreSQL、`[KV]` Redis、`[ORM]` MyBatis/MyBatis-Plus、`[MQ]` Kafka/RabbitMQ、`[SE]` Elasticsearch、`[NET]` Netty/Nginx、`[INF]` Docker/K8s、`[MON]` Prometheus/Grafana、`[JVM]` JVM，便于定位所属技术领域。建议按照请求链路顺序阅读——从接入层到数据层再到 JVM 层，形成完整的端到端认知。
 :::
 
-***
+---
 
 ## 场景一：Nginx 接入层 · 反向代理与负载均衡
 
@@ -122,14 +122,14 @@ graph LR
     F --> G["上游转发<br/>Spring Cloud Gateway"]
 ```
 
-| 阶段 | 组件 | 核心知识点 | 关键机制 |
-|------|------|-----------|---------|
-| DNS 解析 | #[C|NET] DNS | A 记录/CNAME | 智能解析返回最近节点 |
-| 连接建立 | #[C|NET] TCP | 三次握手/SYN Cookie | backlog 队列、tcp_tw_reuse |
-| SSL 终结 | #[C|NET] OpenSSL | TLS 1.3/证书链 | Session Ticket 复用 |
-| 限流过滤 | #[C|Nginx] limit_req | 令牌桶算法 | 突发流量 burst 处理 |
-| 负载均衡 | #[C|Nginx] upstream | 加权轮询/一致性哈希 | 健康检查 passive/active |
-| 反向代理 | #[C|Nginx] proxy_pass | HTTP/1.1 连接池 | keepalive 长连接复用 |
+| 阶段     | 组件 | 核心知识点        | 关键机制            |
+| -------- | ---- | ----------------- | ------------------- | -------------------------- |
+| DNS 解析 | #[C  | NET] DNS          | A 记录/CNAME        | 智能解析返回最近节点       |
+| 连接建立 | #[C  | NET] TCP          | 三次握手/SYN Cookie | backlog 队列、tcp_tw_reuse |
+| SSL 终结 | #[C  | NET] OpenSSL      | TLS 1.3/证书链      | Session Ticket 复用        |
+| 限流过滤 | #[C  | Nginx] limit_req  | 令牌桶算法          | 突发流量 burst 处理        |
+| 负载均衡 | #[C  | Nginx] upstream   | 加权轮询/一致性哈希 | 健康检查 passive/active    |
+| 反向代理 | #[C  | Nginx] proxy_pass | HTTP/1.1 连接池     | keepalive 长连接复用       |
 
 ## 1.1 Nginx 接入全链路时序图
 
@@ -203,18 +203,18 @@ sequenceDiagram
 
 ## 1.2 Nginx 配置关键参数详解
 
-| 参数 | 推荐值 | 说明 |
-|------|--------|------|
-| worker_processes | auto | Worker 进程数等于 CPU 核数 |
-| worker_connections | 65535 | 每个 Worker 最大连接数 |
-| worker_rlimit_nofile | 65535 | Worker 进程最大文件描述符 |
-| multi_accept | on | 一次 accept 所有新连接 |
-| sendfile | on | 零拷贝文件传输 |
-| tcp_nopush | on | 在 sendfile 模式下合并数据包 |
-| tcp_nodelay | on | 禁用 Nagle 算法，实时传输 |
-| keepalive_timeout | 65 | 长连接超时时间 |
-| keepalive_requests | 1000 | 单个长连接最大请求数 |
-| client_max_body_size | 10m | 请求体最大大小 |
+| 参数                 | 推荐值 | 说明                         |
+| -------------------- | ------ | ---------------------------- |
+| worker_processes     | auto   | Worker 进程数等于 CPU 核数   |
+| worker_connections   | 65535  | 每个 Worker 最大连接数       |
+| worker_rlimit_nofile | 65535  | Worker 进程最大文件描述符    |
+| multi_accept         | on     | 一次 accept 所有新连接       |
+| sendfile             | on     | 零拷贝文件传输               |
+| tcp_nopush           | on     | 在 sendfile 模式下合并数据包 |
+| tcp_nodelay          | on     | 禁用 Nagle 算法，实时传输    |
+| keepalive_timeout    | 65     | 长连接超时时间               |
+| keepalive_requests   | 1000   | 单个长连接最大请求数         |
+| client_max_body_size | 10m    | 请求体最大大小               |
 
 ## 1.3 Nginx 限流算法对比
 
@@ -236,13 +236,13 @@ graph LR
     end
 ```
 
-| 对比维度 | 令牌桶 | 漏桶 |
-|----------|--------|------|
-| 突发流量 | #[G|支持] burst 参数 | #[R|不支持] 严格平滑 |
-| 流量整形 | 允许突发 | 强制平滑 |
-| 适用场景 | 秒杀场景（允许突发） | API 速率限制 |
-| 实现复杂度 | 中等 | 简单 |
-| Nginx 模块 | limit_req | limit_req（可配置） |
+| 对比维度   | 令牌桶               | 漏桶                |
+| ---------- | -------------------- | ------------------- | --- | ---------------- |
+| 突发流量   | #[G                  | 支持] burst 参数    | #[R | 不支持] 严格平滑 |
+| 流量整形   | 允许突发             | 强制平滑            |
+| 适用场景   | 秒杀场景（允许突发） | API 速率限制        |
+| 实现复杂度 | 中等                 | 简单                |
+| Nginx 模块 | limit_req            | limit_req（可配置） |
 
 :::warning
 **Nginx 性能调优易错点：** `worker_processes` 设置过多会导致 CPU 上下文切换开销增大；`worker_connections` 受限于系统 `ulimit -n` 文件描述符上限；`keepalive_timeout` 过长会占用连接资源导致新连接无法建立。#[R|worker_connections × worker_processes = 最大并发连接数]，需确保不超过系统限制。
@@ -252,7 +252,7 @@ graph LR
 **Nginx 在秒杀场景的核心价值：** 作为第一道防线，Nginx 承担了 SSL 终结、限流、负载均衡、静态资源分离四大关键职责。通过 `limit_req` 模块在网关层就拒绝超量请求，保护后端服务不被流量冲垮。#[C|limit_req_zone 共享内存 zone] 需要在所有 Worker 之间共享计数值，因此必须使用共享内存而非进程本地内存。
 :::
 
-***
+---
 
 ## 场景二：Spring Cloud 微服务治理 · 网关 + 注册中心 + 配置中心
 
@@ -271,15 +271,15 @@ graph LR
     G --> H["Seckill-Service<br/>业务处理"]
 ```
 
-| 阶段 | 组件 | 核心知识点 | 关键机制 |
-|------|------|-----------|---------|
-| 路由断言 | #[C|SCG] Predicate | Path/Header/Query 匹配 | 路由定位器 RouteLocator |
-| 过滤器链 | #[C|SCG] Filter | 全局/局部过滤器 | GatewayFilter + GlobalFilter |
-| 服务发现 | #[C|Nacos] 注册中心 | AP 协议 + Distro | 临时实例心跳 + 持久实例 Raft |
-| 负载均衡 | #[C|SCL] LoadBalancer | 轮询/随机/加权 | ServiceInstanceListSupplier |
-| 熔断降级 | #[C|Sentinel] | 滑动窗口 + 令牌桶 | 资源规则 + 降级策略 |
-| 配置中心 | #[C|Nacos] Config | 长轮询 + MD5 | @RefreshScope 动态刷新 |
-| 远程调用 | #[C|OpenFeign] | 动态代理 + 编解码 | Contract 协议解析 |
+| 阶段     | 组件 | 核心知识点        | 关键机制               |
+| -------- | ---- | ----------------- | ---------------------- | ---------------------------- |
+| 路由断言 | #[C  | SCG] Predicate    | Path/Header/Query 匹配 | 路由定位器 RouteLocator      |
+| 过滤器链 | #[C  | SCG] Filter       | 全局/局部过滤器        | GatewayFilter + GlobalFilter |
+| 服务发现 | #[C  | Nacos] 注册中心   | AP 协议 + Distro       | 临时实例心跳 + 持久实例 Raft |
+| 负载均衡 | #[C  | SCL] LoadBalancer | 轮询/随机/加权         | ServiceInstanceListSupplier  |
+| 熔断降级 | #[C  | Sentinel]         | 滑动窗口 + 令牌桶      | 资源规则 + 降级策略          |
+| 配置中心 | #[C  | Nacos] Config     | 长轮询 + MD5           | @RefreshScope 动态刷新       |
+| 远程调用 | #[C  | OpenFeign]        | 动态代理 + 编解码      | Contract 协议解析            |
 
 ## 2.1 微服务网关全链路时序图
 
@@ -403,12 +403,12 @@ graph TB
     end
 ```
 
-| 规则类型 | 说明 | 配置示例 |
-|----------|------|----------|
-| FlowRule | 流控规则 | QPS=100，快速失败 |
-| DegradeRule | 降级规则 | RT>500ms，10s 内降级 |
-| SystemRule | 系统保护 | LOAD>5.0，触发保护 |
-| AuthorityRule | 授权规则 | 白名单 IP 放行 |
+| 规则类型      | 说明     | 配置示例              |
+| ------------- | -------- | --------------------- |
+| FlowRule      | 流控规则 | QPS=100，快速失败     |
+| DegradeRule   | 降级规则 | RT>500ms，10s 内降级  |
+| SystemRule    | 系统保护 | LOAD>5.0，触发保护    |
+| AuthorityRule | 授权规则 | 白名单 IP 放行        |
 | ParamFlowRule | 热点规则 | 参数值=1001 时 QPS=10 |
 
 :::warning
@@ -419,7 +419,7 @@ graph TB
 **Spring Cloud Gateway 与 Zuul 对比：** Gateway 基于 Spring WebFlux 和 Netty，使用非阻塞 I/O，线程开销小，适合高并发场景。Zuul 1.x 基于 Servlet 阻塞模型，性能较低。Zuul 2.x 也引入了 Netty 但生态不如 Gateway 成熟。新项目建议使用 Gateway。
 :::
 
-***
+---
 
 ## 场景三：MySQL 数据层 · InnoDB 存储引擎深度剖析
 
@@ -440,16 +440,16 @@ graph LR
     I --> J["事务提交<br/>返回结果"]
 ```
 
-| 阶段 | 组件 | 核心知识点 | 关键机制 |
-|------|------|-----------|---------|
-| SQL 解析 | #[C|SQL] 解析器 | 词法分析/语法分析 | AST 查询树 |
-| 查询优化 | #[C|SQL] 优化器 | 代价估算/索引选择 | Cardinality 基数统计 |
-| 索引查找 | #[C|SQL] B+ 树 | 聚簇索引/二级索引 | 回表查询 |
-| 事务 MVCC | #[C|SQL] InnoDB | ReadView/Undo Log | 快照读/当前读 |
-| 行锁机制 | #[C|SQL] InnoDB | Record/Gap/Next-Key Lock | 锁升级/死锁检测 |
-| Buffer Pool | #[C|SQL] InnoDB | LRU 链表/Flush 链表 | 预读/自适应哈希 |
-| Redo Log | #[C|SQL] InnoDB | WAL 机制 | 崩溃恢复 |
-| Binlog | #[C|SQL] Server | 两阶段提交 | 主从复制 |
+| 阶段        | 组件 | 核心知识点  | 关键机制                 |
+| ----------- | ---- | ----------- | ------------------------ | -------------------- |
+| SQL 解析    | #[C  | SQL] 解析器 | 词法分析/语法分析        | AST 查询树           |
+| 查询优化    | #[C  | SQL] 优化器 | 代价估算/索引选择        | Cardinality 基数统计 |
+| 索引查找    | #[C  | SQL] B+ 树  | 聚簇索引/二级索引        | 回表查询             |
+| 事务 MVCC   | #[C  | SQL] InnoDB | ReadView/Undo Log        | 快照读/当前读        |
+| 行锁机制    | #[C  | SQL] InnoDB | Record/Gap/Next-Key Lock | 锁升级/死锁检测      |
+| Buffer Pool | #[C  | SQL] InnoDB | LRU 链表/Flush 链表      | 预读/自适应哈希      |
+| Redo Log    | #[C  | SQL] InnoDB | WAL 机制                 | 崩溃恢复             |
+| Binlog      | #[C  | SQL] Server | 两阶段提交               | 主从复制             |
 
 ## 3.1 InnoDB 更新语句全链路时序图
 
@@ -555,20 +555,20 @@ graph TB
     NEXTKEY --> INSERT_INT
 ```
 
-| 锁类型 | 锁定范围 | 冲突关系 | 适用场景 |
-|--------|----------|----------|----------|
-| Record Lock | 单行记录 | 读锁兼容，写锁互斥 | 等值查询命中唯一索引 |
-| Gap Lock | 索引记录间隙 | 仅排斥插入操作 | 防止幻读 |
-| Next-Key Lock | 记录 + 前间隙 | 默认 RR 隔离级别 | 范围查询 |
-| Insert Intention Lock | 间隙 | 相互兼容 | 多事务并发插入不同行 |
-| AUTO-INC Lock | 表级 | 互斥 | 自增主键插入 |
+| 锁类型                | 锁定范围      | 冲突关系           | 适用场景             |
+| --------------------- | ------------- | ------------------ | -------------------- |
+| Record Lock           | 单行记录      | 读锁兼容，写锁互斥 | 等值查询命中唯一索引 |
+| Gap Lock              | 索引记录间隙  | 仅排斥插入操作     | 防止幻读             |
+| Next-Key Lock         | 记录 + 前间隙 | 默认 RR 隔离级别   | 范围查询             |
+| Insert Intention Lock | 间隙          | 相互兼容           | 多事务并发插入不同行 |
+| AUTO-INC Lock         | 表级          | 互斥               | 自增主键插入         |
 
-| 隔离级别 | 脏读 | 不可重复读 | 幻读 | 加锁策略 |
-|----------|------|-----------|------|---------|
-| READ UNCOMMITTED | #[R|是] | #[R|是] | #[R|是] | 无锁 |
-| READ COMMITTED | #[G|否] | #[R|是] | #[R|是] | Record Lock |
-| REPEATABLE READ | #[G|否] | #[G|否] | #[G|部分] | Next-Key Lock |
-| SERIALIZABLE | #[G|否] | #[G|否] | #[G|否] | 全表锁 |
+| 隔离级别         | 脏读 | 不可重复读 | 幻读 | 加锁策略 |
+| ---------------- | ---- | ---------- | ---- | -------- | --- | ----- | ------------- |
+| READ UNCOMMITTED | #[R  | 是]        | #[R  | 是]      | #[R | 是]   | 无锁          |
+| READ COMMITTED   | #[G  | 否]        | #[R  | 是]      | #[R | 是]   | Record Lock   |
+| REPEATABLE READ  | #[G  | 否]        | #[G  | 否]      | #[G | 部分] | Next-Key Lock |
+| SERIALIZABLE     | #[G  | 否]        | #[G  | 否]      | #[G | 否]   | 全表锁        |
 
 ## 3.3 MySQL 索引优化实战
 
@@ -596,23 +596,23 @@ graph TD
     COV1 -.->|"无需回表"| CI1
 ```
 
-| 索引优化策略 | 说明 | 示例 |
-|-------------|------|------|
-| 最左前缀原则 | 联合索引从左到右匹配 | idx(a,b,c) → WHERE a=1 AND b=2 |
-| 覆盖索引 | 索引包含查询所需所有列 | CREATE INDEX idx ON t(a,b,c) |
-| 索引下推 ICP | 引擎层过滤，减少回表 | WHERE a LIKE '%x%' AND b=1 |
-| MRR 优化 | 多范围读取，排序后回表 | 减少随机 I/O |
-| 索引合并 | 多个索引的并集/交集 | index_merge 算法 |
+| 索引优化策略 | 说明                   | 示例                           |
+| ------------ | ---------------------- | ------------------------------ |
+| 最左前缀原则 | 联合索引从左到右匹配   | idx(a,b,c) → WHERE a=1 AND b=2 |
+| 覆盖索引     | 索引包含查询所需所有列 | CREATE INDEX idx ON t(a,b,c)   |
+| 索引下推 ICP | 引擎层过滤，减少回表   | WHERE a LIKE '%x%' AND b=1     |
+| MRR 优化     | 多范围读取，排序后回表 | 减少随机 I/O                   |
+| 索引合并     | 多个索引的并集/交集    | index_merge 算法               |
 
 :::warning
-**MySQL 死锁常见场景：** 两个事务以不同顺序更新相同行时容易发生死锁。例如：事务A 更新 id=1 再更新 id=2，事务B 更新 id=2 再更新 id=1。#[R|RR 隔离级别下 Gap Lock 容易引发死锁]，因为间隙锁之间不冲突但会阻塞插入。解决方案：统一加锁顺序、缩短事务时间、使用 `SELECT ... FOR UPDATE NOWAIT` 快速失败。
+**MySQL 死锁常见场景：** 两个事务以不同顺序更新相同行时容易发生死锁。例如：事务 A 更新 id=1 再更新 id=2，事务 B 更新 id=2 再更新 id=1。#[R|RR 隔离级别下 Gap Lock 容易引发死锁]，因为间隙锁之间不冲突但会阻塞插入。解决方案：统一加锁顺序、缩短事务时间、使用 `SELECT ... FOR UPDATE NOWAIT` 快速失败。
 :::
 
 :::important
 **秒杀扣减库存的正确姿势：** 使用 `UPDATE seckill_stock SET stock = stock - 1 WHERE item_id = ? AND stock > 0` 利用 MySQL 行锁实现原子扣减。避免先 SELECT 再 UPDATE 的竞态条件。InnoDB 在 UPDATE 时自动加行锁，WHERE 条件 `stock > 0` 确保不会超卖。#[C|行锁 + 条件过滤] 是秒杀场景最简洁可靠的方案。
 :::
 
-***
+---
 
 ## 场景四：Redis 缓存层 · 分布式锁与缓存策略
 
@@ -632,15 +632,15 @@ graph LR
     E --> H["发送 MQ 消息<br/>异步创建订单"]
 ```
 
-| 阶段 | 组件 | 核心知识点 | 关键机制 |
-|------|------|-----------|---------|
-| 布隆过滤器 | #[C|KV] RedisBloom | 位数组 + 多哈希 | 防止缓存穿透 |
-| 缓存查询 | #[C|KV] Redis | String/Hash 数据结构 | 单线程 + IO 多路复用 |
-| 分布式锁 | #[C|KV] Redis | SETNX + Lua 释放 | RedLock 算法 |
-| 原子扣减 | #[C|KV] Redis | Lua 脚本 | 原子性保证 |
-| 缓存策略 | #[C|KV] Redis | 旁路缓存/读写穿透 | 延迟双删 |
-| 持久化 | #[C|KV] Redis | RDB/AOF 混合 | 数据恢复 |
-| 高可用 | #[C|KV] Redis | 哨兵/集群 | 故障转移 |
+| 阶段       | 组件 | 核心知识点     | 关键机制             |
+| ---------- | ---- | -------------- | -------------------- | -------------------- |
+| 布隆过滤器 | #[C  | KV] RedisBloom | 位数组 + 多哈希      | 防止缓存穿透         |
+| 缓存查询   | #[C  | KV] Redis      | String/Hash 数据结构 | 单线程 + IO 多路复用 |
+| 分布式锁   | #[C  | KV] Redis      | SETNX + Lua 释放     | RedLock 算法         |
+| 原子扣减   | #[C  | KV] Redis      | Lua 脚本             | 原子性保证           |
+| 缓存策略   | #[C  | KV] Redis      | 旁路缓存/读写穿透    | 延迟双删             |
+| 持久化     | #[C  | KV] Redis      | RDB/AOF 混合         | 数据恢复             |
+| 高可用     | #[C  | KV] Redis      | 哨兵/集群            | 故障转移             |
 
 ## 4.1 Redis 缓存全链路时序图
 
@@ -728,13 +728,13 @@ graph TB
     end
 ```
 
-| 特性 | RDB | AOF | 混合持久化 |
-|------|-----|-----|-----------|
-| 文件大小 | 小（压缩） | 大（文本） | 中等 |
-| 恢复速度 | #[G|快] | #[R|慢] | #[G|快] |
-| 数据安全 | #[R|可能丢数据] | #[G|可配置] | #[G|高] |
-| 写入性能 | 不影响 | 影响（取决于 fsync） | 轻微影响 |
-| 适用场景 | 备份、灾难恢复 | 数据安全优先 | 生产环境推荐 |
+| 特性     | RDB            | AOF                  | 混合持久化   |
+| -------- | -------------- | -------------------- | ------------ | ------- | --- | --- |
+| 文件大小 | 小（压缩）     | 大（文本）           | 中等         |
+| 恢复速度 | #[G            | 快]                  | #[R          | 慢]     | #[G | 快] |
+| 数据安全 | #[R            | 可能丢数据]          | #[G          | 可配置] | #[G | 高] |
+| 写入性能 | 不影响         | 影响（取决于 fsync） | 轻微影响     |
+| 适用场景 | 备份、灾难恢复 | 数据安全优先         | 生产环境推荐 |
 
 ## 4.3 Redis 集群模式
 
@@ -760,14 +760,14 @@ graph TB
     end
 ```
 
-| 对比维度 | 哨兵模式 | 集群模式 |
-|----------|----------|----------|
-| 数据分片 | #[R|不支持] | #[G|支持] 16384 个 Slot |
-| 高可用 | 自动故障转移 | 自动故障转移 + 数据迁移 |
-| 扩展性 | 垂直扩展 | 水平扩展 |
-| 客户端 | 简单 | 需支持 MOVED/ASK 重定向 |
-| 槽位迁移 | 不支持 | 在线迁移 |
-| 适用场景 | 数据量 < 机器内存 | 大数据量 |
+| 对比维度 | 哨兵模式          | 集群模式                |
+| -------- | ----------------- | ----------------------- | --- | ------------------- |
+| 数据分片 | #[R               | 不支持]                 | #[G | 支持] 16384 个 Slot |
+| 高可用   | 自动故障转移      | 自动故障转移 + 数据迁移 |
+| 扩展性   | 垂直扩展          | 水平扩展                |
+| 客户端   | 简单              | 需支持 MOVED/ASK 重定向 |
+| 槽位迁移 | 不支持            | 在线迁移                |
+| 适用场景 | 数据量 < 机器内存 | 大数据量                |
 
 :::warning
 **Redis 缓存三大问题：** #[R|缓存穿透]：查询不存在的数据 → 布隆过滤器；#[R|缓存击穿]：热点 key 过期 → 分布式锁 + 互斥更新；#[R|缓存雪崩]：大量 key 同时过期 → 过期时间加随机值、多级缓存、限流降级。三者场景不同，解决方案也不同，切勿混淆。
@@ -777,7 +777,7 @@ graph TB
 **Redis 在秒杀场景的核心价值：** 利用 Redis 单线程模型和 Lua 脚本原子性，在内存中完成库存预扣减，QPS 可达 10 万+/秒，远超 MySQL 的几千 QPS。扣减成功后再异步写入 MySQL，实现"#[C|Redis 抗量 + MySQL 兜底]"的架构。#[C|库存预热] 是关键——活动开始前将库存数据加载到 Redis，避免冷启动。
 :::
 
-***
+---
 
 ## 场景五：MyBatis-Plus ORM 层 · 从 Mapper 代理到 SQL 执行
 
@@ -797,16 +797,16 @@ graph LR
     H --> I["ResultSetHandler<br/>结果映射"]
 ```
 
-| 阶段 | 组件 | 核心知识点 | 关键机制 |
-|------|------|-----------|---------|
-| Mapper 代理 | #[C|ORM] MyBatis | JDK 动态代理 | MapperProxyFactory |
-| SQL 获取 | #[C|ORM] MyBatis | MappedStatement | XML/注解解析 |
-| 执行器 | #[C|ORM] MyBatis | Executor 接口 | 一级/二级缓存 |
-| SQL 构建 | #[C|ORM] MyBatis | StatementHandler | 预处理/参数化 |
-| 插件拦截 | #[C|ORM] MyBatis | 责任链模式 | InterceptorChain |
-| 分页插件 | #[C|ORM] MP | PaginationInnerInterceptor | 物理分页 + 计数 |
-| 乐观锁 | #[C|ORM] MP | @Version | 版本号 CAS 更新 |
-| 代码生成 | #[C|ORM] MP | AutoGenerator | 模板引擎 FreeMarker |
+| 阶段        | 组件 | 核心知识点   | 关键机制                   |
+| ----------- | ---- | ------------ | -------------------------- | ------------------- |
+| Mapper 代理 | #[C  | ORM] MyBatis | JDK 动态代理               | MapperProxyFactory  |
+| SQL 获取    | #[C  | ORM] MyBatis | MappedStatement            | XML/注解解析        |
+| 执行器      | #[C  | ORM] MyBatis | Executor 接口              | 一级/二级缓存       |
+| SQL 构建    | #[C  | ORM] MyBatis | StatementHandler           | 预处理/参数化       |
+| 插件拦截    | #[C  | ORM] MyBatis | 责任链模式                 | InterceptorChain    |
+| 分页插件    | #[C  | ORM] MP      | PaginationInnerInterceptor | 物理分页 + 计数     |
+| 乐观锁      | #[C  | ORM] MP      | @Version                   | 版本号 CAS 更新     |
+| 代码生成    | #[C  | ORM] MP      | AutoGenerator              | 模板引擎 FreeMarker |
 
 ## 5.1 MyBatis-Plus 全链路时序图
 
@@ -884,11 +884,11 @@ graph TB
     end
 ```
 
-| 拦截器接口 | 可拦截对象 | 典型插件 |
-|-----------|-----------|---------|
+| 拦截器接口    | 可拦截对象                                                  | 典型插件           |
+| ------------- | ----------------------------------------------------------- | ------------------ |
 | `Interceptor` | Executor/StatementHandler/ParameterHandler/ResultSetHandler | 分页/乐观锁/多租户 |
-| `@Intercepts` | 声明拦截位置和方法 | 指定 signature |
-| `@Signature` | type + method + args | 精确匹配 |
+| `@Intercepts` | 声明拦截位置和方法                                          | 指定 signature     |
+| `@Signature`  | type + method + args                                        | 精确匹配           |
 
 ## 5.3 MyBatis-Plus 分页插件原理
 
@@ -914,7 +914,7 @@ flowchart TD
 **MyBatis-Plus 与 MyBatis 的关系：** MyBatis-Plus 是对 MyBatis 的增强而非替代，完全兼容 MyBatis 原生功能。它通过拦截 Executor 和 StatementHandler 实现分页、乐观锁、多租户等增强功能。核心增强点：BaseMapper 通用 CRUD、条件构造器 QueryWrapper、分页插件、代码生成器、自动填充。
 :::
 
-***
+---
 
 ## 场景六：Kafka + RabbitMQ 消息中间件 · 异步削峰与可靠投递
 
@@ -931,13 +931,13 @@ graph LR
     E --> F["回滚库存<br/>Redis + MySQL"]
 ```
 
-| 阶段 | 组件 | 核心知识点 | 关键机制 |
-|------|------|-----------|---------|
-| 异步削峰 | #[C|MQ] Kafka | 分区 + 消费者组 | ISR + HW 高水位 |
-| 消息持久化 | #[C|MQ] Kafka | 分段日志 + 索引 | 零拷贝 sendfile |
-| 延迟投递 | #[C|MQ] RabbitMQ | DLX + TTL | 死信队列 |
-| 可靠投递 | #[C|MQ] RabbitMQ | 确认 + 重试 | Publisher Confirm |
-| 消息幂等 | #[C|MQ] 通用 | 唯一 ID 去重 | Redis SETNX 去重表 |
+| 阶段       | 组件 | 核心知识点   | 关键机制        |
+| ---------- | ---- | ------------ | --------------- | ------------------ |
+| 异步削峰   | #[C  | MQ] Kafka    | 分区 + 消费者组 | ISR + HW 高水位    |
+| 消息持久化 | #[C  | MQ] Kafka    | 分段日志 + 索引 | 零拷贝 sendfile    |
+| 延迟投递   | #[C  | MQ] RabbitMQ | DLX + TTL       | 死信队列           |
+| 可靠投递   | #[C  | MQ] RabbitMQ | 确认 + 重试     | Publisher Confirm  |
+| 消息幂等   | #[C  | MQ] 通用     | 唯一 ID 去重    | Redis SETNX 去重表 |
 
 ## 6.1 Kafka 异步削峰全链路时序图
 
@@ -1021,18 +1021,18 @@ sequenceDiagram
 
 ## 6.3 Kafka vs RabbitMQ 对比
 
-| 对比维度 | Kafka | RabbitMQ |
-|----------|-------|----------|
-| 设计目标 | 高吞吐、日志流 | 可靠投递、灵活路由 |
-| 吞吐量 | #[G|极高] 百万级/秒 | #[Y|中等] 万级/秒 |
-| 延迟 | 毫秒级 | 微秒级 |
-| 消息持久化 | 磁盘顺序写 | 内存 + 磁盘 |
-| 消费模式 | Pull 拉取 | Push 推送 |
-| 消息回溯 | #[G|支持] 按 offset 回放 | #[R|不支持] |
-| 延迟队列 | #[R|不支持] | #[G|支持] DLX + TTL |
-| 路由能力 | 简单 Topic | 丰富 Exchange + Binding |
-| 协议 | 自定义 TCP 协议 | AMQP 0-9-1 |
-| 适用场景 | 日志收集、流处理、削峰 | 业务消息、延迟任务、RPC |
+| 对比维度   | Kafka                  | RabbitMQ                |
+| ---------- | ---------------------- | ----------------------- | --- | --------------- |
+| 设计目标   | 高吞吐、日志流         | 可靠投递、灵活路由      |
+| 吞吐量     | #[G                    | 极高] 百万级/秒         | #[Y | 中等] 万级/秒   |
+| 延迟       | 毫秒级                 | 微秒级                  |
+| 消息持久化 | 磁盘顺序写             | 内存 + 磁盘             |
+| 消费模式   | Pull 拉取              | Push 推送               |
+| 消息回溯   | #[G                    | 支持] 按 offset 回放    | #[R | 不支持]         |
+| 延迟队列   | #[R                    | 不支持]                 | #[G | 支持] DLX + TTL |
+| 路由能力   | 简单 Topic             | 丰富 Exchange + Binding |
+| 协议       | 自定义 TCP 协议        | AMQP 0-9-1              |
+| 适用场景   | 日志收集、流处理、削峰 | 业务消息、延迟任务、RPC |
 
 :::warning
 **Kafka 消息丢失的三个场景：** #[R|Producer 端]：acks=0 不等待确认；#[R|Broker 端]：ISR 副本数不足，Leader 宕机后数据丢失；#[R|Consumer 端]：先提交 offset 再处理消息，处理失败导致消息丢失。解决方案：acks=all、min.insync.replicas=2、先处理后提交 offset。
@@ -1042,7 +1042,7 @@ sequenceDiagram
 **Kafka 精确一次语义（Exactly-Once）：** Kafka 0.11+ 支持幂等 Producer（enable.idempotence=true）和事务 Producer。幂等 Producer 通过 ProducerID + SequenceNumber 去重；事务 Producer 通过 `initTransactions()` + `beginTransaction()` + `commitTransaction()` 实现跨分区原子写入。结合 `isolation.level=read_committed` 实现端到端的精确一次语义。
 :::
 
-***
+---
 
 ## 场景七：Docker + Kubernetes 基础设施 · 容器化与编排
 
@@ -1061,17 +1061,17 @@ graph LR
     G --> H["Prometheus<br/>监控 + 告警"]
 ```
 
-| 阶段 | 组件 | 核心知识点 | 关键机制 |
-|------|------|-----------|---------|
-| 镜像构建 | #[C|INF] Docker | Dockerfile + 分层 | UnionFS + 写时复制 |
-| 镜像仓库 | #[C|INF] Registry | 镜像推送/拉取 | 分层存储 + 内容寻址 |
-| 容器运行 | #[C|INF] Docker | Namespace + Cgroup | 资源隔离 + 限制 |
-| 部署管理 | #[C|INF] K8s | Deployment + ReplicaSet | 滚动更新 + 回滚 |
-| 服务发现 | #[C|INF] K8s | Service + Endpoints | kube-proxy iptables/IPVS |
-| 流量入口 | #[C|INF] K8s | Ingress + Ingress Controller | Nginx/Traefik 实现 |
-| 自动伸缩 | #[C|INF] K8s | HPA + VPA | 资源指标 + 自定义指标 |
-| 配置管理 | #[C|INF] K8s | ConfigMap + Secret | 环境变量/挂载卷 |
-| 监控告警 | #[C|INF] Prometheus | 指标采集 + PromQL | AlertManager 告警路由 |
+| 阶段     | 组件 | 核心知识点      | 关键机制                     |
+| -------- | ---- | --------------- | ---------------------------- | ------------------------ |
+| 镜像构建 | #[C  | INF] Docker     | Dockerfile + 分层            | UnionFS + 写时复制       |
+| 镜像仓库 | #[C  | INF] Registry   | 镜像推送/拉取                | 分层存储 + 内容寻址      |
+| 容器运行 | #[C  | INF] Docker     | Namespace + Cgroup           | 资源隔离 + 限制          |
+| 部署管理 | #[C  | INF] K8s        | Deployment + ReplicaSet      | 滚动更新 + 回滚          |
+| 服务发现 | #[C  | INF] K8s        | Service + Endpoints          | kube-proxy iptables/IPVS |
+| 流量入口 | #[C  | INF] K8s        | Ingress + Ingress Controller | Nginx/Traefik 实现       |
+| 自动伸缩 | #[C  | INF] K8s        | HPA + VPA                    | 资源指标 + 自定义指标    |
+| 配置管理 | #[C  | INF] K8s        | ConfigMap + Secret           | 环境变量/挂载卷          |
+| 监控告警 | #[C  | INF] Prometheus | 指标采集 + PromQL            | AlertManager 告警路由    |
 
 ## 7.1 Docker 镜像构建与容器运行时序图
 
@@ -1200,16 +1200,16 @@ graph TB
     GRAFANA --> APP_DASH
 ```
 
-| 监控指标 | PromQL 示例 | 告警阈值 |
-|----------|-----------|---------|
-| 服务 QPS | `rate(http_server_requests_seconds_count[1m])` | - |
-| 平均响应时间 | `rate(http_server_requests_seconds_sum[1m]) / rate(http_server_requests_seconds_count[1m])` | > 500ms |
-| P99 响应时间 | `histogram_quantile(0.99, rate(http_server_requests_seconds_bucket[1m]))` | > 2s |
-| 错误率 | `rate(http_server_requests_seconds_count{status=~"5.."}[1m]) / rate(http_server_requests_seconds_count[1m])` | > 1% |
-| JVM 堆使用率 | `jvm_memory_used_bytes{area="heap"} / jvm_memory_max_bytes{area="heap"}` | > 85% |
-| GC 暂停时间 | `rate(jvm_gc_pause_seconds_sum[1m])` | > 100ms |
-| CPU 使用率 | `system_cpu_usage` | > 80% |
-| 数据库连接池 | `hikaricp_connections_active` | > 80% 最大连接数 |
+| 监控指标     | PromQL 示例                                                                                                  | 告警阈值         |
+| ------------ | ------------------------------------------------------------------------------------------------------------ | ---------------- |
+| 服务 QPS     | `rate(http_server_requests_seconds_count[1m])`                                                               | -                |
+| 平均响应时间 | `rate(http_server_requests_seconds_sum[1m]) / rate(http_server_requests_seconds_count[1m])`                  | > 500ms          |
+| P99 响应时间 | `histogram_quantile(0.99, rate(http_server_requests_seconds_bucket[1m]))`                                    | > 2s             |
+| 错误率       | `rate(http_server_requests_seconds_count{status=~"5.."}[1m]) / rate(http_server_requests_seconds_count[1m])` | > 1%             |
+| JVM 堆使用率 | `jvm_memory_used_bytes{area="heap"} / jvm_memory_max_bytes{area="heap"}`                                     | > 85%            |
+| GC 暂停时间  | `rate(jvm_gc_pause_seconds_sum[1m])`                                                                         | > 100ms          |
+| CPU 使用率   | `system_cpu_usage`                                                                                           | > 80%            |
+| 数据库连接池 | `hikaricp_connections_active`                                                                                | > 80% 最大连接数 |
 
 :::warning
 **Kubernetes 资源限制易错点：** 必须设置 `resources.requests` 和 `resources.limits`。requests 决定调度时的资源预留，limits 决定运行时的资源上限。#[R|不设置 limits 可能导致 Pod 耗尽节点资源引发 OOM Kill]；requests 设置过高会导致调度失败。Java 应用需特别注意 `-Xmx` 必须小于 `memory.limits`，否则容器 OOMKilled。
@@ -1219,7 +1219,7 @@ graph TB
 **Docker 镜像优化策略：** 1) 使用多阶段构建减少镜像大小；2) 选择 alpine/slim 基础镜像；3) 合并 RUN 指令减少层数；4) .dockerignore 排除无用文件；5) 将变化频繁的层放在最后（如 jar 包）。# 推荐使用 `jib-maven-plugin` 或 `Spring Boot build-image` 直接构建容器镜像，无需 Dockerfile。
 :::
 
-***
+---
 
 ## 场景八：JVM 深度剖析 · 从类加载到 GC 调优
 
@@ -1236,14 +1236,14 @@ graph LR
     E --> F["内存模型<br/>JMM volatile/synchronized"]
 ```
 
-| 阶段 | 组件 | 核心知识点 | 关键机制 |
-|------|------|-----------|---------|
-| 类加载 | #[C|JVM] ClassLoader | 双亲委派 | 加载→链接→初始化 |
-| 运行时数据区 | #[C|JVM] Runtime | 堆/栈/方法区/PC | 线程私有/共享 |
-| 对象创建 | #[C|JVM] Heap | TLAB 分配 | 指针碰撞/空闲列表 |
-| GC 回收 | #[C|JVM] GC | G1/ZGC | 分代/分区收集 |
-| JIT 编译 | #[C|JVM] JIT | C1/C2 编译器 | 分层编译 |
-| 内存模型 | #[C|JVM] JMM | happens-before | volatile/锁/final |
+| 阶段         | 组件 | 核心知识点       | 关键机制        |
+| ------------ | ---- | ---------------- | --------------- | -------------------- |
+| 类加载       | #[C  | JVM] ClassLoader | 双亲委派        | 加载 → 链接 → 初始化 |
+| 运行时数据区 | #[C  | JVM] Runtime     | 堆/栈/方法区/PC | 线程私有/共享        |
+| 对象创建     | #[C  | JVM] Heap        | TLAB 分配       | 指针碰撞/空闲列表    |
+| GC 回收      | #[C  | JVM] GC          | G1/ZGC          | 分代/分区收集        |
+| JIT 编译     | #[C  | JVM] JIT         | C1/C2 编译器    | 分层编译             |
+| 内存模型     | #[C  | JVM] JMM         | happens-before  | volatile/锁/final    |
 
 ## 8.1 JVM 类加载与初始化全链路
 
@@ -1322,13 +1322,13 @@ graph TB
     end
 ```
 
-| 收集器 | 目标 | STW 时间 | 适用场景 | 核心算法 |
-|--------|------|----------|----------|---------|
-| Serial | 简单高效 | 长 | 客户端、小内存 | 标记-复制 + 标记-整理 |
-| Parallel | 吞吐量 | 中等 | 批处理、后台计算 | 标记-复制 + 标记-整理 |
-| CMS | 低延迟 | 较短 | Web 服务 | 标记-清除（并发） |
-| G1 | 可控延迟 | 可控 | 大内存、多核 | 标记-复制 + 分区 |
-| ZGC | 超低延迟 | #[G|< 1ms] | 超大内存、实时 | 染色指针 + 读屏障 |
+| 收集器   | 目标     | STW 时间 | 适用场景         | 核心算法              |
+| -------- | -------- | -------- | ---------------- | --------------------- | ----------------- |
+| Serial   | 简单高效 | 长       | 客户端、小内存   | 标记-复制 + 标记-整理 |
+| Parallel | 吞吐量   | 中等     | 批处理、后台计算 | 标记-复制 + 标记-整理 |
+| CMS      | 低延迟   | 较短     | Web 服务         | 标记-清除（并发）     |
+| G1       | 可控延迟 | 可控     | 大内存、多核     | 标记-复制 + 分区      |
+| ZGC      | 超低延迟 | #[G      | < 1ms]           | 超大内存、实时        | 染色指针 + 读屏障 |
 
 ## 8.4 G1 垃圾回收器核心流程
 
@@ -1368,18 +1368,18 @@ sequenceDiagram
 
 ## 8.5 JVM 调优参数速查
 
-| 参数 | 说明 | 推荐值 |
-|------|------|--------|
-| `-Xms` / `-Xmx` | 初始/最大堆大小 | 相同值，避免动态扩容 |
-| `-Xss` | 线程栈大小 | 256k ~ 1M |
-| `-XX:MetaspaceSize` | 元空间初始大小 | 128M |
-| `-XX:MaxMetaspaceSize` | 元空间最大大小 | 256M |
-| `-XX:+UseG1GC` | 使用 G1 收集器 | JDK 9+ 默认 |
-| `-XX:MaxGCPauseMillis` | 最大 GC 暂停 | 200ms |
-| `-XX:G1HeapRegionSize` | G1 Region 大小 | 4M ~ 16M |
-| `-XX:InitiatingHeapOccupancyPercent` | IHOP 阈值 | 45 |
-| `-XX:+PrintGCDetails` | 打印 GC 详细日志 | 生产环境开启 |
-| `-XX:+HeapDumpOnOutOfMemoryError` | OOM 时 Dump 堆 | 生产环境开启 |
+| 参数                                 | 说明             | 推荐值               |
+| ------------------------------------ | ---------------- | -------------------- |
+| `-Xms` / `-Xmx`                      | 初始/最大堆大小  | 相同值，避免动态扩容 |
+| `-Xss`                               | 线程栈大小       | 256k ~ 1M            |
+| `-XX:MetaspaceSize`                  | 元空间初始大小   | 128M                 |
+| `-XX:MaxMetaspaceSize`               | 元空间最大大小   | 256M                 |
+| `-XX:+UseG1GC`                       | 使用 G1 收集器   | JDK 9+ 默认          |
+| `-XX:MaxGCPauseMillis`               | 最大 GC 暂停     | 200ms                |
+| `-XX:G1HeapRegionSize`               | G1 Region 大小   | 4M ~ 16M             |
+| `-XX:InitiatingHeapOccupancyPercent` | IHOP 阈值        | 45                   |
+| `-XX:+PrintGCDetails`                | 打印 GC 详细日志 | 生产环境开启         |
+| `-XX:+HeapDumpOnOutOfMemoryError`    | OOM 时 Dump 堆   | 生产环境开启         |
 
 :::warning
 **JVM 调优常见误区：** 1) 堆内存设置过大导致 GC 暂停时间过长；2) 未设置 `-Xms` 与 `-Xmx` 相等导致动态扩容开销；3) 使用默认 Parallel GC 而非 G1（大内存场景）；4) 未开启 GC 日志导致无法定位问题。#[R|GC 日志是 JVM 调优最重要的依据]，没有日志就无法分析。
@@ -1389,7 +1389,7 @@ sequenceDiagram
 **JVM 内存模型 JMM 关键原则：** 1) `volatile` 保证可见性和有序性，但不保证原子性；2) `synchronized` 保证原子性、可见性和有序性；3) `final` 字段在构造函数中正确初始化后，其他线程可见；4) happens-before 原则是判断并发安全的基础：解锁 happens-before 加锁、volatile 写 happens-before 读、start() happens-before run()。
 :::
 
-***
+---
 
 ## 场景九：Netty 网络通信 · 高性能 I/O 模型
 
@@ -1406,13 +1406,13 @@ graph LR
     E --> F["ByteBuf<br/>内存池 + 零拷贝"]
 ```
 
-| 阶段 | 组件 | 核心知识点 | 关键机制 |
-|------|------|-----------|---------|
-| 线程模型 | #[C|NET] EventLoop | Reactor 模式 | 一个 EventLoop 服务多个 Channel |
-| 管道模型 | #[C|NET] Pipeline | 责任链模式 | ChannelHandler 有序执行 |
-| 编解码 | #[C|NET] Codec | 粘包/拆包 | LengthFieldBasedFrameDecoder |
-| 内存管理 | #[C|NET] ByteBuf | 池化内存 | PooledByteBufAllocator |
-| 零拷贝 | #[C|NET] Zero-Copy | CompositeByteBuf | sendfile/FileRegion |
+| 阶段     | 组件 | 核心知识点     | 关键机制         |
+| -------- | ---- | -------------- | ---------------- | ------------------------------- |
+| 线程模型 | #[C  | NET] EventLoop | Reactor 模式     | 一个 EventLoop 服务多个 Channel |
+| 管道模型 | #[C  | NET] Pipeline  | 责任链模式       | ChannelHandler 有序执行         |
+| 编解码   | #[C  | NET] Codec     | 粘包/拆包        | LengthFieldBasedFrameDecoder    |
+| 内存管理 | #[C  | NET] ByteBuf   | 池化内存         | PooledByteBufAllocator          |
+| 零拷贝   | #[C  | NET] Zero-Copy | CompositeByteBuf | sendfile/FileRegion             |
 
 ## 9.1 Netty 核心架构
 
@@ -1442,13 +1442,13 @@ graph TB
 
 ## 9.2 Netty 零拷贝机制
 
-| 零拷贝方式 | 说明 | 实现 |
-|-----------|------|------|
-| CompositeByteBuf | 多个 ByteBuf 合并为一个逻辑 ByteBuf | 无数据拷贝，虚拟合并 |
-| wrap | 包装字节数组为 ByteBuf | 无数据拷贝，共享内存 |
-| slice | 分割 ByteBuf | 无数据拷贝，共享同一内存 |
-| FileRegion | 文件直接传输到 Channel | 底层 sendfile 系统调用 |
-| DirectByteBuf | 堆外内存 | 避免堆内→堆外拷贝 |
+| 零拷贝方式       | 说明                                | 实现                     |
+| ---------------- | ----------------------------------- | ------------------------ |
+| CompositeByteBuf | 多个 ByteBuf 合并为一个逻辑 ByteBuf | 无数据拷贝，虚拟合并     |
+| wrap             | 包装字节数组为 ByteBuf              | 无数据拷贝，共享内存     |
+| slice            | 分割 ByteBuf                        | 无数据拷贝，共享同一内存 |
+| FileRegion       | 文件直接传输到 Channel              | 底层 sendfile 系统调用   |
+| DirectByteBuf    | 堆外内存                            | 避免堆内 → 堆外拷贝      |
 
 :::warning
 **Netty 内存泄漏排查：** 使用 `-Dio.netty.leakDetection.level=PARANOID` 开启内存泄漏检测。ByteBuf 使用后必须调用 `release()` 释放引用计数。使用 `SimpleChannelInboundHandler` 可自动释放 ByteBuf。#[R|忘记释放 ByteBuf 是 Netty 内存泄漏最常见的原因]。
@@ -1458,7 +1458,7 @@ graph TB
 **Netty EventLoop 与线程安全：** 一个 Channel 的所有 I/O 事件都由同一个 EventLoop 线程处理，因此 ChannelHandler 中无需加锁（线程安全）。但要注意：#[R|不要在 EventLoop 线程中执行耗时操作]，否则会阻塞该 EventLoop 下所有 Channel 的事件处理。耗时操作应提交到业务线程池。
 :::
 
-***
+---
 
 ## 场景十：Spring Boot 核心机制 · 自动配置与 Starter
 
@@ -1537,18 +1537,18 @@ sequenceDiagram
 
 ## 10.3 Spring Boot 典型配置文件
 
-| 配置分类 | 配置项 | 示例值 |
-|----------|--------|--------|
-| 服务器 | server.port | 8080 |
-| 数据源 | spring.datasource.url | jdbc:mysql://localhost:3306/seckill |
-| 连接池 | spring.datasource.hikari.maximum-pool-size | 20 |
-| Redis | spring.redis.host | 127.0.0.1 |
-| Redis 连接池 | spring.redis.lettuce.pool.max-active | 8 |
-| Kafka | spring.kafka.bootstrap-servers | localhost:9092 |
-| RabbitMQ | spring.rabbitmq.host | localhost |
-| MyBatis-Plus | mybatis-plus.mapper-locations | classpath:mapper/*.xml |
-| 日志 | logging.level.com.example | DEBUG |
-| Actuator | management.endpoints.web.exposure.include | health,info,metrics,prometheus |
+| 配置分类     | 配置项                                     | 示例值                              |
+| ------------ | ------------------------------------------ | ----------------------------------- |
+| 服务器       | server.port                                | 8080                                |
+| 数据源       | spring.datasource.url                      | jdbc:mysql://localhost:3306/seckill |
+| 连接池       | spring.datasource.hikari.maximum-pool-size | 20                                  |
+| Redis        | spring.redis.host                          | 127.0.0.1                           |
+| Redis 连接池 | spring.redis.lettuce.pool.max-active       | 8                                   |
+| Kafka        | spring.kafka.bootstrap-servers             | localhost:9092                      |
+| RabbitMQ     | spring.rabbitmq.host                       | localhost                           |
+| MyBatis-Plus | mybatis-plus.mapper-locations              | classpath:mapper/\*.xml             |
+| 日志         | logging.level.com.example                  | DEBUG                               |
+| Actuator     | management.endpoints.web.exposure.include  | health,info,metrics,prometheus      |
 
 :::warning
 **Spring Boot 自动配置冲突处理：** 当引入多个数据源、多个 Redis 连接、多个 MQ 组件时，自动配置可能冲突。#[R|使用 @SpringBootApplication(exclude = ...) 排除不需要的自动配置类]，或使用 @Primary 指定主 Bean。例如同时引入 spring-boot-starter-data-redis 和 spring-boot-starter-data-redis-reactive 时需手动指定。
@@ -1558,9 +1558,9 @@ sequenceDiagram
 **Spring Boot 设计模式总结：** 1) IoC/DI：控制反转 + 依赖注入；2) AOP：面向切面编程（事务、日志、权限）；3) 模板方法：JdbcTemplate、RestTemplate、RedisTemplate；4) 工厂模式：BeanFactory、ApplicationContext；5) 代理模式：AOP 实现、事务代理；6) 观察者模式：ApplicationListener、事件发布；7) 策略模式：ResourceLoader、ViewResolver。
 :::
 
-***
+---
 
-***
+---
 
 ## 场景十一：PostgreSQL 高级特性 · MVCC 对比与扩展生态
 
@@ -1578,13 +1578,13 @@ graph LR
     F --> G["返回结果"]
 ```
 
-| 阶段 | 组件 | 核心知识点 | 关键机制 |
-|------|------|-----------|---------|
-| MVCC 实现 | #[C|SQL] PG | 元组版本链 + VACUUM | Xmin/Xmax 事务ID 可见性 |
-| 索引类型 | #[C|SQL] PG | B-Tree/GIN/GiST/BRIN | 九种索引类型 |
-| 扩展机制 | #[C|SQL] PG | Extension + Hook | PostGIS/Citus 分布式 |
-| 查询优化 | #[C|SQL] PG | 遗传算法优化器 | GEQO 复杂 JOIN 优化 |
-| 高级 SQL | #[C|SQL] PG | CTE/窗口函数/LATERAL | WITH RECURSIVE 递归查询 |
+| 阶段      | 组件 | 核心知识点 | 关键机制             |
+| --------- | ---- | ---------- | -------------------- | ------------------------ |
+| MVCC 实现 | #[C  | SQL] PG    | 元组版本链 + VACUUM  | Xmin/Xmax 事务 ID 可见性 |
+| 索引类型  | #[C  | SQL] PG    | B-Tree/GIN/GiST/BRIN | 九种索引类型             |
+| 扩展机制  | #[C  | SQL] PG    | Extension + Hook     | PostGIS/Citus 分布式     |
+| 查询优化  | #[C  | SQL] PG    | 遗传算法优化器       | GEQO 复杂 JOIN 优化      |
+| 高级 SQL  | #[C  | SQL] PG    | CTE/窗口函数/LATERAL | WITH RECURSIVE 递归查询  |
 
 ## 11.1 PostgreSQL MVCC vs MySQL MVCC
 
@@ -1611,15 +1611,15 @@ sequenceDiagram
 
 ## 11.2 PostgreSQL vs MySQL MVCC 核心差异
 
-| 对比维度 | PostgreSQL | MySQL InnoDB |
-|----------|-----------|-------------|
-| 多版本存储 | 数据页内保留新旧版本 | Undo Log 回滚段 |
-| 版本清理 | VACUUM 标记可复用 | Purge 线程清理 Undo |
-| 回滚方式 | 不需要回滚（旧版本保留） | 从 Undo Log 恢复 |
-| 表膨胀 | 需要 VACUUM 管理 | 需要 Purge 管理 |
-| 事务 ID 回卷 | 需要冻结处理 | 无此问题 |
-| 可见性判断 | 快照 + Xmin/Xmax | ReadView + trx_id |
-| 长事务影响 | 阻止 VACUUM 清理 | 阻止 Undo Purge |
+| 对比维度     | PostgreSQL               | MySQL InnoDB        |
+| ------------ | ------------------------ | ------------------- |
+| 多版本存储   | 数据页内保留新旧版本     | Undo Log 回滚段     |
+| 版本清理     | VACUUM 标记可复用        | Purge 线程清理 Undo |
+| 回滚方式     | 不需要回滚（旧版本保留） | 从 Undo Log 恢复    |
+| 表膨胀       | 需要 VACUUM 管理         | 需要 Purge 管理     |
+| 事务 ID 回卷 | 需要冻结处理             | 无此问题            |
+| 可见性判断   | 快照 + Xmin/Xmax         | ReadView + trx_id   |
+| 长事务影响   | 阻止 VACUUM 清理         | 阻止 Undo Purge     |
 
 ## 11.3 PostgreSQL 九种索引类型
 
@@ -1644,28 +1644,28 @@ graph TB
     end
 ```
 
-| 索引类型 | 适用场景 | 典型查询 |
-|----------|----------|----------|
-| B-Tree | 排序、范围查询、等值查询 | `WHERE id = 1001` |
-| Hash | 仅等值查询 | `WHERE email = 'user@example.com'` |
-| GIN | 全文搜索、JSONB、数组 | `WHERE data @> '{"key":"value"}'` |
-| GiST | 地理空间、全文搜索 | `WHERE ST_DWithin(...)` |
-| BRIN | 时间序列、超大表 | `WHERE created_at BETWEEN ...` |
-| 部分索引 | 子集查询 | `WHERE status = 'active'` |
-| 表达式索引 | 函数结果索引 | `WHERE LOWER(name) = 'john'` |
+| 索引类型   | 适用场景                 | 典型查询                           |
+| ---------- | ------------------------ | ---------------------------------- |
+| B-Tree     | 排序、范围查询、等值查询 | `WHERE id = 1001`                  |
+| Hash       | 仅等值查询               | `WHERE email = 'user@example.com'` |
+| GIN        | 全文搜索、JSONB、数组    | `WHERE data @> '{"key":"value"}'`  |
+| GiST       | 地理空间、全文搜索       | `WHERE ST_DWithin(...)`            |
+| BRIN       | 时间序列、超大表         | `WHERE created_at BETWEEN ...`     |
+| 部分索引   | 子集查询                 | `WHERE status = 'active'`          |
+| 表达式索引 | 函数结果索引             | `WHERE LOWER(name) = 'john'`       |
 
 ## 11.4 PostgreSQL 核心扩展生态
 
-| 扩展 | 功能 | 适用场景 |
-|------|------|----------|
-| PostGIS | 地理空间数据 | 地图、LBS 服务 |
-| Citus | 分布式数据库 | 水平分片、多租户 |
-| TimescaleDB | 时序数据库 | IoT、监控、指标 |
-| pg_partman | 分区管理 | 自动分区维护 |
-| pg_stat_statements | SQL 统计 | 慢查询分析 |
-| pg_cron | 定时任务 | 定期维护 |
-| pg_repack | 在线重组 | 表膨胀治理 |
-| pgaudit | 审计日志 | 安全合规 |
+| 扩展               | 功能         | 适用场景         |
+| ------------------ | ------------ | ---------------- |
+| PostGIS            | 地理空间数据 | 地图、LBS 服务   |
+| Citus              | 分布式数据库 | 水平分片、多租户 |
+| TimescaleDB        | 时序数据库   | IoT、监控、指标  |
+| pg_partman         | 分区管理     | 自动分区维护     |
+| pg_stat_statements | SQL 统计     | 慢查询分析       |
+| pg_cron            | 定时任务     | 定期维护         |
+| pg_repack          | 在线重组     | 表膨胀治理       |
+| pgaudit            | 审计日志     | 安全合规         |
 
 ## 11.5 PostgreSQL 高级 SQL 特性
 
@@ -1696,7 +1696,7 @@ graph TB
 **PG vs MySQL 选型建议：** PostgreSQL 适合复杂查询、GIS 地理空间、JSONB 文档存储、需要高级 SQL 特性（窗口函数、CTE、LATERAL）的场景；MySQL 适合简单 CRUD、高并发读写、主从复制简单、运维成熟的场景。两者都是优秀的数据库，选型依据是业务场景而非技术偏好。
 :::
 
-***
+---
 
 ## 场景十二：Elasticsearch 搜索引擎 · 倒排索引与全文检索
 
@@ -1714,14 +1714,14 @@ graph LR
     F --> G["返回结果<br/>高亮 + 排序"]
 ```
 
-| 阶段 | 组件 | 核心知识点 | 关键机制 |
-|------|------|-----------|---------|
-| 分词 | #[C|SE] Analyzer | 标准/IK/拼音分词 | Character Filter + Tokenizer + Token Filter |
-| 倒排索引 | #[C|SE] Index | Term Dictionary + Posting List | FST 压缩 + Skip List |
-| 相关性评分 | #[C|SE] Similarity | TF-IDF/BM25 | 词频 + 逆文档频率 + 字段长度 |
-| 聚合分析 | #[C|SE] Aggregation | Bucket/Metric/Pipeline | 近似算法（HyperLogLog） |
-| 分片与副本 | #[C|SE] Shard | Primary + Replica | 路由 + 故障转移 |
-| 近实时搜索 | #[C|SE] Refresh | 内存 Buffer → Segment | 每秒刷新（可配置） |
+| 阶段       | 组件 | 核心知识点      | 关键机制                       |
+| ---------- | ---- | --------------- | ------------------------------ | ------------------------------------------- |
+| 分词       | #[C  | SE] Analyzer    | 标准/IK/拼音分词               | Character Filter + Tokenizer + Token Filter |
+| 倒排索引   | #[C  | SE] Index       | Term Dictionary + Posting List | FST 压缩 + Skip List                        |
+| 相关性评分 | #[C  | SE] Similarity  | TF-IDF/BM25                    | 词频 + 逆文档频率 + 字段长度                |
+| 聚合分析   | #[C  | SE] Aggregation | Bucket/Metric/Pipeline         | 近似算法（HyperLogLog）                     |
+| 分片与副本 | #[C  | SE] Shard       | Primary + Replica              | 路由 + 故障转移                             |
+| 近实时搜索 | #[C  | SE] Refresh     | 内存 Buffer → Segment          | 每秒刷新（可配置）                          |
 
 ## 12.1 Elasticsearch 倒排索引结构
 
@@ -1786,13 +1786,13 @@ sequenceDiagram
 
 ## 12.3 BM25 相关性评分算法
 
-| 因子 | 含义 | 趋势 |
-|------|------|------|
-| TF（词频） | 词在文档中出现的次数 | 出现越多，得分越高（有上限） |
-| IDF（逆文档频率） | log(1 + (N - n + 0.5) / (n + 0.5)) | 越罕见的词权重越高 |
-| Field Length | 字段长度归一化 | 短字段中匹配权重更高 |
-| b 参数 | 字段长度影响因子 | 默认 0.75 |
-| k1 参数 | 词频饱和度控制 | 默认 1.2 |
+| 因子              | 含义                               | 趋势                         |
+| ----------------- | ---------------------------------- | ---------------------------- |
+| TF（词频）        | 词在文档中出现的次数               | 出现越多，得分越高（有上限） |
+| IDF（逆文档频率） | log(1 + (N - n + 0.5) / (n + 0.5)) | 越罕见的词权重越高           |
+| Field Length      | 字段长度归一化                     | 短字段中匹配权重更高         |
+| b 参数            | 字段长度影响因子                   | 默认 0.75                    |
+| k1 参数           | 词频饱和度控制                     | 默认 1.2                     |
 
 ## 12.4 Elasticsearch 聚合分析
 
@@ -1819,13 +1819,13 @@ graph TB
     end
 ```
 
-| 聚合类型 | 示例 DSL | 说明 |
-|----------|----------|------|
-| Terms | `aggs: {by_brand: {terms: {field: "brand"}}}` | 按品牌分组 |
-| Range | `aggs: {by_price: {range: {field: "price", ranges: [{to: 100}, {from: 100, to: 500}]}}}` | 按价格区间 |
-| Avg | `aggs: {avg_price: {avg: {field: "price"}}}` | 平均价格 |
-| Percentiles | `aggs: {p99: {percentiles: {field: "price"}}}` | P99 价格 |
-| Cardinality | `aggs: {unique_brands: {cardinality: {field: "brand"}}}` | 品牌数去重 |
+| 聚合类型    | 示例 DSL                                                                                 | 说明       |
+| ----------- | ---------------------------------------------------------------------------------------- | ---------- |
+| Terms       | `aggs: {by_brand: {terms: {field: "brand"}}}`                                            | 按品牌分组 |
+| Range       | `aggs: {by_price: {range: {field: "price", ranges: [{to: 100}, {from: 100, to: 500}]}}}` | 按价格区间 |
+| Avg         | `aggs: {avg_price: {avg: {field: "price"}}}`                                             | 平均价格   |
+| Percentiles | `aggs: {p99: {percentiles: {field: "price"}}}`                                           | P99 价格   |
+| Cardinality | `aggs: {unique_brands: {cardinality: {field: "brand"}}}`                                 | 品牌数去重 |
 
 :::warning
 **Elasticsearch 脑裂问题：** 当集群中多个节点认为自己是 Master 时发生脑裂。解决方案：`discovery.seed_hosts` 配置所有候选 Master 节点；`cluster.initial_master_nodes` 初始化集群；`discovery.zen.minimum_master_nodes` 设为 `(N/2)+1`（ES 7.x 之前）。#[R|ES 7.x+ 使用新的集群协调层，但仍需注意网络分区]。
@@ -1835,7 +1835,7 @@ graph TB
 **Elasticsearch 性能优化要点：** 1) 合理设置分片数（单分片 10-50GB）；2) 使用 Bulk API 批量写入；3) 禁用不需要的 `_source`/`_all` 字段；4) 使用 `filter` 上下文代替 `query` 上下文（不计算分数）；5) 设置合理的 `refresh_interval`（写多场景可设为 30s 或 -1）；6) 使用 Routing 减少查询分片数。
 :::
 
-***
+---
 
 ## 场景十三：Seata 分布式事务 · AT/TCC/Saga 模式
 
@@ -1851,12 +1851,12 @@ graph LR
     D --> E["全局事务提交<br/>或回滚"]
 ```
 
-| 模式 | 事务模型 | 侵入性 | 性能 | 适用场景 |
-|------|----------|--------|------|----------|
-| AT 模式 | 二阶段提交 | 低（数据源代理） | 中 | 关系型数据库 |
-| TCC 模式 | Try-Confirm-Cancel | 高（需实现接口） | 高 | 高性能、自定义资源 |
-| Saga 模式 | 正向补偿 | 中（状态机） | 高 | 长事务、多服务 |
-| XA 模式 | 数据库 XA 协议 | 低 | 低 | 强一致性需求 |
+| 模式      | 事务模型           | 侵入性           | 性能 | 适用场景           |
+| --------- | ------------------ | ---------------- | ---- | ------------------ |
+| AT 模式   | 二阶段提交         | 低（数据源代理） | 中   | 关系型数据库       |
+| TCC 模式  | Try-Confirm-Cancel | 高（需实现接口） | 高   | 高性能、自定义资源 |
+| Saga 模式 | 正向补偿           | 中（状态机）     | 高   | 长事务、多服务     |
+| XA 模式   | 数据库 XA 协议     | 低               | 低   | 强一致性需求       |
 
 ## 13.1 Seata AT 模式原理
 
@@ -1943,13 +1943,13 @@ graph TB
     end
 ```
 
-| 对比维度 | TCC 模式 | AT 模式 |
-|----------|----------|---------|
-| 业务侵入 | #[R|高] 需实现 Try/Confirm/Cancel | #[G|低] 仅需 @GlobalTransactional |
-| 性能 | 高（无全局锁） | 中（Phase 1 有全局锁） |
-| 空回滚 | 需处理 | 自动处理 |
-| 悬挂控制 | 需处理 | 自动处理 |
-| 适用场景 | 高性能、自定义资源 | 关系型数据库快速接入 |
+| 对比维度 | TCC 模式           | AT 模式                       |
+| -------- | ------------------ | ----------------------------- | --- | ----------------------------- |
+| 业务侵入 | #[R                | 高] 需实现 Try/Confirm/Cancel | #[G | 低] 仅需 @GlobalTransactional |
+| 性能     | 高（无全局锁）     | 中（Phase 1 有全局锁）        |
+| 空回滚   | 需处理             | 自动处理                      |
+| 悬挂控制 | 需处理             | 自动处理                      |
+| 适用场景 | 高性能、自定义资源 | 关系型数据库快速接入          |
 
 ## 13.4 Saga 模式状态机
 
@@ -1977,7 +1977,7 @@ stateDiagram-v2
 **分布式事务选型决策：** 1) 简单场景、关系型数据库 → AT 模式；2) 高性能、需要自定义资源锁定 → TCC 模式；3) 长事务、多服务编排 → Saga 模式；4) 强一致性需求 → XA 模式（性能最低）。大多数场景推荐使用 #[C|本地消息表 + MQ 最终一致性] 替代分布式事务，性能和复杂度更优。
 :::
 
-***
+---
 
 ## 场景十四：Spring 设计模式 · IoC/DI/AOP 深度剖析
 
@@ -1994,17 +1994,17 @@ graph LR
     E --> F["事务管理<br/>@Transactional 声明式事务"]
 ```
 
-| 模式 | Spring 实现 | 核心类 | 应用场景 |
-|------|------------|--------|---------|
-| IoC 控制反转 | BeanFactory/ApplicationContext | DefaultListableBeanFactory | Bean 容器管理 |
-| DI 依赖注入 | @Autowired/@Resource | AutowiredAnnotationBeanPostProcessor | 自动装配 |
-| AOP 面向切面 | JDK 动态代理 + CGLIB | JdkDynamicAopProxy/CglibAopProxy | 事务、日志、权限 |
-| 模板方法 | JdbcTemplate/RestTemplate | JdbcTemplate | 简化重复代码 |
-| 工厂模式 | BeanFactory | AbstractBeanFactory | Bean 创建 |
-| 代理模式 | AOP 代理 | ProxyFactoryBean | 方法拦截 |
-| 观察者模式 | ApplicationEvent | ApplicationEventPublisher | 事件驱动 |
-| 策略模式 | ResourceLoader | DefaultResourceLoader | 资源加载 |
-| 责任链模式 | HandlerInterceptor | HandlerExecutionChain | 请求拦截 |
+| 模式         | Spring 实现                    | 核心类                               | 应用场景         |
+| ------------ | ------------------------------ | ------------------------------------ | ---------------- |
+| IoC 控制反转 | BeanFactory/ApplicationContext | DefaultListableBeanFactory           | Bean 容器管理    |
+| DI 依赖注入  | @Autowired/@Resource           | AutowiredAnnotationBeanPostProcessor | 自动装配         |
+| AOP 面向切面 | JDK 动态代理 + CGLIB           | JdkDynamicAopProxy/CglibAopProxy     | 事务、日志、权限 |
+| 模板方法     | JdbcTemplate/RestTemplate      | JdbcTemplate                         | 简化重复代码     |
+| 工厂模式     | BeanFactory                    | AbstractBeanFactory                  | Bean 创建        |
+| 代理模式     | AOP 代理                       | ProxyFactoryBean                     | 方法拦截         |
+| 观察者模式   | ApplicationEvent               | ApplicationEventPublisher            | 事件驱动         |
+| 策略模式     | ResourceLoader                 | DefaultResourceLoader                | 资源加载         |
+| 责任链模式   | HandlerInterceptor             | HandlerExecutionChain                | 请求拦截         |
 
 ## 14.1 Spring IoC 容器初始化流程
 
@@ -2060,11 +2060,11 @@ graph TB
     end
 ```
 
-| 代理方式 | 适用范围 | 性能 | 限制 |
-|----------|----------|------|------|
-| JDK 动态代理 | 实现接口的类 | 反射调用，略慢 | 必须有接口 |
-| CGLIB 代理 | 任何非 final 类 | 字节码增强，较快 | 不能代理 final 方法 |
-| Spring 默认策略 | 有接口 → JDK；无接口 → CGLIB | Spring Boot 2.x 默认 CGLIB | - |
+| 代理方式        | 适用范围                     | 性能                       | 限制                |
+| --------------- | ---------------------------- | -------------------------- | ------------------- |
+| JDK 动态代理    | 实现接口的类                 | 反射调用，略慢             | 必须有接口          |
+| CGLIB 代理      | 任何非 final 类              | 字节码增强，较快           | 不能代理 final 方法 |
+| Spring 默认策略 | 有接口 → JDK；无接口 → CGLIB | Spring Boot 2.x 默认 CGLIB | -                   |
 
 ## 14.3 Spring 三级缓存解决循环依赖
 
@@ -2081,23 +2081,23 @@ sequenceDiagram
     BF->>BF: A 实例化（构造函数）
     BF->>CACHE3: A 的 ObjectFactory 放入三级缓存
     BF->>BF: A 属性填充 → 发现依赖 B
-    
+
     BF->>BF: 创建 B
     BF->>BF: B 实例化（构造函数）
     BF->>CACHE3: B 的 ObjectFactory 放入三级缓存
     BF->>BF: B 属性填充 → 发现依赖 A
-    
+
     BF->>CACHE3: 从三级缓存获取 A 的 ObjectFactory
     CACHE3-->>BF: 返回 A 的早期引用
     BF->>CACHE2: A 的早期引用放入二级缓存
     BF->>CACHE3: 删除 A 的三级缓存
-    
+
     BF->>BF: B 注入 A（早期引用）
     BF->>BF: B 初始化完成
     BF->>CACHE1: B 放入一级缓存
     BF->>CACHE2: 删除 B 的二级缓存
     BF->>CACHE3: 删除 B 的三级缓存
-    
+
     BF->>BF: 回到 A 的属性填充
     BF->>CACHE1: 从一级缓存获取 B
     BF->>BF: A 注入 B
@@ -2113,7 +2113,7 @@ sequenceDiagram
 **Spring 设计模式的核心思想：** IoC 容器是 Spring 的基石，通过"控制反转"将对象创建权交给容器，解耦了组件之间的依赖。AOP 是 Spring 的"瑞士军刀"，通过动态代理在不修改源码的情况下增强功能（事务、日志、缓存）。模板方法模式通过 JdbcTemplate、RestTemplate 等简化了重复代码。理解这些设计模式不仅有助于阅读 Spring 源码，更是设计高质量 Java 应用的基础。
 :::
 
-***
+---
 
 ## 场景十五：Netty 高性能网络框架 · Reactor 模型与零拷贝
 
@@ -2131,14 +2131,14 @@ graph LR
     F --> G["返回响应"]
 ```
 
-| 阶段 | 组件 | 核心知识点 | 关键机制 |
-|------|------|-----------|---------|
-| Reactor 模型 | #[C|NET] EventLoop | 主从 Reactor 多线程 | Boss + Worker 线程池 |
-| Channel 抽象 | #[C|NET] Channel | 连接生命周期管理 | ChannelFuture 异步通知 |
-| Pipeline 处理链 | #[C|NET] Pipeline | 责任链模式 | ChannelInbound/OutboundHandler |
-| ByteBuf 内存管理 | #[C|NET] ByteBuf | 池化 + 引用计数 | PooledByteBufAllocator |
-| 零拷贝 | #[C|NET] FileRegion | sendfile + mmap | CompositeByteBuf |
-| 编解码 | #[C|NET] Codec | 粘包/拆包处理 | LengthFieldBasedFrameDecoder |
+| 阶段             | 组件 | 核心知识点      | 关键机制            |
+| ---------------- | ---- | --------------- | ------------------- | ------------------------------ |
+| Reactor 模型     | #[C  | NET] EventLoop  | 主从 Reactor 多线程 | Boss + Worker 线程池           |
+| Channel 抽象     | #[C  | NET] Channel    | 连接生命周期管理    | ChannelFuture 异步通知         |
+| Pipeline 处理链  | #[C  | NET] Pipeline   | 责任链模式          | ChannelInbound/OutboundHandler |
+| ByteBuf 内存管理 | #[C  | NET] ByteBuf    | 池化 + 引用计数     | PooledByteBufAllocator         |
+| 零拷贝           | #[C  | NET] FileRegion | sendfile + mmap     | CompositeByteBuf               |
+| 编解码           | #[C  | NET] Codec      | 粘包/拆包处理       | LengthFieldBasedFrameDecoder   |
 
 ## 15.1 Netty Reactor 主从线程模型
 
@@ -2207,12 +2207,12 @@ graph TB
     end
 ```
 
-| 零拷贝方式 | 原理 | 性能提升 | 适用场景 |
-|----------|------|---------|---------|
-| CompositeByteBuf | 多个 ByteBuf 逻辑合并 | 避免内存复制 | 协议头 + 消息体合并 |
-| FileRegion | sendfile 系统调用 | DMA 直接传输 | 静态文件传输 |
-| wrappedBuffer | 包装已有 byte[] | 避免分配新内存 | 协议解析 |
-| slice/duplicate | 共享同一内存块 | 避免复制 | 分包处理 |
+| 零拷贝方式       | 原理                  | 性能提升       | 适用场景            |
+| ---------------- | --------------------- | -------------- | ------------------- |
+| CompositeByteBuf | 多个 ByteBuf 逻辑合并 | 避免内存复制   | 协议头 + 消息体合并 |
+| FileRegion       | sendfile 系统调用     | DMA 直接传输   | 静态文件传输        |
+| wrappedBuffer    | 包装已有 byte[]       | 避免分配新内存 | 协议解析            |
+| slice/duplicate  | 共享同一内存块        | 避免复制       | 分包处理            |
 
 ## 15.3 Netty 粘包/拆包处理
 
@@ -2238,12 +2238,12 @@ graph LR
     end
 ```
 
-| 拆包器 | 适用场景 | 配置示例 |
-|--------|----------|---------|
-| FixedLengthFrameDecoder | 固定长度协议 | `new FixedLengthFrameDecoder(1024)` |
-| LineBasedFrameDecoder | 文本协议（换行分隔） | `new LineBasedFrameDecoder(8192)` |
-| DelimiterBasedFrameDecoder | 自定义分隔符 | `new DelimiterBasedFrameDecoder(8192, Delimiters.lineDelimiter())` |
-| LengthFieldBasedFrameDecoder | 二进制协议（长度字段） | `new LengthFieldBasedFrameDecoder(65535, 0, 4, 0, 4)` |
+| 拆包器                       | 适用场景               | 配置示例                                                           |
+| ---------------------------- | ---------------------- | ------------------------------------------------------------------ |
+| FixedLengthFrameDecoder      | 固定长度协议           | `new FixedLengthFrameDecoder(1024)`                                |
+| LineBasedFrameDecoder        | 文本协议（换行分隔）   | `new LineBasedFrameDecoder(8192)`                                  |
+| DelimiterBasedFrameDecoder   | 自定义分隔符           | `new DelimiterBasedFrameDecoder(8192, Delimiters.lineDelimiter())` |
+| LengthFieldBasedFrameDecoder | 二进制协议（长度字段） | `new LengthFieldBasedFrameDecoder(65535, 0, 4, 0, 4)`              |
 
 :::warning
 **Netty IO 线程阻塞陷阱：** #[R|绝不能在 EventLoop 线程中执行阻塞操作（数据库查询、HTTP 调用、文件 IO）]，因为一个 EventLoop 线程管理多个 Channel，一旦阻塞会导致该线程上所有 Channel 的 IO 事件都无法处理。必须将耗时任务提交到独立的业务线程池（`EventExecutorGroup`）处理，或使用 `ctx.channel().eventLoop().execute()` 提交异步任务。
@@ -2253,7 +2253,7 @@ graph LR
 **Netty 在 Java 后端生态中的定位：** Netty 是 Java 高性能网络编程的事实标准。Spring Cloud Gateway 基于 Netty 实现非阻塞 HTTP 网关；Dubbo 基于 Netty 实现 RPC 通信；Elasticsearch 基于 Netty 实现节点间通信；Redis 客户端 Lettuce 基于 Netty 实现异步连接。掌握 Netty 的 Reactor 模型、Pipeline 责任链、ByteBuf 内存管理三大核心机制，是理解 Java 后端高并发通信的基石。
 :::
 
-***
+---
 
 ## 场景十六：Prometheus + Grafana 监控体系 · 指标采集与可视化
 
@@ -2271,14 +2271,14 @@ graph LR
     F --> G["钉钉/邮件/微信<br/>告警通知"]
 ```
 
-| 阶段 | 组件 | 核心知识点 | 关键机制 |
-|------|------|-----------|---------|
-| 指标埋点 | #[C|INF] Micrometer | Meter 注册表 | Counter/Gauge/Timer/DistributionSummary |
-| 指标采集 | #[C|INF] Prometheus | Pull 模式 + HTTP | 定时抓取 /actuator/prometheus |
-| 时序存储 | #[C|INF] TSDB | 倒排索引 + WAL | 2h 内存块 + 压缩合并 |
-| 查询引擎 | #[C|INF] PromQL | 即时查询 + 范围查询 | rate/irate/histogram_quantile |
-| 可视化 | #[C|INF] Grafana | Dashboard + Panel | 数据源 + 变量 + 模板 |
-| 告警 | #[C|INF] AlertManager | 分组 + 抑制 + 静默 | 路由树 + 通知模板 |
+| 阶段     | 组件 | 核心知识点        | 关键机制            |
+| -------- | ---- | ----------------- | ------------------- | --------------------------------------- |
+| 指标埋点 | #[C  | INF] Micrometer   | Meter 注册表        | Counter/Gauge/Timer/DistributionSummary |
+| 指标采集 | #[C  | INF] Prometheus   | Pull 模式 + HTTP    | 定时抓取 /actuator/prometheus           |
+| 时序存储 | #[C  | INF] TSDB         | 倒排索引 + WAL      | 2h 内存块 + 压缩合并                    |
+| 查询引擎 | #[C  | INF] PromQL       | 即时查询 + 范围查询 | rate/irate/histogram_quantile           |
+| 可视化   | #[C  | INF] Grafana      | Dashboard + Panel   | 数据源 + 变量 + 模板                    |
+| 告警     | #[C  | INF] AlertManager | 分组 + 抑制 + 静默  | 路由树 + 通知模板                       |
 
 ## 16.1 Micrometer 指标埋点
 
@@ -2308,14 +2308,14 @@ sequenceDiagram
     rect rgba(255, 248, 240, 0.4)
     Note over APP,TIMER: ===== 阶段 3：Timer 计时器 [INF] → 延迟分布 =====
     APP->>TIMER: 记录接口耗时
-    Note over TIMER: Timer 使用示例：<br/>Timer timer = Timer.builder("seckill.request.duration")<br/>  .tag("api", "createOrder")<br/>  .publishPercentiles(0.5, 0.95, 0.99)<br/>  .register(meterRegistry)<br/>timer.record(() -> { seckillService.execute(); })
+    Note over TIMER: Timer 使用示例：<br/>Timer timer = Timer.builder("seckill.request.duration")<br/>  .tag("api", "createOrder")<br/>  .publishPercentiles(0.5, 0.95, 0.99)<br/>  .register(meterRegistry)<br/>timer.record(() → { seckillService.execute() })
     Note over TIMER: Timer 底层实现：<br/>1. 记录每次耗时<br/>2. 内部维护 Histogram<br/>3. 自动计算 P50/P95/P99<br/>4. 同时生成 _count、_sum、_max<br/>5. Prometheus 中为 Summary 类型
     end
 
     rect rgba(240, 255, 248, 0.4)
     Note over APP,GAUGE: ===== 阶段 4：Gauge 瞬时值 [INF] → 可增可减 =====
     APP->>GAUGE: 记录队列长度/连接数
-    Note over GAUGE: Gauge 使用示例：<br/>Gauge.builder("seckill.queue.size", queue, Queue::size)<br/>  .tag("queue", "order")<br/>  .register(meterRegistry)
+    Note over GAUGE: Gauge 使用示例：<br/>Gauge.builder("seckill.queue.size", queue, queue::size)<br/>  .tag("queue", "order")<br/>  .register(meterRegistry)
     Note over GAUGE: Gauge 适用场景：<br/>1. 线程池活跃线程数<br/>2. 数据库连接池活跃连接数<br/>3. JVM 堆内存使用量<br/>4. Kafka 消费延迟<br/>5. 消息队列积压数量
     end
 
@@ -2361,16 +2361,16 @@ graph TB
 
 ## 16.3 PromQL 核心查询语法
 
-| 查询类型 | PromQL 表达式 | 说明 |
-|----------|--------------|------|
-| 瞬时查询 | `seckill_requests_total` | 当前时刻的指标值 |
-| 范围查询 | `seckill_requests_total[5m]` | 过去 5 分钟的所有样本 |
-| 速率计算 | `rate(seckill_requests_total[1m])` | 每秒增长率（适合 Counter） |
-| 瞬时速率 | `irate(seckill_requests_total[1m])` | 最后两个样本的增长率 |
-| 分位数 | `histogram_quantile(0.99, rate(http_request_duration_seconds_bucket[5m]))` | P99 延迟 |
-| 聚合求和 | `sum(rate(seckill_requests_total[1m])) by (status)` | 按状态聚合 |
-| Top K | `topk(5, rate(seckill_requests_total[1m]))` | 请求量 Top 5 |
-| 预测 | `predict_linear(disk_free[1h], 4*3600)` | 4 小时后磁盘空间预测 |
+| 查询类型 | PromQL 表达式                                                              | 说明                       |
+| -------- | -------------------------------------------------------------------------- | -------------------------- |
+| 瞬时查询 | `seckill_requests_total`                                                   | 当前时刻的指标值           |
+| 范围查询 | `seckill_requests_total[5m]`                                               | 过去 5 分钟的所有样本      |
+| 速率计算 | `rate(seckill_requests_total[1m])`                                         | 每秒增长率（适合 Counter） |
+| 瞬时速率 | `irate(seckill_requests_total[1m])`                                        | 最后两个样本的增长率       |
+| 分位数   | `histogram_quantile(0.99, rate(http_request_duration_seconds_bucket[5m]))` | P99 延迟                   |
+| 聚合求和 | `sum(rate(seckill_requests_total[1m])) by (status)`                        | 按状态聚合                 |
+| Top K    | `topk(5, rate(seckill_requests_total[1m]))`                                | 请求量 Top 5               |
+| 预测     | `predict_linear(disk_free[1h], 4*3600)`                                    | 4 小时后磁盘空间预测       |
 
 ## 16.4 Grafana 仪表盘配置
 
@@ -2390,14 +2390,14 @@ graph TB
     G3 --> G5
 ```
 
-| 面板类型 | 适用场景 | 典型配置 |
-|----------|----------|---------|
-| Time Series | 时序趋势图 | QPS、延迟、CPU 趋势 |
-| Stat | 当前值/瞬时值 | 在线用户数、当前 QPS |
-| Gauge | 仪表盘 | 内存使用率、CPU 使用率 |
-| Table | 表格数据 | Top N 接口、错误日志 |
-| Heatmap | 热力图 | 延迟分布、请求频率 |
-| Bar Gauge | 条形图 | 各服务实例对比 |
+| 面板类型    | 适用场景      | 典型配置               |
+| ----------- | ------------- | ---------------------- |
+| Time Series | 时序趋势图    | QPS、延迟、CPU 趋势    |
+| Stat        | 当前值/瞬时值 | 在线用户数、当前 QPS   |
+| Gauge       | 仪表盘        | 内存使用率、CPU 使用率 |
+| Table       | 表格数据      | Top N 接口、错误日志   |
+| Heatmap     | 热力图        | 延迟分布、请求频率     |
+| Bar Gauge   | 条形图        | 各服务实例对比         |
 
 :::warning
 **Prometheus 高基数问题：** 标签值过多会导致时间序列爆炸，消耗大量内存。#[R|避免使用用户 ID、订单号、Session ID 等无界值作为标签]，这些值应使用日志系统（ELK）记录。每个唯一标签组合产生一个时间序列，通常控制在 10 万以内。可使用 `MeterFilter` 过滤高基数标签。
@@ -2407,7 +2407,7 @@ graph TB
 **监控体系选型建议：** Micrometer 作为指标门面，提供统一的 Meter API，屏蔽底层监控系统差异。Prometheus 是云原生监控标准，与 Kubernetes 深度集成。Grafana 是可视化标准，支持多数据源。三者组合（Micrometer + Prometheus + Grafana）是 Java 后端监控的最佳实践，覆盖指标采集、存储、查询、可视化、告警全链路。
 :::
 
-***
+---
 
 ## 场景十七：MyBatis 核心原理 · SQL Session 与 Mapper 代理
 
@@ -2425,14 +2425,14 @@ graph LR
     F --> G["返回映射结果"]
 ```
 
-| 阶段 | 组件 | 核心知识点 | 关键机制 |
-|------|------|-----------|---------|
-| Mapper 代理 | #[C|ORM] MapperProxy | JDK 动态代理 | MapperProxyFactory + MapperMethod |
-| SQL 会话 | #[C|ORM] SqlSession | 执行器模板 | SimpleExecutor/ReuseExecutor/BatchExecutor |
-| 参数映射 | #[C|ORM] ParameterHandler | TypeHandler 类型转换 | 预处理语句参数设置 |
-| 结果映射 | #[C|ORM] ResultSetHandler | 自动映射 + 嵌套映射 | ResultMap + 延迟加载 |
-| 插件拦截 | #[C|ORM] Interceptor | 责任链 + 动态代理 | Plugin.wrap() 生成代理 |
-| 缓存 | #[C|ORM] Cache | 一级缓存 + 二级缓存 | PerpetualCache + LRU/FIFO |
+| 阶段        | 组件 | 核心知识点            | 关键机制             |
+| ----------- | ---- | --------------------- | -------------------- | ------------------------------------------ |
+| Mapper 代理 | #[C  | ORM] MapperProxy      | JDK 动态代理         | MapperProxyFactory + MapperMethod          |
+| SQL 会话    | #[C  | ORM] SqlSession       | 执行器模板           | SimpleExecutor/ReuseExecutor/BatchExecutor |
+| 参数映射    | #[C  | ORM] ParameterHandler | TypeHandler 类型转换 | 预处理语句参数设置                         |
+| 结果映射    | #[C  | ORM] ResultSetHandler | 自动映射 + 嵌套映射  | ResultMap + 延迟加载                       |
+| 插件拦截    | #[C  | ORM] Interceptor      | 责任链 + 动态代理    | Plugin.wrap() 生成代理                     |
+| 缓存        | #[C  | ORM] Cache            | 一级缓存 + 二级缓存  | PerpetualCache + LRU/FIFO                  |
 
 ## 17.1 MyBatis Mapper 代理原理
 
@@ -2510,27 +2510,27 @@ graph TB
     IMPL --> CHAIN
 ```
 
-| 拦截点 | 可拦截方法 | 典型插件应用 |
-|--------|-----------|-------------|
-| Executor | update/query/commit | 分页插件（PageHelper）、SQL 审计 |
-| StatementHandler | prepare/query | 分页插件改写 SQL、SQL 加密 |
-| ParameterHandler | setParameters | 参数加密、参数脱敏 |
-| ResultSetHandler | handleResultSets | 结果加密、数据脱敏 |
+| 拦截点           | 可拦截方法          | 典型插件应用                     |
+| ---------------- | ------------------- | -------------------------------- |
+| Executor         | update/query/commit | 分页插件（PageHelper）、SQL 审计 |
+| StatementHandler | prepare/query       | 分页插件改写 SQL、SQL 加密       |
+| ParameterHandler | setParameters       | 参数加密、参数脱敏               |
+| ResultSetHandler | handleResultSets    | 结果加密、数据脱敏               |
 
 ## 17.3 MyBatis vs MyBatis-Plus 对比
 
-| 对比维度 | MyBatis | MyBatis-Plus |
-|----------|---------|-------------|
-| 基础 CRUD | 需手写 SQL | 内置 BaseMapper 自动生成 |
-| 分页查询 | 需手动写 LIMIT | 内置 Page + PaginationInterceptor |
-| 条件构造 | 需手动拼接 SQL | LambdaQueryWrapper 链式调用 |
-| 代码生成 | 需第三方工具 | 内置 AutoGenerator |
-| 乐观锁 | 需手动实现 | @Version 注解自动支持 |
-| 逻辑删除 | 需手动处理 | @TableLogic 注解自动支持 |
-| 自动填充 | 需手动实现 | @TableField(fill=...) 自动填充 |
-| 动态表名 | 需手动处理 | DynamicTableNameInnerInterceptor |
-| SQL 注入防护 | 需手动验证 | 自动参数化预编译 |
-| 学习成本 | 低 | 中（基于 MyBatis 扩展） |
+| 对比维度     | MyBatis        | MyBatis-Plus                      |
+| ------------ | -------------- | --------------------------------- |
+| 基础 CRUD    | 需手写 SQL     | 内置 BaseMapper 自动生成          |
+| 分页查询     | 需手动写 LIMIT | 内置 Page + PaginationInterceptor |
+| 条件构造     | 需手动拼接 SQL | LambdaQueryWrapper 链式调用       |
+| 代码生成     | 需第三方工具   | 内置 AutoGenerator                |
+| 乐观锁       | 需手动实现     | @Version 注解自动支持             |
+| 逻辑删除     | 需手动处理     | @TableLogic 注解自动支持          |
+| 自动填充     | 需手动实现     | @TableField(fill=...) 自动填充    |
+| 动态表名     | 需手动处理     | DynamicTableNameInnerInterceptor  |
+| SQL 注入防护 | 需手动验证     | 自动参数化预编译                  |
+| 学习成本     | 低             | 中（基于 MyBatis 扩展）           |
 
 ## 17.4 MyBatis 一级缓存与二级缓存
 
@@ -2561,7 +2561,7 @@ graph TB
 **MyBatis 与 MyBatis-Plus 的关系：** MyBatis-Plus 不是替代 MyBatis，而是增强。它基于 MyBatis 的 Plugin 机制和 Mapper 代理机制，在原有基础上扩展了自动 CRUD、分页插件、条件构造器等功能。#[C|理解 MyBatis 的核心原理（MapperProxy + SqlSession + Executor + Plugin）是掌握 MyBatis-Plus 的前提]，也是排查数据库相关问题的必备知识。
 :::
 
-***
+---
 
 ## 总结：Java 后端生态全景交叉点
 
@@ -2569,19 +2569,19 @@ graph TB
 
 ### 七大技术领域交叉点汇总表
 
-| 核心场景 | Spring 生态 | 数据层 | 中间件 | 基础设施 | JVM |
-|----------|:-----------:|:------:|:------:|:--------:|:---:|
-| 接入层限流 | - | - | - | Nginx 令牌桶 | - |
-| 微服务网关 | SCG + Nacos + Sentinel | - | - | Netty Reactor | - |
-| 库存扣减 | Spring Boot + MyBatis-Plus | MySQL 行锁 + MVCC | Kafka 削峰 | - | 事务隔离 |
-| 缓存加速 | @Cacheable | Redis Lua 原子操作 | - | - | - |
-| 异步订单 | @Async + 事件驱动 | - | Kafka + RabbitMQ | - | 线程池 |
-| 搜索服务 | - | Elasticsearch 倒排索引 | - | - | - |
-| 高级查询 | - | PostgreSQL + PostGIS | - | - | - |
-| 分布式事务 | @GlobalTransactional | Seata AT UNDO_LOG | - | - | - |
-| 容器化部署 | Spring Boot Docker | - | - | Docker + K8s | JVM 参数优化 |
-| 监控告警 | Actuator + Micrometer | - | - | Prometheus + Grafana | GC 日志分析 |
-| ORM 映射 | MapperProxy + Plugin | MyBatis 缓存 | - | - | - |
+| 核心场景   |        Spring 生态         |         数据层         |      中间件      |       基础设施       |     JVM      |
+| ---------- | :------------------------: | :--------------------: | :--------------: | :------------------: | :----------: |
+| 接入层限流 |             -              |           -            |        -         |     Nginx 令牌桶     |      -       |
+| 微服务网关 |   SCG + Nacos + Sentinel   |           -            |        -         |    Netty Reactor     |      -       |
+| 库存扣减   | Spring Boot + MyBatis-Plus |   MySQL 行锁 + MVCC    |    Kafka 削峰    |          -           |   事务隔离   |
+| 缓存加速   |         @Cacheable         |   Redis Lua 原子操作   |        -         |          -           |      -       |
+| 异步订单   |     @Async + 事件驱动      |           -            | Kafka + RabbitMQ |          -           |    线程池    |
+| 搜索服务   |             -              | Elasticsearch 倒排索引 |        -         |          -           |      -       |
+| 高级查询   |             -              |  PostgreSQL + PostGIS  |        -         |          -           |      -       |
+| 分布式事务 |    @GlobalTransactional    |   Seata AT UNDO_LOG    |        -         |          -           |      -       |
+| 容器化部署 |     Spring Boot Docker     |           -            |        -         |     Docker + K8s     | JVM 参数优化 |
+| 监控告警   |   Actuator + Micrometer    |           -            |        -         | Prometheus + Grafana | GC 日志分析  |
+| ORM 映射   |    MapperProxy + Plugin    |      MyBatis 缓存      |        -         |          -           |      -       |
 
 ### 技术选型决策树
 
@@ -2612,36 +2612,24 @@ graph TB
 **Java 后端工程师学习路径**
 
 #[C|第一阶段：Java 基础 + Spring Boot]（3-4 个月）
-  1. Java 核心基础：集合、多线程、IO、反射、注解
-  2. Spring Boot：自动配置、Starter、Actuator、内嵌容器
-  3. MyBatis-Plus：Mapper 代理、分页、条件构造、代码生成
-  4. MySQL：索引优化、事务、MVCC、锁机制、SQL 调优
 
-#[G|第二阶段：微服务 + 中间件]（2-3 个月）
-  5. Spring Cloud：Gateway、Nacos、Sentinel、OpenFeign
-  6. Redis：数据结构、缓存策略、分布式锁、哨兵/集群
-  7. Kafka/RabbitMQ：消息模型、可靠投递、幂等处理
-  8. Elasticsearch：倒排索引、分词、聚合、搜索优化
+1. Java 核心基础：集合、多线程、IO、反射、注解
+2. Spring Boot：自动配置、Starter、Actuator、内嵌容器
+3. MyBatis-Plus：Mapper 代理、分页、条件构造、代码生成
+4. MySQL：索引优化、事务、MVCC、锁机制、SQL 调优
 
-#[Y|第三阶段：基础设施 + 运维]（1-2 个月）
-  9. Docker：镜像构建、容器管理、Compose、网络
-  10. Kubernetes：Pod、Service、Deployment、Ingress、HPA
-  11. Nginx：反向代理、负载均衡、限流、SSL
-  12. Prometheus + Grafana：指标采集、PromQL、告警、Dashboard
+#[G|第二阶段：微服务 + 中间件]（2-3 个月） 5. Spring Cloud：Gateway、Nacos、Sentinel、OpenFeign 6. Redis：数据结构、缓存策略、分布式锁、哨兵/集群 7. Kafka/RabbitMQ：消息模型、可靠投递、幂等处理 8. Elasticsearch：倒排索引、分词、聚合、搜索优化
 
-#[R|第四阶段：JVM + 性能调优]（1-2 个月）
-  13. JVM：类加载、运行时数据区、GC 调优、JIT 编译
-  14. 性能调优：线程池调优、连接池调优、JVM 参数优化
-  15. 分布式事务：Seata、Saga、TCC、可靠消息最终一致
-  16. Netty：Reactor 模型、Pipeline、ByteBuf、零拷贝
+#[Y|第三阶段：基础设施 + 运维]（1-2 个月） 9. Docker：镜像构建、容器管理、Compose、网络 10. Kubernetes：Pod、Service、Deployment、Ingress、HPA 11. Nginx：反向代理、负载均衡、限流、SSL 12. Prometheus + Grafana：指标采集、PromQL、告警、Dashboard
+
+#[R|第四阶段：JVM + 性能调优]（1-2 个月） 13. JVM：类加载、运行时数据区、GC 调优、JIT 编译 14. 性能调优：线程池调优、连接池调优、JVM 参数优化 15. 分布式事务：Seata、Saga、TCC、可靠消息最终一致 16. Netty：Reactor 模型、Pipeline、ByteBuf、零拷贝
 :::
 
-:::important
-#[C|Java 后端生态的核心思想]：Java 后端不是单一技术，而是一个庞大而精密的生态系统。Spring Boot 负责"快速开发"——自动配置、开箱即用；Spring Cloud 负责"服务治理"——注册发现、配置管理、熔断降级；MySQL 负责"可靠存储"——事务、索引、MVCC；Redis 负责"极致性能"——缓存、分布式锁、原子操作；MyBatis-Plus 负责"ORM 增强"——自动 CRUD、分页、代码生成；Kafka 负责"异步解耦"——削峰填谷、流处理；Netty 负责"高性能通信"——Reactor 模型、零拷贝；Prometheus 负责"可观测性"——指标采集、告警；Docker/K8s 负责"标准化交付"——容器化、编排调度；JVM 负责"底层引擎"——内存管理、GC、JIT。十者如同 #[G|齿轮组] 般精密咬合，缺一不可。只有理解它们之间的协同关系，才能真正掌握 Java 后端工程的全貌。
+:::important #[C|Java 后端生态的核心思想]：Java 后端不是单一技术，而是一个庞大而精密的生态系统。Spring Boot 负责"快速开发"——自动配置、开箱即用；Spring Cloud 负责"服务治理"——注册发现、配置管理、熔断降级；MySQL 负责"可靠存储"——事务、索引、MVCC；Redis 负责"极致性能"——缓存、分布式锁、原子操作；MyBatis-Plus 负责"ORM 增强"——自动 CRUD、分页、代码生成；Kafka 负责"异步解耦"——削峰填谷、流处理；Netty 负责"高性能通信"——Reactor 模型、零拷贝；Prometheus 负责"可观测性"——指标采集、告警；Docker/K8s 负责"标准化交付"——容器化、编排调度；JVM 负责"底层引擎"——内存管理、GC、JIT。十者如同 #[G|齿轮组] 般精密咬合，缺一不可。只有理解它们之间的协同关系，才能真正掌握 Java 后端工程的全貌。
 :::
 
 ## 全文完
 
-***
+---
 
-*本文涵盖了 Java 后端生态中 Spring Boot、Spring Cloud、MySQL、PostgreSQL、Redis、MyBatis、MyBatis-Plus、Kafka、RabbitMQ、Elasticsearch、Nginx、Netty、Seata、Docker、Kubernetes、Prometheus、Grafana、JVM 等全部核心组件的关键知识点。建议配合官方文档和源码深入学习每个组件，再回到本文理解组件之间的关联与协同。*
+_本文涵盖了 Java 后端生态中 Spring Boot、Spring Cloud、MySQL、PostgreSQL、Redis、MyBatis、MyBatis-Plus、Kafka、RabbitMQ、Elasticsearch、Nginx、Netty、Seata、Docker、Kubernetes、Prometheus、Grafana、JVM 等全部核心组件的关键知识点。建议配合官方文档和源码深入学习每个组件，再回到本文理解组件之间的关联与协同。_
