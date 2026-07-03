@@ -2,8 +2,10 @@
 import type { Phile } from "../../modules/philes/model";
 import {
   renderPhileBodyBlocks,
+  renderPhileBodyBlocksLazy,
   renderPhileFooterPre,
-  renderPhileHeader
+  renderPhileHeader,
+  shouldUseLazyLoad
 } from "../../modules/philes/render";
 import { renderRedactedBody } from "../../modules/philes/redacted";
 
@@ -14,9 +16,17 @@ type Props = {
 const phile = Astro.props.phile;
 const header = renderPhileHeader(phile);
 const isRedacted = phile.data.redacted || (phile.body ?? "").trim().length === 0;
-const bodyBlocks = isRedacted ? [] : await renderPhileBodyBlocks(phile);
-const hasImages = bodyBlocks.some((block) => block.kind === "image");
-const hasMermaid = bodyBlocks.some(
+
+// 判断是否使用懒加载
+const useLazyLoad = !isRedacted && shouldUseLazyLoad(phile);
+
+// 根据是否懒加载选择渲染方式
+const lazyResult = useLazyLoad ? await renderPhileBodyBlocksLazy(phile) : null;
+const bodyBlocks = useLazyLoad ? [] : (isRedacted ? [] : await renderPhileBodyBlocks(phile));
+
+// 判断是否有图片和 Mermaid
+const hasImages = useLazyLoad ? (lazyResult?.hasImages ?? false) : bodyBlocks.some((block) => block.kind === "image");
+const hasMermaid = useLazyLoad ? (lazyResult?.hasMermaid ?? false) : bodyBlocks.some(
   (block) => block.kind === "text" && block.html.includes('class="mermaid"')
 );
 const redactedHtml = isRedacted ? renderRedactedBody(phile) : undefined;
@@ -38,6 +48,13 @@ const footerHtml = renderPhileFooterPre(phile);
   {
     redactedHtml ? (
       <pre class="textmode-pre phile-pre phile-body-pre phile-redacted-pre" set:html={redactedHtml}></pre>
+    ) : useLazyLoad && lazyResult ? (
+      <>
+        <!-- 首屏渲染的内容 -->
+        <div class="lazy-initial-content" set:html={lazyResult.initialHtml}></div>
+        <!-- 待加载的内容（存储在 template 中） -->
+        <div class="lazy-pending-content" set:html={lazyResult.pendingHtml}></div>
+      </>
     ) : bodyBlocks.map((block) =>
       block.kind === "image" ? (
         <div class="phile-media" set:html={block.html}></div>
@@ -97,6 +114,46 @@ const footerHtml = renderPhileFooterPre(phile);
         initMermaidDiagrams().then(() => {
           installMermaidLightbox();
         });
+      });
+    </script>
+  )
+}
+
+{
+  useLazyLoad && (
+    <script>
+      import { initLazyRender, getPerformanceReport } from "../../modules/lazy/runtime";
+
+      // 等待首屏打字机完成后初始化懒加载
+      function whenTypewriterDone(): Promise<void> {
+        return new Promise((resolve) => {
+          if (window.__typewriterDone) {
+            resolve();
+            return;
+          }
+          const handler = () => {
+            window.removeEventListener("typewriter-done", handler);
+            resolve();
+          };
+          window.addEventListener("typewriter-done", handler);
+          // 兜底：若 5 秒内打字机未触发，直接初始化
+          setTimeout(() => {
+            window.removeEventListener("typewriter-done", handler);
+            resolve();
+          }, 5000);
+        });
+      }
+
+      whenTypewriterDone().then(() => {
+        initLazyRender();
+
+        // 开发环境下输出性能报告
+        if (import.meta.env.DEV) {
+          setInterval(() => {
+            const report = getPerformanceReport();
+            console.log("[LazyRender] Performance report:", report);
+          }, 30000);
+        }
       });
     </script>
   )

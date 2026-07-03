@@ -153,4 +153,31 @@ type Props = {
     from { opacity: 0.3; }
     to { opacity: 1; }
   }
+
+  /* ── 懒加载样式 ──────────────────────────────────────────────────────── */
+
+  /*
+   * display: contents 使这些包装容器在布局树中完全透明，
+   * 其子元素表现得如同直接父元素就是 <article>，
+   * 与非懒加载路径的 DOM 结构在布局层面完全一致。
+   */
+  .lazy-initial-content,
+  .lazy-chunk-initial,
+  .lazy-pending-content {
+    display: contents;
+  }
+
+  /* 懒加载占位元素 - 使用 CSS 变量控制高度，平滑过渡 */
+  .lazy-placeholder {
+    display: block;
+    min-height: var(--placeholder-height, 80px);
+    margin: 0;
+    contain: layout style;
+    transition: opacity 0.15s ease-out;
+  }
+
+  /* 模板元素（不可见，不占用布局空间） */
+  .lazy-template {
+    display: none;
+  }
 </style>

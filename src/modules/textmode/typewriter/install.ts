@@ -2,6 +2,7 @@
  * UNIX 光标打字动画 — 逐行显示 + 闪烁光标
  *
  * 从 TextmodeLayout.astro 内联脚本提取，获得 TypeScript 类型检查与 IDE 支持。
+ * 支持全页面初始化和单元素初始化（用于懒加载）。
  */
 
 declare global {
@@ -13,6 +14,181 @@ declare global {
 function signalTypewriterDone(): void {
   window.__typewriterDone = true;
   window.dispatchEvent(new CustomEvent("typewriter-done"));
+}
+
+/** 打字机配置 */
+const TYPEWRITER_CONFIG = {
+  interval: 20, // 每批次间隔（毫秒）
+  minBatchSize: 2,
+  maxBatchSize: 8,
+  startDelay: 150, // 初始延迟
+  elementStartDelay: 50 // 单元素初始延迟
+};
+
+/**
+ * 为单个元素初始化打字机效果
+ *
+ * 用于懒加载场景：新激活的块需要应用打字机效果
+ *
+ * @param element - 需要应用打字机效果的元素
+ * @returns Promise，在打字机完成时 resolve
+ */
+export function initTypewriterForElement(element: HTMLElement): Promise<void> {
+  return new Promise((resolve) => {
+    // 检查用户偏好设置
+    const STORAGE_KEY = "typewriter-enabled";
+    const userPreference = localStorage.getItem(STORAGE_KEY);
+
+    // 如果用户禁用了打字机效果，直接显示
+    if (userPreference === "false") {
+      element.style.visibility = "visible";
+      resolve();
+      return;
+    }
+
+    // 跳过已处理的元素
+    if (element.hasAttribute("data-typed")) {
+      element.style.visibility = "visible";
+      resolve();
+      return;
+    }
+
+    element.setAttribute("data-typed", "true");
+
+    // 跳过标记为 no-typewriter 的元素
+    if (element.hasAttribute("data-no-typewriter")) {
+      element.style.visibility = "visible";
+      resolve();
+      return;
+    }
+
+    const originalHtml = element.innerHTML;
+    if (!originalHtml.trim()) {
+      element.style.visibility = "visible";
+      resolve();
+      return;
+    }
+
+    // 保护 data-no-typewriter 子元素
+    const noTypewriterBlocks: string[] = [];
+    let protectedHtml = originalHtml;
+
+    const tmp = document.createElement("div");
+    tmp.innerHTML = originalHtml;
+    const blocks = tmp.querySelectorAll("[data-no-typewriter]");
+    for (const block of blocks) {
+      const outer = block.outerHTML;
+      const idx = noTypewriterBlocks.length;
+      noTypewriterBlocks.push(outer);
+      protectedHtml = protectedHtml.replace(outer, `\uE400NT${idx}\uE400`);
+    }
+
+    let lines: string[];
+
+    // <div> 元素：使用 DOM 分行
+    if (element.tagName === "DIV") {
+      const domTmp = document.createElement("div");
+      domTmp.innerHTML = protectedHtml;
+      lines = [];
+
+      const BLOCK_TAGS =
+        /^(p|h[1-6]|ul|ol|li|blockquote|table|hr|div|pre|figure|figcaption|dl|dt|dd|section|header|footer|main|article|nav|aside)$/;
+
+      function walk(node: Node): void {
+        if (node.nodeType === Node.TEXT_NODE) {
+          const text = node.textContent || "";
+          if (text.trim()) {
+            const parts = text.split("\n");
+            for (const part of parts) {
+              lines.push(part);
+            }
+          }
+        } else if (node.nodeType === Node.ELEMENT_NODE) {
+          const el = node as HTMLElement;
+          if (BLOCK_TAGS.test(el.tagName.toLowerCase())) {
+            lines.push(el.outerHTML);
+          } else {
+            for (const child of node.childNodes) {
+              walk(child);
+            }
+          }
+        }
+      }
+
+      for (const child of domTmp.childNodes) {
+        walk(child);
+      }
+    } else {
+      // <pre> 元素：按 \n 拆分
+      lines = protectedHtml.split("\n");
+    }
+
+    if (lines.length === 0) {
+      element.style.visibility = "visible";
+      resolve();
+      return;
+    }
+
+    element.innerHTML = "";
+
+    const allLines: { lineHtml: string }[] = lines.map((lineHtml) => {
+      let restored = lineHtml;
+      for (let i = 0; i < noTypewriterBlocks.length; i++) {
+        restored = restored.replaceAll(`\uE400NT${i}\uE400`, noTypewriterBlocks[i]);
+      }
+      return { lineHtml: restored };
+    });
+
+    let currentIndex = 0;
+    // 懒加载块使用更快的速度（减少 batch 间隔）
+    const batchSize = Math.max(
+      TYPEWRITER_CONFIG.minBatchSize,
+      Math.min(TYPEWRITER_CONFIG.maxBatchSize, Math.floor(allLines.length / 100))
+    );
+    const interval = TYPEWRITER_CONFIG.interval / 2; // 懒加载块使用更快速度
+
+    const cursor = document.createElement("span");
+    cursor.className = "typewriter-cursor";
+    cursor.textContent = "\u2588";
+    cursor.setAttribute("aria-hidden", "true");
+
+    function typeNextBatch(): void {
+      const batch = allLines.slice(currentIndex, currentIndex + batchSize);
+
+      if (batch.length === 0) {
+        cursor.remove();
+        resolve();
+        return;
+      }
+
+      for (const { lineHtml } of batch) {
+        const existingCount = element.querySelectorAll(".tw-line").length;
+        const lineSpan = document.createElement("span");
+        lineSpan.className = "tw-line";
+        lineSpan.innerHTML = lineHtml || "&nbsp;";
+
+        if (existingCount > 0) {
+          element.appendChild(document.createTextNode("\n"));
+        } else {
+          element.style.visibility = "visible";
+        }
+        element.appendChild(lineSpan);
+
+        lineSpan.appendChild(cursor);
+      }
+
+      currentIndex += batch.length;
+
+      if (currentIndex < allLines.length) {
+        window.setTimeout(typeNextBatch, interval);
+      } else {
+        cursor.remove();
+        resolve();
+      }
+    }
+
+    window.setTimeout(typeNextBatch, TYPEWRITER_CONFIG.elementStartDelay);
+  });
 }
 
 export function initTypewriter(): void {
