@@ -6,12 +6,6 @@ export type AppearanceConfig = {
     link: string;
     linkHover: string;
     linkHoverBackground: string;
-    particleHome: string;
-    particleHomeGlow: string;
-    particlePage: string;
-    particlePageGlow: string;
-    particleVolume: string;
-    particleVolumeGlow: string;
   };
   fonts: {
     asciiFamily: string;
@@ -35,13 +29,7 @@ export const appearanceConfig: AppearanceConfig = {
     foreground: "#fefefe",
     link: "#93ffd7",
     linkHover: "#c7ffe9",
-    linkHoverBackground: "#153329",
-    particleHome: "#b47ae2",
-    particleHomeGlow: "#6f4b97",
-    particlePage: "#9368b8",
-    particlePageGlow: "#52376f",
-    particleVolume: "#a878d2",
-    particleVolumeGlow: "#68448c"
+    linkHoverBackground: "#153329"
   },
   fonts: {
     asciiFamily: "gohu",

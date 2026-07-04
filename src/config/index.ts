@@ -1,12 +1,6 @@
 export type { AppearanceConfig } from "./appearance";
 export { appearanceConfig } from "./appearance";
-export type {
-  EffectsConfig,
-  HomeAsciiGlitchConfig,
-  ParticleConfig,
-  ParticleContext,
-  ParticleContextConfig
-} from "./effects";
+export type { EffectsConfig, HomeAsciiGlitchConfig } from "./effects";
 export { effectsConfig } from "./effects";
 export type { HomeItem, HomeSection, SiteConfig } from "./site";
 export { siteConfig } from "./site";

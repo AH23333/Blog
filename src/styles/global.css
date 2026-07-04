@@ -1,8 +1,7 @@
 @import "./modules/tokens.css";
 @import "./modules/base.css";
-@import "./modules/particles.css";
 @import "./modules/home.css";
-@import "./modules/life.css";
+
 @import "./modules/ansi.css";
 @import "./modules/phile.css";
 @import "./modules/lightbox.css";
@@ -10,3 +9,4 @@
 @import "./modules/math.css";
 @import "./modules/mermaid.css";
 @import "./modules/responsive.css";
+@import "./modules/crt.css";

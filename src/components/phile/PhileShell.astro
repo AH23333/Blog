@@ -39,8 +39,7 @@ const footerHtml = renderPhileFooterPre(phile);
     style={`--phile-meta-lines: ${header.metaLineCount}`}
   >
     <pre
-      class="textmode-pre phile-pre phile-header-side life-art"
-      data-life-root
+      class="textmode-pre phile-pre phile-header-side"
       set:html={header.sideHtml}
     ></pre>
     <pre class="textmode-pre phile-pre phile-header-meta" set:html={header.metaHtml}></pre>
@@ -67,12 +66,6 @@ const footerHtml = renderPhileFooterPre(phile);
   }
   <pre class="textmode-pre phile-pre phile-footer-pre" set:html={footerHtml}></pre>
 </article>
-
-<script>
-  import { initLifeArt } from "../../modules/textmode/life/runtime";
-
-  initLifeArt();
-</script>
 
 {
   hasImages && (

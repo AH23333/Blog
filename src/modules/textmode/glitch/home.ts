@@ -216,7 +216,7 @@ class AsciiGlitchAnimator {
 export function initHomeAsciiGlitch(): void {
   const config = effectsConfig.homeAsciiGlitch;
 
-  if (!config.enable || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+  if (!config.enable) {
     return;
   }
 

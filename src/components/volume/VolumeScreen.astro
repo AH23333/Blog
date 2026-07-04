@@ -11,11 +11,5 @@ const volumeHtml = renderVolumePre(volume);
 ---
 
 <section class="textmode-wrap volume-wrap">
-  <pre class="textmode-pre volume-pre life-art" data-life-root set:html={volumeHtml}></pre>
+  <pre class="textmode-pre volume-pre" set:html={volumeHtml}></pre>
 </section>
-
-<script>
-  import { initLifeArt } from "../../modules/textmode/life/runtime";
-
-  initLifeArt();
-</script>

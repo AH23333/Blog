@@ -10,7 +10,7 @@ import {
 } from "../math/render";
 import { escapeHtml, link, textHtml } from "../textmode/core/html";
 import { wrapWordsCells } from "../textmode/core/layout";
-import { lifeFrameHeight, lifeFrameHtml } from "../textmode/life/art";
+
 import { highlightCodeBlocks } from "../textmode/markdown/highlight";
 import { renderMarkdownToHtml, splitContainerSegments } from "../textmode/markdown/parser";
 import { createPhilePipeline } from "../textmode/shared/placeholder";
@@ -84,8 +84,8 @@ export function renderPhileHeader(phile: Phile): PhileHeader {
 
   return {
     metaHtml: metaLines.map(textHtml).join("\n"),
-    sideHtml: lifeFrameHtml(),
-    lineCount: lifeFrameHeight,
+    sideHtml: "",
+    lineCount: 0,
     metaLineCount: metaLines.length,
     titleLineCount: titleLines.length
   };

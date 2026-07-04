@@ -1,0 +1,274 @@
+/* ── CRT 页面风格滤镜效果 ────────────────────────────────────────────── */
+
+/* 基本结构：滤镜覆盖层 */
+.crt-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+/* 扫描线效果 */
+.crt-scanlines .screen {
+  position: relative;
+}
+
+.crt-scanlines .crt-overlay {
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 3px,
+    rgba(0, 0, 0, 0.28) 3px,
+    rgba(0, 0, 0, 0.28) 5px
+  );
+}
+
+/* CRT 显示效果（扫描线 + 辉光 + 暗角） */
+.crt-display .screen {
+  filter: contrast(1.1) brightness(0.88) saturate(0.85);
+}
+
+.crt-display .crt-overlay {
+  background:
+    radial-gradient(ellipse at center, transparent 55%, rgba(0, 0, 0, 0.5) 100%),
+    repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0, 0, 0, 0.15) 3px, rgba(0, 0, 0, 0.15) 5px);
+  box-shadow: inset 0 0 120px rgba(0, 0, 0, 0.3);
+}
+
+/* 隔行扫描效果 */
+.crt-interlace .crt-overlay {
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 1px,
+    rgba(0, 0, 0, 0.25) 1px,
+    rgba(0, 0, 0, 0.25) 2px
+  );
+}
+
+/* 雪花噪点效果 */
+.crt-static .crt-overlay {
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.35'/%3E%3C/svg%3E");
+  background-size: 128px 128px;
+  animation: crt-noise-shift 0.12s steps(2) infinite;
+  opacity: 0.85;
+}
+
+@keyframes crt-noise-shift {
+  0% {
+    transform: translate(0, 0);
+  }
+  25% {
+    transform: translate(-5%, 3%);
+  }
+  50% {
+    transform: translate(4%, -2%);
+  }
+  75% {
+    transform: translate(-3%, -4%);
+  }
+  100% {
+    transform: translate(2%, 1%);
+  }
+}
+
+/* 色彩失真/饱和度降低 */
+.crt-desaturate .screen {
+  filter: saturate(0.35) contrast(0.85) hue-rotate(-20deg) sepia(0.2);
+}
+
+/* 屏幕曲率/鱼眼透视效果 */
+.crt-curvature .screen {
+  border-radius: 5% / 3%;
+  overflow: visible;
+  filter: url(#crt-barrel);
+}
+
+/* 曲率效果下 body 需要隐藏溢出，防止位移后的内容超出视口 */
+.crt-curvature {
+  overflow-x: hidden;
+}
+
+.crt-curvature .crt-overlay {
+  background: radial-gradient(
+    ellipse 90% 65% at 50% 50%,
+    transparent 55%,
+    rgba(0, 0, 0, 0.04) 75%,
+    rgba(0, 0, 0, 0.1) 90%,
+    rgba(0, 0, 0, 0.2) 100%
+  );
+  box-shadow: inset 0 0 150px 40px rgba(0, 0, 0, 0.12);
+}
+
+/* ── 效果切换过渡动画 ─────────────────────────────────────────────────── */
+.crt-overlay,
+.screen {
+  transition:
+    filter 0.4s ease,
+    border-radius 0.4s ease,
+    box-shadow 0.4s ease,
+    transform 0.4s ease,
+    opacity 0.4s ease;
+}
+
+/* ── 页面风格切换按钮 ─────────────────────────────────────────────────── */
+.crt-toggle {
+  position: fixed;
+  top: 8px;
+  left: 100px;
+  z-index: 10001;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border: 1px solid var(--ansi-bright-black);
+  background: var(--bg);
+  color: var(--ansi-yellow);
+  font-family: var(--text-font);
+  font-size: var(--text-size);
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.6;
+  transition:
+    opacity 0.2s,
+    border-color 0.2s,
+    background-color 0.2s;
+  white-space: nowrap;
+}
+
+.crt-toggle:hover {
+  opacity: 1;
+  border-color: var(--link);
+  background: var(--link-hover-bg);
+}
+
+.crt-toggle:focus-visible {
+  opacity: 1;
+  outline: 1px solid var(--link);
+  outline-offset: 2px;
+}
+
+.crt-toggle .toggle-icon {
+  font-size: 1.1em;
+}
+
+.crt-toggle .toggle-label {
+  font-size: 0.9em;
+}
+
+/* ── 弹出选择面板 ─────────────────────────────────────────────────────── */
+.crt-panel {
+  position: fixed;
+  top: 44px;
+  left: 88px;
+  z-index: 10002;
+  padding: 8px 0;
+  border: 1px solid var(--ansi-bright-black);
+  background: var(--bg);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+  font-family: var(--text-font);
+  min-width: 260px;
+  transform-origin: top left;
+  transition:
+    opacity 0.18s ease,
+    transform 0.18s ease;
+}
+
+.crt-panel.hidden {
+  opacity: 0;
+  transform: scale(0.94);
+  pointer-events: none;
+}
+
+.crt-panel-title {
+  padding: 4px 14px 8px;
+  color: var(--ansi-bright-black);
+  font-size: 0.85em;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.crt-option {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 6px 14px;
+  border: none;
+  background: transparent;
+  color: var(--fg);
+  font-family: var(--text-font);
+  font-size: var(--text-size);
+  line-height: 1;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.12s;
+  white-space: nowrap;
+}
+
+.crt-option:hover {
+  background: var(--link-hover-bg);
+}
+
+.crt-option:focus-visible {
+  outline: 1px solid var(--link);
+  outline-offset: -2px;
+}
+
+.crt-option .crt-option-check {
+  width: 18px;
+  margin-right: 8px;
+  color: var(--ansi-green);
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.crt-option .crt-option-name {
+  flex: 1;
+}
+
+.crt-option .crt-option-desc {
+  color: var(--ansi-bright-black);
+  font-size: 0.8em;
+  margin-left: 8px;
+}
+
+/* ── 响应式 ──────────────────────────────────────────────────────────── */
+@media (max-width: 760px) {
+  .crt-toggle {
+    top: 4px;
+    left: 72px;
+    padding: 3px 8px;
+    gap: 4px;
+  }
+
+  .crt-toggle .toggle-icon {
+    font-size: 1em;
+  }
+
+  .crt-toggle .toggle-label {
+    font-size: 0.85em;
+  }
+
+  .crt-panel {
+    top: 38px;
+    left: 72px;
+    min-width: 220px;
+  }
+}
+
+@media (max-width: 480px) {
+  .crt-toggle .toggle-label {
+    display: none;
+  }
+
+  .crt-toggle {
+    gap: 3px;
+    left: 60px;
+  }
+
+  .crt-panel {
+    left: 8px;
+    min-width: 200px;
+  }
+}

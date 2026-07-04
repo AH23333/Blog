@@ -12,7 +12,7 @@ redacted: false
 > 本文以 Spring Boot 3.x 为基准，深入剖析其核心机制：从启动流程的全链路追踪，到自动配置的魔法背后，再到嵌入式服务器、Actuator 监控、配置管理、数据访问与安全防护。
 > 每个场景均配备详细的 Mermaid 时序图与架构图，标注核心类名、方法签名与源码位置，适合 #[C|3 年以上经验的 Java 后端开发者] 深入研读。
 
-***
+---
 
 ## Spring Boot 核心架构总览
 
@@ -82,7 +82,7 @@ graph TB
 关键类的源码位置均以相对路径标注，所有 Mermaid 图表中的类名与方法名均为真实 API。
 :::
 
-***
+---
 
 ## 场景一：Spring Boot 启动流程全链路
 
@@ -99,15 +99,15 @@ graph LR
     G --> H["运行 Runners<br/>callRunners"]
 ```
 
-| 阶段 | 核心类 | 关键机制 | 源码位置 |
-|------|--------|----------|----------|
-| 创建 SpringApplication | `SpringApplication` | 推断应用类型、设置 Initializers/Listeners | `org.springframework.boot.SpringApplication` |
-| 准备 Environment | `SpringApplicationRunListeners` | 加载 properties/yml、激活 Profile | `org.springframework.boot.SpringApplication#prepareEnvironment` |
-| 创建 ApplicationContext | `createApplicationContext()` | 根据 WebApplicationType 选择 Context 类型 | `org.springframework.boot.SpringApplication#createApplicationContext` |
-| 准备 Context | `prepareContext()` | 注册 BeanDefinition、执行 Initializers | `org.springframework.boot.SpringApplication#prepareContext` |
-| 刷新 Context | `AbstractApplicationContext#refresh()` | 13 步标准刷新流程 | `org.springframework.context.support.AbstractApplicationContext` |
-| 启动嵌入式 Server | `WebServerStartStopLifecycle` | 创建 Tomcat/Jetty/Undertow 并启动 | `org.springframework.boot.web.servlet.context.ServletWebServerApplicationContext` |
-| 运行 Runners | `ApplicationRunner` / `CommandLineRunner` | 回调执行用户自定义启动逻辑 | `org.springframework.boot.SpringApplication#callRunners` |
+| 阶段                    | 核心类                                    | 关键机制                                  | 源码位置                                                                          |
+| ----------------------- | ----------------------------------------- | ----------------------------------------- | --------------------------------------------------------------------------------- |
+| 创建 SpringApplication  | `SpringApplication`                       | 推断应用类型、设置 Initializers/Listeners | `org.springframework.boot.SpringApplication`                                      |
+| 准备 Environment        | `SpringApplicationRunListeners`           | 加载 properties/yml、激活 Profile         | `org.springframework.boot.SpringApplication#prepareEnvironment`                   |
+| 创建 ApplicationContext | `createApplicationContext()`              | 根据 WebApplicationType 选择 Context 类型 | `org.springframework.boot.SpringApplication#createApplicationContext`             |
+| 准备 Context            | `prepareContext()`                        | 注册 BeanDefinition、执行 Initializers    | `org.springframework.boot.SpringApplication#prepareContext`                       |
+| 刷新 Context            | `AbstractApplicationContext#refresh()`    | 13 步标准刷新流程                         | `org.springframework.context.support.AbstractApplicationContext`                  |
+| 启动嵌入式 Server       | `WebServerStartStopLifecycle`             | 创建 Tomcat/Jetty/Undertow 并启动         | `org.springframework.boot.web.servlet.context.ServletWebServerApplicationContext` |
+| 运行 Runners            | `ApplicationRunner` / `CommandLineRunner` | 回调执行用户自定义启动逻辑                | `org.springframework.boot.SpringApplication#callRunners`                          |
 
 ### 1.1 启动流程全链路时序图
 
@@ -204,11 +204,11 @@ this.webApplicationType = WebApplicationType.deduceFromClasspath();
 
 `deduceFromClasspath()` 通过检查 classpath 中是否存在特定类来判断：
 
-| 条件 | Web 类型 |
-|------|----------|
-| 存在 `DispatcherHandler` 但不存在 `DispatcherServlet` | `REACTIVE` |
-| 不存在 `javax.servlet.Servlet` 或 `ConfigurableWebApplicationContext` | `NONE` |
-| 其他情况 | `SERVLET` |
+| 条件                                                                  | Web 类型   |
+| --------------------------------------------------------------------- | ---------- |
+| 存在 `DispatcherHandler` 但不存在 `DispatcherServlet`                 | `REACTIVE` |
+| 不存在 `javax.servlet.Servlet` 或 `ConfigurableWebApplicationContext` | `NONE`     |
+| 其他情况                                                              | `SERVLET`  |
 
 **步骤二：加载 BootstrapRegistryInitializer**
 
@@ -285,32 +285,32 @@ graph TB
     SWAC --> US["UndertowServletWebServerFactory"]
 ```
 
-| Context 类型 | 适用场景 | 关键特性 |
-|-------------|----------|----------|
-| `AnnotationConfigApplicationContext` | 非 Web 应用 | 仅注解配置，无 Web 特性 |
-| `AnnotationConfigServletWebServerApplicationContext` | Servlet Web | 内嵌 Tomcat/Jetty/Undertow |
+| Context 类型                                          | 适用场景     | 关键特性                   |
+| ----------------------------------------------------- | ------------ | -------------------------- |
+| `AnnotationConfigApplicationContext`                  | 非 Web 应用  | 仅注解配置，无 Web 特性    |
+| `AnnotationConfigServletWebServerApplicationContext`  | Servlet Web  | 内嵌 Tomcat/Jetty/Undertow |
 | `AnnotationConfigReactiveWebServerApplicationContext` | Reactive Web | 内嵌 Netty/Tomcat/Undertow |
-| `GenericApplicationContext` | 通用/测试 | 灵活的 BeanDefinition 注册 |
+| `GenericApplicationContext`                           | 通用/测试    | 灵活的 BeanDefinition 注册 |
 
 ### 1.5 refresh() 13 步详解
 
-| 步骤 | 方法 | 核心操作 | 关键 Bean |
-|------|------|----------|-----------|
-| 1 | `prepareRefresh()` | 设置启动时间、关闭/活跃标志、初始化 PropertySource | `Environment` |
-| 2 | `obtainFreshBeanFactory()` | 获取 `DefaultListableBeanFactory`、设置序列化 ID | `BeanFactory` |
-| 3 | `prepareBeanFactory()` | 注册 `BeanPostProcessor`、设置 ClassLoader、注册默认 Bean | `ApplicationContextAwareProcessor` |
-| 4 | `postProcessBeanFactory()` | 子类扩展点，Servlet Web 注册 `WebApplicationContextServletContextAwareProcessor` | `ServletContextAwareProcessor` |
-| 5 | `invokeBeanFactoryPostProcessors()` | 执行 `BeanFactoryPostProcessor`，**触发自动配置解析** | `ConfigurationClassPostProcessor` |
-| 6 | `registerBeanPostProcessors()` | 注册 `BeanPostProcessor` 到 BeanFactory | `AutowiredAnnotationBeanPostProcessor` |
-| 7 | `initMessageSource()` | 初始化国际化 `MessageSource` | `MessageSource` |
-| 8 | `initApplicationEventMulticaster()` | 初始化事件广播器 | `SimpleApplicationEventMulticaster` |
-| 9 | `onRefresh()` | 子类扩展点，**创建并启动嵌入式 WebServer** | `TomcatWebServer` |
-| 10 | `registerListeners()` | 注册 `ApplicationListener` Bean | `ApplicationListener` |
-| 11 | `finishBeanFactoryInitialization()` | **实例化所有非懒加载单例 Bean** | 所有用户 Bean |
-| 12 | `finishRefresh()` | 发布 `ContextRefreshedEvent`、启动 `LifecycleProcessor` | `DefaultLifecycleProcessor` |
-| 13 | `resetCommonCaches()` | 清理反射、注解、类加载器缓存 | - |
+| 步骤 | 方法                                | 核心操作                                                                         | 关键 Bean                              |
+| ---- | ----------------------------------- | -------------------------------------------------------------------------------- | -------------------------------------- |
+| 1    | `prepareRefresh()`                  | 设置启动时间、关闭/活跃标志、初始化 PropertySource                               | `Environment`                          |
+| 2    | `obtainFreshBeanFactory()`          | 获取 `DefaultListableBeanFactory`、设置序列化 ID                                 | `BeanFactory`                          |
+| 3    | `prepareBeanFactory()`              | 注册 `BeanPostProcessor`、设置 ClassLoader、注册默认 Bean                        | `ApplicationContextAwareProcessor`     |
+| 4    | `postProcessBeanFactory()`          | 子类扩展点，Servlet Web 注册 `WebApplicationContextServletContextAwareProcessor` | `ServletContextAwareProcessor`         |
+| 5    | `invokeBeanFactoryPostProcessors()` | 执行 `BeanFactoryPostProcessor`，**触发自动配置解析**                            | `ConfigurationClassPostProcessor`      |
+| 6    | `registerBeanPostProcessors()`      | 注册 `BeanPostProcessor` 到 BeanFactory                                          | `AutowiredAnnotationBeanPostProcessor` |
+| 7    | `initMessageSource()`               | 初始化国际化 `MessageSource`                                                     | `MessageSource`                        |
+| 8    | `initApplicationEventMulticaster()` | 初始化事件广播器                                                                 | `SimpleApplicationEventMulticaster`    |
+| 9    | `onRefresh()`                       | 子类扩展点，**创建并启动嵌入式 WebServer**                                       | `TomcatWebServer`                      |
+| 10   | `registerListeners()`               | 注册 `ApplicationListener` Bean                                                  | `ApplicationListener`                  |
+| 11   | `finishBeanFactoryInitialization()` | **实例化所有非懒加载单例 Bean**                                                  | 所有用户 Bean                          |
+| 12   | `finishRefresh()`                   | 发布 `ContextRefreshedEvent`、启动 `LifecycleProcessor`                          | `DefaultLifecycleProcessor`            |
+| 13   | `resetCommonCaches()`               | 清理反射、注解、类加载器缓存                                                     | -                                      |
 
-***
+---
 
 ## 场景二：自动配置原理深度剖析
 
@@ -400,23 +400,23 @@ sequenceDiagram
 
 Spring Boot 3.x 引入了新的自动配置注册机制，逐步从 `spring.factories` 迁移到 `.imports` 文件：
 
-| 版本 | 文件路径 | 格式 |
-|------|----------|------|
-| 2.x | `META-INF/spring.factories` | `key=value1,value2` |
-| 3.x | `META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports` | 每行一个类名 |
-| 3.x 兼容 | 两者均支持，但新格式为推荐方式 | - |
+| 版本     | 文件路径                                                                           | 格式                |
+| -------- | ---------------------------------------------------------------------------------- | ------------------- |
+| 2.x      | `META-INF/spring.factories`                                                        | `key=value1,value2` |
+| 3.x      | `META-INF/spring/org.springframework.boot.autoconfigure.AutoConfiguration.imports` | 每行一个类名        |
+| 3.x 兼容 | 两者均支持，但新格式为推荐方式                                                     | -                   |
 
 **spring.factories 可注册的组件类型**：
 
-| Key | 说明 |
-|-----|------|
-| `org.springframework.boot.autoconfigure.EnableAutoConfiguration` | 自动配置类 |
-| `org.springframework.context.ApplicationContextInitializer` | Context 初始化器 |
-| `org.springframework.context.ApplicationListener` | 应用事件监听器 |
-| `org.springframework.boot.SpringApplicationRunListener` | 启动流程监听器 |
-| `org.springframework.boot.env.EnvironmentPostProcessor` | 环境后处理器 |
-| `org.springframework.boot.diagnostics.FailureAnalyzer` | 启动失败分析器 |
-| `org.springframework.boot.autoconfigure.template.TemplateAvailabilityProvider` | 模板可用性检查 |
+| Key                                                                            | 说明             |
+| ------------------------------------------------------------------------------ | ---------------- |
+| `org.springframework.boot.autoconfigure.EnableAutoConfiguration`               | 自动配置类       |
+| `org.springframework.context.ApplicationContextInitializer`                    | Context 初始化器 |
+| `org.springframework.context.ApplicationListener`                              | 应用事件监听器   |
+| `org.springframework.boot.SpringApplicationRunListener`                        | 启动流程监听器   |
+| `org.springframework.boot.env.EnvironmentPostProcessor`                        | 环境后处理器     |
+| `org.springframework.boot.diagnostics.FailureAnalyzer`                         | 启动失败分析器   |
+| `org.springframework.boot.autoconfigure.template.TemplateAvailabilityProvider` | 模板可用性检查   |
 
 ### 2.3 @Conditional 注解家族详解
 
@@ -575,21 +575,21 @@ public class XxxProperties {
 com.example.autoconfigure.XxxAutoConfiguration
 ```
 
-| 文件 | 位置 | 作用 |
-|------|------|------|
-| `AutoConfiguration.imports` | `META-INF/spring/` | 注册自动配置类 |
-| `spring-configuration-metadata.json` | `META-INF/` | IDE 自动补全配置属性 |
-| `additional-spring-configuration-metadata.json` | `META-INF/` | 补充配置元数据 |
+| 文件                                            | 位置               | 作用                 |
+| ----------------------------------------------- | ------------------ | -------------------- |
+| `AutoConfiguration.imports`                     | `META-INF/spring/` | 注册自动配置类       |
+| `spring-configuration-metadata.json`            | `META-INF/`        | IDE 自动补全配置属性 |
+| `additional-spring-configuration-metadata.json` | `META-INF/`        | 补充配置元数据       |
 
 ### 2.6 自动配置的排除与覆盖
 
-| 方式 | 实现 | 优先级 |
-|------|------|--------|
-| `@SpringBootApplication(exclude = ...)` | 注解级排除 | 最高 |
-| `spring.autoconfigure.exclude` | 配置文件排除 | 高 |
-| `@ConditionalOnMissingBean` | 用户自定义 Bean 覆盖 | 中 |
-| 自定义 `AutoConfiguration` | 替换默认实现 | 由 @AutoConfigureOrder 决定 |
-| `spring.factories` 排除 | 通过 `EnableAutoConfiguration` 排除 | 低 |
+| 方式                                    | 实现                                | 优先级                      |
+| --------------------------------------- | ----------------------------------- | --------------------------- |
+| `@SpringBootApplication(exclude = ...)` | 注解级排除                          | 最高                        |
+| `spring.autoconfigure.exclude`          | 配置文件排除                        | 高                          |
+| `@ConditionalOnMissingBean`             | 用户自定义 Bean 覆盖                | 中                          |
+| 自定义 `AutoConfiguration`              | 替换默认实现                        | 由 @AutoConfigureOrder 决定 |
+| `spring.factories` 排除                 | 通过 `EnableAutoConfiguration` 排除 | 低                          |
 
 ```java
 // 方式 1：注解排除
@@ -609,7 +609,7 @@ public DataSource dataSource() {
 }
 ```
 
-***
+---
 
 ## 场景三：嵌入式 Web 服务器
 
@@ -652,17 +652,17 @@ graph TB
 
 ### 3.1 嵌入式服务器对比
 
-| 特性 | Tomcat | Jetty | Undertow |
-|------|--------|-------|----------|
-| **默认** | 是 | 否 | 否 |
-| **Servlet 规范** | 6.0 | 6.0 | 6.0 |
-| **连接器模型** | NIO/NIO2/APR | NIO | XNIO【NIO】 |
-| **线程模型** | 线程池 + 请求队列 | 线程池 + 有界队列 | XNIO Worker + I/O 线程 |
-| **内存占用** | 中等 | 较小 | 较小 |
-| **并发性能** | 良好 | 良好 | 优秀 |
-| **HTTP/2 支持** | 通过 ALPN | 通过 ALPN | 原生支持 |
-| **WebSocket** | 支持 | 支持 | 原生支持 |
-| **适用场景** | 通用，生态最丰富 | 轻量级、嵌入式 | 高并发、低延迟 |
+| 特性             | Tomcat            | Jetty             | Undertow               |
+| ---------------- | ----------------- | ----------------- | ---------------------- |
+| **默认**         | 是                | 否                | 否                     |
+| **Servlet 规范** | 6.0               | 6.0               | 6.0                    |
+| **连接器模型**   | NIO/NIO2/APR      | NIO               | XNIO【NIO】            |
+| **线程模型**     | 线程池 + 请求队列 | 线程池 + 有界队列 | XNIO Worker + I/O 线程 |
+| **内存占用**     | 中等              | 较小              | 较小                   |
+| **并发性能**     | 良好              | 良好              | 优秀                   |
+| **HTTP/2 支持**  | 通过 ALPN         | 通过 ALPN         | 原生支持               |
+| **WebSocket**    | 支持              | 支持              | 原生支持               |
+| **适用场景**     | 通用，生态最丰富  | 轻量级、嵌入式    | 高并发、低延迟         |
 
 **切换嵌入式服务器**：
 
@@ -848,25 +848,25 @@ graph TB
     WORK_QUEUE --> WORK_POOL
 ```
 
-| 配置项 | 默认值 | 含义 |
-|--------|--------|------|
-| `server.tomcat.accept-count` | 100 | 当所有线程忙碌时，等待队列的最大长度 |
-| `server.tomcat.threads.max` | 200 | Worker 线程池最大线程数 |
-| `server.tomcat.threads.min-spare` | 10 | Worker 线程池最小空闲线程数 |
-| `server.tomcat.max-connections` | 8192 | 最大连接数【BIO 模式】 |
-| `server.tomcat.max-keep-alive-requests` | 100 | 单个 Keep-Alive 连接的最大请求数 |
-| `server.tomcat.connection-timeout` | 60000ms | 连接超时时间 |
+| 配置项                                  | 默认值  | 含义                                 |
+| --------------------------------------- | ------- | ------------------------------------ |
+| `server.tomcat.accept-count`            | 100     | 当所有线程忙碌时，等待队列的最大长度 |
+| `server.tomcat.threads.max`             | 200     | Worker 线程池最大线程数              |
+| `server.tomcat.threads.min-spare`       | 10      | Worker 线程池最小空闲线程数          |
+| `server.tomcat.max-connections`         | 8192    | 最大连接数【BIO 模式】               |
+| `server.tomcat.max-keep-alive-requests` | 100     | 单个 Keep-Alive 连接的最大请求数     |
+| `server.tomcat.connection-timeout`      | 60000ms | 连接超时时间                         |
 
 **Tomcat 线程调优建议**：
 
-| 场景 | max-threads | accept-count | 说明 |
-|------|-------------|--------------|------|
-| 低延迟 API | 50-100 | 100 | 避免过多线程竞争 |
-| 高并发 Web | 200-500 | 200-500 | 需要较大线程池 |
-| 长连接/WebSocket | 100-200 | 100 | 保持适中的线程数 |
-| 批处理/后台任务 | 50-100 | 50 | 控制并发任务数 |
+| 场景             | max-threads | accept-count | 说明             |
+| ---------------- | ----------- | ------------ | ---------------- |
+| 低延迟 API       | 50-100      | 100          | 避免过多线程竞争 |
+| 高并发 Web       | 200-500     | 200-500      | 需要较大线程池   |
+| 长连接/WebSocket | 100-200     | 100          | 保持适中的线程数 |
+| 批处理/后台任务  | 50-100      | 50           | 控制并发任务数   |
 
-***
+---
 
 ## 场景四：Spring Boot Actuator 生产特性
 
@@ -917,28 +917,28 @@ graph TB
 
 ### 4.1 Actuator 端点全览
 
-| 端点 | 默认启用 | HTTP 暴露 | 说明 |
-|------|----------|-----------|------|
-| `health` | 是 | 是 | 应用健康状态，包含各组件的健康详情 |
-| `health/readiness` | 是 | 是 | Kubernetes Readiness Probe |
-| `health/liveness` | 是 | 是 | Kubernetes Liveness Probe |
-| `info` | 是 | 是 | 应用自定义信息 |
-| `metrics` | 是 | 是 | 所有指标的列表 |
-| `metrics/{name}` | 是 | 是 | 具体指标的详细数据 |
-| `env` | 是 | 否 | 当前环境属性【敏感信息】 |
-| `env/{name}` | 是 | 否 | 具体环境属性值 |
-| `beans` | 是 | 否 | Spring Bean 列表及依赖关系 |
-| `threaddump` | 是 | 否 | 线程转储【类似 jstack】 |
-| `heapdump` | 是 | 否 | 堆转储文件【类似 jmap】 |
-| `mappings` | 是 | 否 | 所有 @RequestMapping 映射 |
-| `loggers` | 是 | 否 | 日志级别查看与修改 |
-| `loggers/{name}` | 是 | 否 | 修改特定 Logger 级别 |
-| `configprops` | 是 | 否 | @ConfigurationProperties 列表 |
-| `conditions` | 是 | 否 | 自动配置条件评估报告 |
-| `scheduledtasks` | 是 | 否 | @Scheduled 定时任务 |
-| `caches` | 是 | 否 | 缓存管理器及缓存详情 |
-| `startup` | 否 | 否 | 应用启动步骤耗时分析 |
-| `shutdown` | 否 | 否 | 优雅关闭应用 |
+| 端点               | 默认启用 | HTTP 暴露 | 说明                               |
+| ------------------ | -------- | --------- | ---------------------------------- |
+| `health`           | 是       | 是        | 应用健康状态，包含各组件的健康详情 |
+| `health/readiness` | 是       | 是        | Kubernetes Readiness Probe         |
+| `health/liveness`  | 是       | 是        | Kubernetes Liveness Probe          |
+| `info`             | 是       | 是        | 应用自定义信息                     |
+| `metrics`          | 是       | 是        | 所有指标的列表                     |
+| `metrics/{name}`   | 是       | 是        | 具体指标的详细数据                 |
+| `env`              | 是       | 否        | 当前环境属性【敏感信息】           |
+| `env/{name}`       | 是       | 否        | 具体环境属性值                     |
+| `beans`            | 是       | 否        | Spring Bean 列表及依赖关系         |
+| `threaddump`       | 是       | 否        | 线程转储【类似 jstack】            |
+| `heapdump`         | 是       | 否        | 堆转储文件【类似 jmap】            |
+| `mappings`         | 是       | 否        | 所有 @RequestMapping 映射          |
+| `loggers`          | 是       | 否        | 日志级别查看与修改                 |
+| `loggers/{name}`   | 是       | 否        | 修改特定 Logger 级别               |
+| `configprops`      | 是       | 否        | @ConfigurationProperties 列表      |
+| `conditions`       | 是       | 否        | 自动配置条件评估报告               |
+| `scheduledtasks`   | 是       | 否        | @Scheduled 定时任务                |
+| `caches`           | 是       | 否        | 缓存管理器及缓存详情               |
+| `startup`          | 否       | 否        | 应用启动步骤耗时分析               |
+| `shutdown`         | 否       | 否        | 优雅关闭应用                       |
 
 ### 4.2 健康检查机制
 
@@ -1103,24 +1103,24 @@ management:
 ```yaml
 # prometheus.yml
 scrape_configs:
-  - job_name: 'spring-boot-app'
-    metrics_path: '/actuator/prometheus'
+  - job_name: "spring-boot-app"
+    metrics_path: "/actuator/prometheus"
     scrape_interval: 15s
     static_configs:
-      - targets: ['localhost:8080']
+      - targets: ["localhost:8080"]
 ```
 
-| 监控维度 | 核心指标 | 告警建议 |
-|----------|----------|----------|
-| JVM 堆内存 | `jvm.memory.used` / `jvm.memory.max` | 使用率 > 85% 告警 |
-| GC 频率 | `jvm.gc.pause` | 1 分钟 GC 次数 > 10 或 GC 暂停 > 500ms |
-| 线程数 | `jvm.threads.live` | 线程数 > 500 |
-| HTTP 响应时间 | `http.server.requests` P99 | P99 > 2s 告警 |
-| HTTP 错误率 | `http.server.requests` 5xx | 5xx 比例 > 1% 告警 |
-| 连接池 | `hikaricp.connections.pending` | pending > 0 持续 5 分钟 |
-| 磁盘空间 | `disk.free` | 剩余 < 10% 告警 |
+| 监控维度      | 核心指标                             | 告警建议                               |
+| ------------- | ------------------------------------ | -------------------------------------- |
+| JVM 堆内存    | `jvm.memory.used` / `jvm.memory.max` | 使用率 > 85% 告警                      |
+| GC 频率       | `jvm.gc.pause`                       | 1 分钟 GC 次数 > 10 或 GC 暂停 > 500ms |
+| 线程数        | `jvm.threads.live`                   | 线程数 > 500                           |
+| HTTP 响应时间 | `http.server.requests` P99           | P99 > 2s 告警                          |
+| HTTP 错误率   | `http.server.requests` 5xx           | 5xx 比例 > 1% 告警                     |
+| 连接池        | `hikaricp.connections.pending`       | pending > 0 持续 5 分钟                |
+| 磁盘空间      | `disk.free`                          | 剩余 < 10% 告警                        |
 
-***
+---
 
 ## 场景五：Spring Boot 配置管理
 
@@ -1258,21 +1258,21 @@ app:
 
 ### 5.2 配置属性绑定原理
 
-| 绑定方式 | 松散绑定 | 类型安全 | 嵌套对象 | 校验支持 | 元数据 |
-|----------|----------|----------|----------|----------|--------|
-| `@ConfigurationProperties` | 是 | 是 | 是 | 是 | 是 |
-| `@Value` | 否 | 否 | 否 | 否 | 否 |
-| `Binder API` | 是 | 是 | 是 | 否 | 否 |
-| `Environment.getProperty()` | 否 | 否 | 否 | 否 | 否 |
+| 绑定方式                    | 松散绑定 | 类型安全 | 嵌套对象 | 校验支持 | 元数据 |
+| --------------------------- | -------- | -------- | -------- | -------- | ------ |
+| `@ConfigurationProperties`  | 是       | 是       | 是       | 是       | 是     |
+| `@Value`                    | 否       | 否       | 否       | 否       | 否     |
+| `Binder API`                | 是       | 是       | 是       | 否       | 否     |
+| `Environment.getProperty()` | 否       | 否       | 否       | 否       | 否     |
 
 **松散绑定规则**：
 
-| 属性名格式 | 示例 | 匹配 |
-|-----------|------|------|
-| `camelCase` | `tokenSecret` | `token-secret`, `token_secret`, `TOKEN_SECRET` |
-| `kebab-case` | `token-secret` | `tokenSecret`, `token_secret`, `TOKEN_SECRET` |
-| `snake_case` | `token_secret` | `tokenSecret`, `token-secret`, `TOKEN_SECRET` |
-| `UPPER_CASE` | `TOKEN_SECRET` | `tokenSecret`, `token-secret`, `token_secret` |
+| 属性名格式   | 示例           | 匹配                                           |
+| ------------ | -------------- | ---------------------------------------------- |
+| `camelCase`  | `tokenSecret`  | `token-secret`, `token_secret`, `TOKEN_SECRET` |
+| `kebab-case` | `token-secret` | `tokenSecret`, `token_secret`, `TOKEN_SECRET`  |
+| `snake_case` | `token_secret` | `tokenSecret`, `token-secret`, `TOKEN_SECRET`  |
+| `UPPER_CASE` | `TOKEN_SECRET` | `tokenSecret`, `token-secret`, `token_secret`  |
 
 ### 5.3 Profile 多环境配置
 
@@ -1391,7 +1391,7 @@ sequenceDiagram
     end
 ```
 
-***
+---
 
 ## 场景六：Spring Boot 数据访问层
 
@@ -1520,15 +1520,15 @@ graph TB
     IDLE --> EVICT
 ```
 
-| 配置项 | 默认值 | 建议值 | 说明 |
-|--------|--------|--------|------|
-| `maximum-pool-size` | 10 | CPU 核心数 × 2 + 1 | 最大连接数 |
-| `minimum-idle` | 10 | 与 maximum-pool-size 相同 | 最小空闲连接 |
-| `connection-timeout` | 30000ms | 30000ms | 获取连接超时 |
-| `idle-timeout` | 600000ms | 600000ms | 空闲连接超时 |
-| `max-lifetime` | 1800000ms | 比数据库 wait_timeout 短 30s | 连接最大存活时间 |
-| `connection-test-query` | - | SELECT 1 | 连接有效性测试 |
-| `leak-detection-threshold` | 0【禁用】 | 10000ms | 连接泄漏检测 |
+| 配置项                     | 默认值    | 建议值                       | 说明             |
+| -------------------------- | --------- | ---------------------------- | ---------------- |
+| `maximum-pool-size`        | 10        | CPU 核心数 × 2 + 1           | 最大连接数       |
+| `minimum-idle`             | 10        | 与 maximum-pool-size 相同    | 最小空闲连接     |
+| `connection-timeout`       | 30000ms   | 30000ms                      | 获取连接超时     |
+| `idle-timeout`             | 600000ms  | 600000ms                     | 空闲连接超时     |
+| `max-lifetime`             | 1800000ms | 比数据库 wait_timeout 短 30s | 连接最大存活时间 |
+| `connection-test-query`    | -         | SELECT 1                     | 连接有效性测试   |
+| `leak-detection-threshold` | 0【禁用】 | 10000ms                      | 连接泄漏检测     |
 
 **HikariCP 连接池大小公式**：
 
@@ -1588,15 +1588,15 @@ sequenceDiagram
 
 **事务传播行为**：
 
-| 传播行为 | 说明 | 使用场景 |
-|----------|------|----------|
-| `REQUIRED` | 默认，有事务则加入，无则创建 | 大多数场景 |
-| `REQUIRES_NEW` | 总是新建事务，挂起当前事务 | 日志记录、审计 |
-| `NESTED` | 嵌套事务，使用 savepoint | 批量操作中部分回滚 |
-| `SUPPORTS` | 有事务则加入，无则非事务执行 | 查询操作 |
-| `NOT_SUPPORTED` | 非事务执行，挂起当前事务 | 不需要事务的操作 |
-| `MANDATORY` | 必须在事务中，否则抛异常 | 强事务依赖 |
-| `NEVER` | 不能在事务中，否则抛异常 | 禁止事务的只读操作 |
+| 传播行为        | 说明                         | 使用场景           |
+| --------------- | ---------------------------- | ------------------ |
+| `REQUIRED`      | 默认，有事务则加入，无则创建 | 大多数场景         |
+| `REQUIRES_NEW`  | 总是新建事务，挂起当前事务   | 日志记录、审计     |
+| `NESTED`        | 嵌套事务，使用 savepoint     | 批量操作中部分回滚 |
+| `SUPPORTS`      | 有事务则加入，无则非事务执行 | 查询操作           |
+| `NOT_SUPPORTED` | 非事务执行，挂起当前事务     | 不需要事务的操作   |
+| `MANDATORY`     | 必须在事务中，否则抛异常     | 强事务依赖         |
+| `NEVER`         | 不能在事务中，否则抛异常     | 禁止事务的只读操作 |
 
 ### 6.4 JDBC 到数据库的完整链路
 
@@ -1648,15 +1648,15 @@ graph LR
     M --> O
 ```
 
-| 层级 | 组件 | 职责 |
-|------|------|------|
-| 应用层 | `JpaRepository` / `JdbcTemplate` | 数据访问接口 |
-| Spring 抽象层 | `DataSourceTransactionManager` | 事务管理 |
-| 连接池 | `HikariCP` | 连接复用、连接管理 |
-| JDBC 驱动 | `mysql-connector-j` | 协议转换、SQL 执行 |
-| 数据库 | MySQL / PostgreSQL | 数据持久化、事务支持 |
+| 层级          | 组件                             | 职责                 |
+| ------------- | -------------------------------- | -------------------- |
+| 应用层        | `JpaRepository` / `JdbcTemplate` | 数据访问接口         |
+| Spring 抽象层 | `DataSourceTransactionManager`   | 事务管理             |
+| 连接池        | `HikariCP`                       | 连接复用、连接管理   |
+| JDBC 驱动     | `mysql-connector-j`              | 协议转换、SQL 执行   |
+| 数据库        | MySQL / PostgreSQL               | 数据持久化、事务支持 |
 
-***
+---
 
 ## 场景七：Spring Boot 安全与监控
 
@@ -2057,37 +2057,37 @@ graph TB
 </configuration>
 ```
 
-| 日志级别 | 数值 | 使用场景 |
-|----------|------|----------|
-| `TRACE` | 最低 | 最详细的追踪信息 |
-| `DEBUG` | 低 | 调试信息 |
-| `INFO` | 中 | 关键业务事件 |
-| `WARN` | 高 | 潜在问题警告 |
-| `ERROR` | 最高 | 错误信息 |
+| 日志级别 | 数值 | 使用场景         |
+| -------- | ---- | ---------------- |
+| `TRACE`  | 最低 | 最详细的追踪信息 |
+| `DEBUG`  | 低   | 调试信息         |
+| `INFO`   | 中   | 关键业务事件     |
+| `WARN`   | 高   | 潜在问题警告     |
+| `ERROR`  | 最高 | 错误信息         |
 
-***
+---
 
 ## 附录：Spring Boot 核心源码路径速查
 
-| 模块 | 核心类 | 源码位置 |
-|------|--------|----------|
-| 启动入口 | `SpringApplication` | `org.springframework.boot.SpringApplication` |
-| 自动配置 | `AutoConfigurationImportSelector` | `org.springframework.boot.autoconfigure.AutoConfigurationImportSelector` |
-| 条件评估 | `ConditionEvaluator` | `org.springframework.boot.autoconfigure.condition.ConditionEvaluator` |
-| 配置类解析 | `ConfigurationClassParser` | `org.springframework.context.annotation.ConfigurationClassParser` |
-| Context 刷新 | `AbstractApplicationContext` | `org.springframework.context.support.AbstractApplicationContext` |
-| Servlet Context | `ServletWebServerApplicationContext` | `org.springframework.boot.web.servlet.context.ServletWebServerApplicationContext` |
-| Tomcat 工厂 | `TomcatServletWebServerFactory` | `org.springframework.boot.web.embedded.tomcat.TomcatServletWebServerFactory` |
-| 配置绑定 | `ConfigurationPropertiesBinder` | `org.springframework.boot.context.properties.ConfigurationPropertiesBinder` |
-| 健康检查 | `HealthEndpoint` | `org.springframework.boot.actuate.health.HealthEndpoint` |
-| 指标采集 | `MeterRegistry` | `io.micrometer.core.instrument.MeterRegistry` |
-| 数据源配置 | `DataSourceAutoConfiguration` | `org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration` |
-| 连接池 | `HikariDataSource` | `com.zaxxer.hikari.HikariDataSource` |
-| 事务管理 | `DataSourceTransactionManager` | `org.springframework.jdbc.datasource.DataSourceTransactionManager` |
-| 安全配置 | `SecurityAutoConfiguration` | `org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration` |
-| 日志配置 | `LoggingApplicationListener` | `org.springframework.boot.context.logging.LoggingApplicationListener` |
+| 模块            | 核心类                               | 源码位置                                                                            |
+| --------------- | ------------------------------------ | ----------------------------------------------------------------------------------- |
+| 启动入口        | `SpringApplication`                  | `org.springframework.boot.SpringApplication`                                        |
+| 自动配置        | `AutoConfigurationImportSelector`    | `org.springframework.boot.autoconfigure.AutoConfigurationImportSelector`            |
+| 条件评估        | `ConditionEvaluator`                 | `org.springframework.boot.autoconfigure.condition.ConditionEvaluator`               |
+| 配置类解析      | `ConfigurationClassParser`           | `org.springframework.context.annotation.ConfigurationClassParser`                   |
+| Context 刷新    | `AbstractApplicationContext`         | `org.springframework.context.support.AbstractApplicationContext`                    |
+| Servlet Context | `ServletWebServerApplicationContext` | `org.springframework.boot.web.servlet.context.ServletWebServerApplicationContext`   |
+| Tomcat 工厂     | `TomcatServletWebServerFactory`      | `org.springframework.boot.web.embedded.tomcat.TomcatServletWebServerFactory`        |
+| 配置绑定        | `ConfigurationPropertiesBinder`      | `org.springframework.boot.context.properties.ConfigurationPropertiesBinder`         |
+| 健康检查        | `HealthEndpoint`                     | `org.springframework.boot.actuate.health.HealthEndpoint`                            |
+| 指标采集        | `MeterRegistry`                      | `io.micrometer.core.instrument.MeterRegistry`                                       |
+| 数据源配置      | `DataSourceAutoConfiguration`        | `org.springframework.boot.autoconfigure.jdbc.DataSourceAutoConfiguration`           |
+| 连接池          | `HikariDataSource`                   | `com.zaxxer.hikari.HikariDataSource`                                                |
+| 事务管理        | `DataSourceTransactionManager`       | `org.springframework.jdbc.datasource.DataSourceTransactionManager`                  |
+| 安全配置        | `SecurityAutoConfiguration`          | `org.springframework.boot.autoconfigure.security.servlet.SecurityAutoConfiguration` |
+| 日志配置        | `LoggingApplicationListener`         | `org.springframework.boot.context.logging.LoggingApplicationListener`               |
 
-***
+---
 
 ## 附录：Spring Boot 常用配置速查
 

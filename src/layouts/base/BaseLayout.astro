@@ -2,7 +2,7 @@
 import Analytics from "@vercel/analytics/astro";
 import stylesheetUrl from "../../styles/global.css?url";
 import katexCssUrl from "katex/dist/katex.min.css?url";
-import { appearanceConfig, effectsConfig, siteConfig, textmodeConfig } from "../../config";
+import { appearanceConfig, siteConfig, textmodeConfig } from "../../config";
 import { appearanceCssVariables } from "../../modules/textmode/core/css-vars";
 
 type Props = {
@@ -23,7 +23,6 @@ const canonicalUrl = new URL(Astro.url.pathname, Astro.site ?? Astro.url).toStri
 const rssUrl = new URL("/rss.xml", Astro.site ?? Astro.url).toString();
 const appearanceCss = appearanceCssVariables(appearanceConfig);
 const mobileFitBreakpoint = textmodeConfig.mobileFitBreakpoint;
-const particlesEnabled = effectsConfig.particles.enable;
 ---
 
 <!doctype html>
@@ -62,13 +61,141 @@ const particlesEnabled = effectsConfig.particles.enable;
     {preloadCjk && <link rel="preload" href="/assets/cjk/wqy-cjk-link.png" as="image" />}
     <title>{tabTitle}</title>
   </head>
-  <body data-mobile-fit-breakpoint={mobileFitBreakpoint} data-particles-enabled={particlesEnabled}>
+  <body data-mobile-fit-breakpoint={mobileFitBreakpoint}>
+    <button id="crt-toggle" class="crt-toggle" type="button" aria-label="切换页面风格" title="切换页面风格" aria-expanded="false">
+      <span class="toggle-icon">▣</span>
+      <span class="toggle-label">风格</span>
+    </button>
+    <div id="crt-overlay" class="crt-overlay" aria-hidden="true" style="display:none"></div>
+    <!-- SVG 滤镜：屏幕曲率鱼眼/枕形畸变 -->
+    <!-- 使用 userSpaceOnUse 从 (0,0) 覆盖整个文档，避免滚动时坐标偏移 -->
+    <svg xmlns="http://www.w3.org/2000/svg" style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true">
+      <filter id="crt-barrel" filterUnits="userSpaceOnUse" x="-80" y="-80" width="2000" height="2000">
+        <feImage id="crt-barrel-disp" href="" result="dispMap" x="-80" y="-80" width="2000" height="2000" preserveAspectRatio="none"/>
+        <feDisplacementMap in="SourceGraphic" in2="dispMap" scale="70" xChannelSelector="R" yChannelSelector="G"/>
+      </filter>
+    </svg>
+    <script>
+      // 生成屏幕曲率鱼眼/枕形畸变位移映射图 + 动态调整滤镜尺寸
+      // feDisplacementMap 公式：P'(x,y) = P(x + scale*(R/255-0.5), y + scale*(G/255-0.5))
+      // 鱼眼(向外凸)：四角内容向外拉伸，呈现鱼眼透视效果
+      // 公式 dx = -xn*(1-yn²)：左侧 xn<0 → dx>0 → R>128 → 从右侧采样 → 视觉内容向左凸(向外)
+      // 滤镜从 (0,0) 覆盖整个文档，无需滚动时更新位置，仅内容尺寸变化时扩展
+      (function initBarrelFilter() {
+        var canvas = document.createElement('canvas');
+        canvas.width = 256;
+        canvas.height = 256;
+        var ctx = canvas.getContext('2d');
+        if (!ctx) return;
+
+        var imageData = ctx.createImageData(256, 256);
+        var data = imageData.data;
+
+        for (var y = 0; y < 256; y++) {
+          var yn = (y - 128) / 128;
+          var yn2 = yn * yn;
+          for (var x = 0; x < 256; x++) {
+            var xn = (x - 128) / 128;
+            var xn2 = xn * xn;
+            var dx = -xn * (1 - yn2);
+            var dy = -yn * (1 - xn2);
+            var r = Math.round(128 + dx * 127);
+            var g = Math.round(128 + dy * 127);
+            var idx = (y * 256 + x) * 4;
+            data[idx]     = Math.max(0, Math.min(255, r));
+            data[idx + 1] = Math.max(0, Math.min(255, g));
+            data[idx + 2] = 128;
+            data[idx + 3] = 255;
+          }
+        }
+
+        ctx.putImageData(imageData, 0, 0);
+
+        var dataUrl = canvas.toDataURL('image/png');
+        var feImage = document.getElementById('crt-barrel-disp');
+        var filter = document.getElementById('crt-barrel');
+        if (!feImage || !filter) return;
+
+        feImage.setAttribute('href', dataUrl);
+        feImage.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', dataUrl);
+
+        var PAD = 80;
+
+        function updateFilterSize() {
+          var screen = document.querySelector('.screen');
+          var doc = document.documentElement;
+          // 覆盖整个文档区域（含懒加载内容），从 (0,0) 开始
+          var w = Math.max(doc.scrollWidth, screen ? screen.scrollWidth : 0, 2000) + PAD * 2;
+          var h = Math.max(doc.scrollHeight, screen ? screen.scrollHeight : 0, 2000) + PAD * 2;
+          var left = String(-PAD);
+          var top = String(-PAD);
+          var wStr = String(w);
+          var hStr = String(h);
+          filter.setAttribute('x', left);
+          filter.setAttribute('y', top);
+          filter.setAttribute('width', wStr);
+          filter.setAttribute('height', hStr);
+          feImage.setAttribute('x', left);
+          feImage.setAttribute('y', top);
+          feImage.setAttribute('width', wStr);
+          feImage.setAttribute('height', hStr);
+        }
+
+        // 延迟更新，确保布局完成
+        function updateDeferred() {
+          requestAnimationFrame(function() {
+            requestAnimationFrame(updateFilterSize);
+          });
+        }
+
+        updateFilterSize();
+
+        // 窗口大小变化
+        var resizeTimer = 0;
+        window.addEventListener('resize', function() {
+          clearTimeout(resizeTimer);
+          resizeTimer = window.setTimeout(updateFilterSize, 150);
+        });
+
+        // DOM 变化（懒加载插入新内容）
+        var observer = new MutationObserver(function() {
+          updateDeferred();
+        });
+        var screen = document.querySelector('.screen');
+        if (screen) {
+          observer.observe(screen, { childList: true, subtree: true, attributes: true });
+        }
+
+        // 懒加载块激活事件
+        window.addEventListener('lazy-chunk-activated', function() {
+          setTimeout(updateDeferred, 300);
+        });
+
+        // 曲率效果切换激活时更新
+        var crtObserver = new MutationObserver(function(mutations) {
+          for (var i = 0; i < mutations.length; i++) {
+            var m = mutations[i];
+            if (m.type === 'attributes' && m.attributeName === 'class') {
+              if (document.body.classList.contains('crt-curvature')) {
+                updateDeferred();
+              }
+            }
+          }
+        });
+        crtObserver.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+      })();
+    </script>
     <slot />
     <Analytics />
     <script>
       import { installTextmodeBootstrap } from "../../modules/textmode/bootstrap/install";
 
       installTextmodeBootstrap();
+    </script>
+    <script>
+      import { initCrtPanel } from "../../modules/textmode/crt/install";
+
+      initCrtPanel();
     </script>
   </body>
 </html>
