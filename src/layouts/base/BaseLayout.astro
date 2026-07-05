@@ -122,6 +122,7 @@ const mobileFitBreakpoint = textmodeConfig.mobileFitBreakpoint;
         var PAD = 80;
 
         function updateFilterSize() {
+          if (!filter || !feImage) return;
           var screen = document.querySelector('.screen');
           var doc = document.documentElement;
           // 覆盖整个文档区域（含懒加载内容），从 (0,0) 开始
