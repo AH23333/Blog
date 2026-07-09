@@ -24,9 +24,10 @@ function renderToc(volume: Volume): string {
     ...volume.philes.map((phile, index) => cellWidth(entryLabel(volume, index, phile.data.title, phile.data.date)))
   );
 
+  // 所有文本行需要进行 textHtml 转换以处理 CJK 渲染
   const lines = [
     `┌${"─".repeat(tocInnerWidth)}┐`,
-    `│ ${pad(title, tocContentWidth)} │`,
+    renderTextLine(pad(title, tocContentWidth), "│ ", " │"),
     `│ ${pad("                                    CONTENTS", tocContentWidth)} │`,
     frameLine("")
   ];
@@ -39,8 +40,8 @@ function renderToc(volume: Volume): string {
     for (const group of volume.groups) {
       // 分类标题行
       const groupLabel = group.label || "Root";
-      const separator = `─ ${groupLabel} ${"─".repeat(Math.max(0, tocContentWidth - groupLabel.length - 3))}`;
-      lines.push(`│ ${separator} │`);
+      const separator = `─ ${groupLabel} ${"─".repeat(Math.max(0, tocContentWidth - cellWidth(groupLabel) - 3))}`;
+      lines.push(renderTextLine(separator, "│ ", " │"));
 
       for (const phile of group.philes) {
         lines.push(
@@ -113,6 +114,10 @@ function entryLabel(volume: Volume, index: number, title: string, date: Date): s
   return config.entryLabel === "year"
     ? (titleYear ?? String(date.getUTCFullYear()))
     : `${config.entryPrefix ?? volume.number}.${entryNumber}`;
+}
+
+function renderTextLine(content: string, prefix: string, suffix: string): string {
+  return `${prefix}${textHtml(content)}${suffix}`;
 }
 
 function pad(input: string, width: number): string {

@@ -23,15 +23,18 @@ OUT_DIR = ROOT / "public/assets/cjk"
 GENERATED = ROOT / "src/generated/cjk-atlas.ts"
 CONTENT_ROOTS = ("src/content", "src/config", "src/components", "src/pages")
 TEXT_EXTENSIONS = {".astro", ".phile", ".ts", ".md"}
-PUNCTUATION = "　，。：；、？！（）《》「」『』【】—…￥"
+PUNCTUATION = "　，。：；、？！（）《》「」『』【】—…￥\u201c\u201d"
 CJK_PATTERN = re.compile(
-    r"[\u3000-\u303f\u3400-\u4dbf\u4e00-\u9fff"
+    r"[\u2000-\u206f"  # 通用标点符号（引号、破折号、省略号等）
+    r"\u3000-\u303f\u3400-\u4dbf\u4e00-\u9fff"
     r"\uf900-\ufaff\uff00-\uffef]"
 )
 CELL_SIZE = 16
 COLS = 32
 BODY_PPEM = 13
 LINK_PPEM = 15
+# 当主 ppem 无法渲染字形时，依次尝试这些降级 ppem
+FALLBACK_PPEMS = (12, 14, 16)
 
 
 def main() -> None:
@@ -86,19 +89,29 @@ def collect_chars() -> list[str]:
     return sorted(chars, key=lambda char: ord(char))
 
 
-def write_atlas(font: TTFont, glyphs: dict[str, int], ppem: int, output: Path) -> set[str]:
-    strike_index = next(
-        index
-        for index, strike in enumerate(font["EBLC"].strikes)
-        if strike.bitmapSizeTable.ppemY == ppem
-    )
+def get_strike_with_fallback(font: TTFont, target_ppem: int) -> tuple[int, int]:
+    """尝试获取目标 ppem，如果失败则返回降级 ppem。"""
+    for index, strike in enumerate(font["EBLC"].strikes):
+        if strike.bitmapSizeTable.ppemY == target_ppem:
+            return index, target_ppem
+    # 如果找不到目标 ppem，依次尝试降级
+    for fallback_ppem in FALLBACK_PPEMS:
+        for index, strike in enumerate(font["EBLC"].strikes):
+            if strike.bitmapSizeTable.ppemY == fallback_ppem:
+                return index, fallback_ppem
+    # 实在找不到返回第一个
+    return 0, font["EBLC"].strikes[0].bitmapSizeTable.ppemY
+
+
+def write_atlas(font: TTFont, glyphs: dict[str, int], target_ppem: int, output: Path) -> set[str]:
+    strike_index, actual_ppem = get_strike_with_fallback(font, target_ppem)
     strike = font["EBDT"].strikeData[strike_index]
     cmap = best_cmap(font)
     rows = max(1, math.ceil(len(glyphs) / COLS))
     width = COLS * CELL_SIZE
     height = rows * CELL_SIZE
     pixels = bytearray(width * height * 4)
-    baseline = ppem - 1
+    baseline = actual_ppem - 1
     valid_chars: set[str] = set()
 
     for char, index in glyphs.items():
@@ -112,8 +125,31 @@ def write_atlas(font: TTFont, glyphs: dict[str, int], ppem: int, output: Path) -
         try:
             glyph.ensureDecompiled()
             metrics = glyph.metrics
-        except AttributeError:
-            continue
+        except Exception:
+            # 如果当前 strike 没有这个字形或数据损坏，尝试在其他 strike 中找
+            found = False
+            for fb_ppem in FALLBACK_PPEMS:
+                for fb_idx, fb_strike in enumerate(font["EBLC"].strikes):
+                    if fb_strike.bitmapSizeTable.ppemY == fb_ppem:
+                        fb_glyph_name = cmap.get(ord(char))
+                        if fb_glyph_name in font["EBDT"].strikeData[fb_idx]:
+                            fb_glyph = font["EBDT"].strikeData[fb_idx][fb_glyph_name]
+                            try:
+                                fb_glyph.ensureDecompiled()
+                                metrics = fb_glyph.metrics
+                                if metrics.width > 0 and metrics.height > 0:
+                                    glyph = fb_glyph
+                                    baseline = fb_ppem - 1
+                                    found = True
+                                    break
+                            except Exception:
+                                continue
+                    if found:
+                        break
+                if found:
+                    break
+            if not found:
+                continue
 
         # 跳过没有实际位图数据的字形（宽或高为 0）
         if metrics.width <= 0 or metrics.height <= 0:

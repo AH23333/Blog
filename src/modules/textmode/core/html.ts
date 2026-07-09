@@ -18,7 +18,7 @@ export function decodeHtmlEntities(text: string): string {
 
 export function textHtml(input: string): string {
   return escapeHtml(input).replace(
-    /([\u3000-\u303f\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\uff00-\uffef]+)/gu,
+    /([\u2000-\u206f\u3000-\u303f\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaff\uff00-\uffef]+)/gu,
     (match) => [...match].map((char) => cjkSpan(char)).join("")
   );
 }
