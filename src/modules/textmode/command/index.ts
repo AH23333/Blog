@@ -1,15 +1,25 @@
+export type { ThemeConfig } from "./commands/themes";
+export {
+  applyTheme,
+  exportTheme,
+  getCurrentTheme,
+  getPresetThemes,
+  importTheme,
+  initTheme,
+  resetTheme
+} from "./commands/themes";
 export { CommandEngine } from "./engine";
 export { getCommandEngine, getCommandUI, installCommandMode } from "./install";
-export { getScrollConfig, setScrollConfig } from "./scroll-config";
 export {
+  deleteAlias,
+  getAliases,
   getCommands,
   registerBuiltinCommands,
   registerCommand,
-  unregisterCommand,
-  getAliases,
   setAlias,
-  deleteAlias
+  unregisterCommand
 } from "./registry";
+export { getScrollConfig, setScrollConfig } from "./scroll-config";
 export type {
   CommandContext,
   CommandDef,
@@ -19,13 +29,3 @@ export type {
   CompletionCandidate
 } from "./types";
 export { CommandUI } from "./ui";
-export {
-  initTheme,
-  getCurrentTheme,
-  getPresetThemes,
-  applyTheme,
-  resetTheme,
-  importTheme,
-  exportTheme
-} from "./commands/themes";
-export type { ThemeConfig } from "./commands/themes";

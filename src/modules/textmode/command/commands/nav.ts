@@ -131,7 +131,8 @@ function getChildren(segments: string[]): ChildItem[] {
 
     if (!children.has(childName)) {
       // 判断是否为目录：存在更深层的路由，其前缀包含当前路由
-      const isDir = routeSegs.length > segments.length + 1 ||
+      const isDir =
+        routeSegs.length > segments.length + 1 ||
         routes.some((r) => {
           if (r.segs.length <= routeSegs.length) return false;
           for (let i = 0; i < routeSegs.length; i++) {

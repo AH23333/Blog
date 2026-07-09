@@ -1,9 +1,9 @@
+import { clearSearch, getSearchManager } from "./commands/search";
+import { initTheme } from "./commands/themes";
 import { CommandEngine } from "./engine";
 import { registerBuiltinCommands } from "./registry";
-import { CommandUI } from "./ui";
-import { initTheme } from "./commands/themes";
-import { clearSearch, getSearchManager } from "./commands/search";
 import { getScrollConfig } from "./scroll-config";
+import { CommandUI } from "./ui";
 
 /** 全局命令引擎实例 */
 let engine: CommandEngine | null = null;

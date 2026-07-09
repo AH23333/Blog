@@ -1,8 +1,8 @@
 import { textHtml } from "../core/html";
-import type { CommandEngine } from "./engine";
-import type { CommandMode, CommandResult } from "./types";
 import { getPathCompletions } from "./commands/nav";
 import { clearSearch } from "./commands/search";
+import type { CommandEngine } from "./engine";
+import type { CommandMode, CommandResult } from "./types";
 
 /** 命令行 UI 控制器 */
 export class CommandUI {

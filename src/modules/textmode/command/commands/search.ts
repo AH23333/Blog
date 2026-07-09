@@ -54,7 +54,7 @@ class SearchManager {
 
     // 收集所有文本节点
     let node = walker.nextNode() as Text | null;
-    while (node !== null) {
+    while (node) {
       const text = node.textContent ?? "";
       if (regex.test(text)) {
         regex.lastIndex = 0;

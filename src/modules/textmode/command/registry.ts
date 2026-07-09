@@ -1,8 +1,8 @@
-import type { CommandContext, CommandDef, CommandResult } from "./types";
-import { cdCommand, catCommand, getPathCompletions, lsCommand } from "./commands/nav";
+import { catCommand, cdCommand, getPathCompletions, lsCommand } from "./commands/nav";
+import { clearSearch, executeSearch } from "./commands/search";
 import { themeCommandHandler } from "./commands/themes";
-import { executeSearch, clearSearch } from "./commands/search";
 import { getScrollConfig, setScrollConfig } from "./scroll-config";
+import type { CommandContext, CommandDef, CommandResult } from "./types";
 
 /** 命令注册表 */
 const commands = new Map<string, CommandDef>();
@@ -774,7 +774,7 @@ export function registerBuiltinCommands(): void {
   }
 }
 
-export { executeSearch, clearSearch };
+export { clearSearch, executeSearch };
 
 /** 获取上下文 */
 export function getContext(): CommandContext {

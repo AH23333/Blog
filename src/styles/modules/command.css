@@ -34,7 +34,9 @@
   line-height: 1.2;
   color: var(--fg);
   -webkit-overflow-scrolling: touch;
-  transition: max-height 0.25s ease, padding 0.25s ease;
+  transition:
+    max-height 0.25s ease,
+    padding 0.25s ease;
 }
 
 /* 输出区域为空时自动折叠 */
