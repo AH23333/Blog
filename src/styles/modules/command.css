@@ -1,0 +1,372 @@
+/* ── 命令行界面样式 ───────────────────────────────────────────────────── */
+
+.cmd-container {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 10000;
+  max-height: 0;
+  overflow: hidden;
+  background: var(--cmd-bg, #0a0b11);
+  border-top: 1px solid var(--cmd-border, #414868);
+  font-family: var(--text-font);
+  font-size: var(--text-size);
+  transition: max-height 0.2s ease;
+  filter: none;
+}
+
+.cmd-container.cmd-active {
+  max-height: 30vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 输出区域 */
+.cmd-output {
+  flex: 0 1 auto;
+  overflow-y: auto;
+  padding: 4px 12px;
+  min-height: 0;
+  max-height: calc(30vh - 36px);
+  white-space: pre-wrap;
+  word-break: break-all;
+  line-height: 1.2;
+  color: var(--fg);
+  -webkit-overflow-scrolling: touch;
+  transition: max-height 0.25s ease, padding 0.25s ease;
+}
+
+/* 输出区域为空时自动折叠 */
+.cmd-output:empty {
+  max-height: 0;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.cmd-output-line {
+  padding: 1px 0;
+}
+
+.cmd-output-ok {
+  color: var(--ansi-green);
+}
+
+.cmd-output-err {
+  color: var(--ansi-red);
+}
+
+/* 输入行 */
+.cmd-input-line {
+  display: flex;
+  align-items: center;
+  padding: 2px 12px;
+  border-top: 1px solid var(--cmd-border, #414868);
+  background: var(--cmd-input-bg, #0c0d10);
+  min-height: 32px;
+}
+
+.cmd-prompt {
+  color: var(--link);
+  margin-right: 4px;
+  flex-shrink: 0;
+  font-weight: bold;
+}
+
+.cmd-input {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--fg);
+  font-family: var(--text-font);
+  font-size: var(--text-size);
+  caret-color: var(--link);
+  line-height: 1.2;
+  padding: 0;
+  margin: 0;
+}
+
+.cmd-input::placeholder {
+  color: var(--ansi-bright-black);
+}
+
+/* 补全弹出层 */
+.cmd-completion-popup {
+  position: absolute;
+  bottom: 100%;
+  left: 12px;
+  right: 12px;
+  background: var(--cmd-input-bg, #0c0d10);
+  border: 1px solid var(--cmd-border, #414868);
+  border-bottom: none;
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 10001;
+  -webkit-overflow-scrolling: touch;
+}
+
+.cmd-completion-popup.hidden {
+  display: none;
+}
+
+.cmd-completion-label {
+  padding: 2px 8px;
+  font-size: 10px;
+  color: var(--ansi-bright-black);
+  text-transform: uppercase;
+  border-bottom: 1px solid var(--cmd-border, #414868);
+  letter-spacing: 1px;
+}
+
+.cmd-completion-item {
+  display: flex;
+  align-items: center;
+  padding: 4px 8px;
+  cursor: pointer;
+  color: var(--ansi-white);
+  line-height: 1.2;
+  min-height: 28px;
+}
+
+.cmd-completion-item:hover,
+.cmd-completion-item.cmd-completion-active {
+  background: var(--link-hover-bg);
+  color: var(--link);
+}
+
+.cmd-completion-name {
+  font-weight: bold;
+  margin-right: 12px;
+  flex-shrink: 0;
+}
+
+.cmd-completion-desc {
+  color: var(--ansi-bright-black);
+  font-size: calc(var(--text-size) * 0.9);
+}
+
+/* ── 主题自定义面板 ────────────────────────────────────────────────────── */
+
+.theme-custom-panel {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 10010;
+  width: 90vw;
+  max-width: 400px;
+  max-height: 80vh;
+  background: var(--bg);
+  border: 2px solid var(--link);
+  color: var(--fg);
+  font-family: var(--text-font);
+  font-size: 14px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 0 32px rgba(0, 0, 0, 0.6);
+}
+
+.theme-custom-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: var(--cmd-bg, #0a0b11);
+  border-bottom: 1px solid var(--cmd-border, #414868);
+  font-weight: bold;
+  color: var(--link);
+}
+
+.theme-custom-close {
+  background: none;
+  border: none;
+  color: var(--ansi-red);
+  font-size: 20px;
+  cursor: pointer;
+  padding: 0 4px;
+  line-height: 1;
+  min-width: 32px;
+  min-height: 32px;
+}
+
+.theme-custom-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 12px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.theme-custom-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.theme-custom-row label {
+  width: 90px;
+  flex-shrink: 0;
+  font-size: 12px;
+  color: var(--ansi-bright-black);
+}
+
+.theme-custom-row input[type="color"] {
+  width: 32px;
+  height: 24px;
+  border: 1px solid var(--cmd-border, #414868);
+  border-radius: 2px;
+  padding: 0;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.theme-custom-text {
+  flex: 1;
+  min-width: 0;
+  background: var(--cmd-input-bg, #0c0d10);
+  border: 1px solid var(--cmd-border, #414868);
+  color: var(--fg);
+  font-family: monospace;
+  font-size: 12px;
+  padding: 2px 4px;
+}
+
+.theme-custom-footer {
+  display: flex;
+  gap: 8px;
+  padding: 8px 12px;
+  border-top: 1px solid var(--cmd-border, #414868);
+  background: var(--cmd-bg, #0a0b11);
+  flex-wrap: wrap;
+}
+
+.theme-custom-footer input[type="text"] {
+  flex: 1;
+  min-width: 100px;
+  background: var(--cmd-input-bg, #0c0d10);
+  border: 1px solid var(--cmd-border, #414868);
+  color: var(--fg);
+  font-family: var(--text-font);
+  font-size: 13px;
+  padding: 4px 8px;
+}
+
+.theme-custom-footer button {
+  padding: 4px 12px;
+  border: 1px solid var(--link);
+  background: transparent;
+  color: var(--link);
+  cursor: pointer;
+  font-family: var(--text-font);
+  font-size: 13px;
+  white-space: nowrap;
+  min-height: 32px;
+}
+
+.theme-custom-footer button:hover {
+  background: var(--link-hover-bg);
+  color: var(--link-hover);
+}
+
+/* ── 响应式布局 ────────────────────────────────────────────────────────── */
+
+@media (max-width: 760px) {
+  .cmd-container.cmd-active {
+    max-height: 40vh;
+  }
+
+  .cmd-output {
+    max-height: calc(40vh - 40px);
+    padding: 4px 8px;
+  }
+
+  .cmd-input-line {
+    padding: 2px 8px;
+    min-height: 40px;
+  }
+
+  .cmd-completion-item {
+    padding: 6px 8px;
+    min-height: 36px;
+  }
+
+  .cmd-completion-popup {
+    left: 8px;
+    right: 8px;
+    max-height: 160px;
+  }
+
+  .theme-custom-panel {
+    width: 95vw;
+    max-width: none;
+    max-height: 90vh;
+    font-size: 16px;
+  }
+
+  .theme-custom-row label {
+    width: 80px;
+    font-size: 14px;
+  }
+
+  .theme-custom-row input[type="color"] {
+    width: 40px;
+    height: 32px;
+  }
+
+  .theme-custom-footer button {
+    min-height: 40px;
+    padding: 8px 16px;
+    font-size: 14px;
+  }
+}
+
+@media (max-width: 480px) {
+  .cmd-container.cmd-active {
+    max-height: 45vh;
+  }
+
+  .cmd-output {
+    max-height: calc(45vh - 44px);
+  }
+
+  .cmd-prompt {
+    font-size: 18px;
+  }
+
+  .cmd-input {
+    font-size: 16px;
+  }
+
+  .theme-custom-row {
+    flex-wrap: wrap;
+  }
+
+  .theme-custom-row label {
+    width: 100%;
+    margin-bottom: 2px;
+  }
+}
+
+/* ── 触摸设备优化 ──────────────────────────────────────────────────────── */
+
+@media (hover: none) and (pointer: coarse) {
+  .cmd-completion-item {
+    min-height: 36px;
+    padding: 8px 10px;
+  }
+
+  .cmd-input-line {
+    min-height: 44px;
+  }
+
+  .cmd-completion-popup {
+    max-height: 180px;
+  }
+
+  .theme-custom-close {
+    min-width: 44px;
+    min-height: 44px;
+    font-size: 24px;
+  }
+}
