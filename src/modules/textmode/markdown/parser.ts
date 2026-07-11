@@ -191,26 +191,3 @@ export function renderMarkdown(text: string, width: number): string[] {
 
   return output;
 }
-
-// ── 向后兼容的导出（旧 API）───────────────────────────────────────────────
-
-type MdBlock =
-  | { kind: "heading"; level: number; text: string }
-  | { kind: "paragraph"; text: string }
-  | { kind: "quote"; text: string }
-  | { kind: "code"; lang: string; text: string }
-  | { kind: "list"; ordered: boolean; items: string[] }
-  | { kind: "container"; type: string; text: string }
-  | { kind: "table"; rows: string[][] }
-  | { kind: "hr" }
-  | { kind: "blank" };
-
-/** @deprecated 请使用 renderMarkdown() 一步完成解析与渲染 */
-export function parseMarkdown(_input: string): MdBlock[] {
-  return [];
-}
-
-/** @deprecated 请使用 renderMarkdown() 一步完成解析与渲染 */
-export function renderMarkdownToAnsi(_blocks: MdBlock[], _width: number): string[] {
-  return [];
-}

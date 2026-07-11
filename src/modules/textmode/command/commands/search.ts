@@ -4,6 +4,8 @@
  * 支持：Enter 连续跳转、n/N 正反向导航、匹配高亮、自动滚动
  */
 
+import { escapeRegex } from "../../shared/escape";
+
 /** 单个匹配结果 */
 interface SearchMatch {
   range: Range;
@@ -49,7 +51,7 @@ class SearchManager {
       }
     });
 
-    const regex = new RegExp(this.escapeRegex(term), "gi");
+    const regex = new RegExp(escapeRegex(term), "gi");
     const textNodes: { node: Text; text: string }[] = [];
 
     // 收集所有文本节点
@@ -65,7 +67,7 @@ class SearchManager {
 
     // 为每个文本节点创建匹配 Range
     for (const { node: textNode, text } of textNodes) {
-      const localRegex = new RegExp(this.escapeRegex(term), "gi");
+      const localRegex = new RegExp(escapeRegex(term), "gi");
       let match = localRegex.exec(text);
       while (match !== null) {
         try {
@@ -200,9 +202,7 @@ class SearchManager {
     return this.matches.length > 0;
   }
 
-  private escapeRegex(str: string): string {
-    return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  }
+  // escapeRegex 已移至 shared/escape.ts，通过 import 使用
 }
 
 // 全局单例

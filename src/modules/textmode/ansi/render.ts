@@ -1,6 +1,7 @@
 import { escapeHtml, textHtml } from "../core/html";
 import { cellWidth } from "../core/layout";
 import { normalizeText } from "../core/text";
+import { escapeRegex } from "../shared/escape";
 
 type AnsiToken = {
   text: string;
@@ -191,17 +192,13 @@ export function extractAndRenderInkBlocks(text: string, width: number): { proces
  */
 export function restoreInkBlocks(html: string, blocks: string[]): string {
   const placeholderRegex = new RegExp(
-    `${escapeRegExp(INKBLOCK_PLACEHOLDER_PREFIX)}INKBLOCK_(\\d+)${escapeRegExp(INKBLOCK_PLACEHOLDER_PREFIX)}`,
+    `${escapeRegex(INKBLOCK_PLACEHOLDER_PREFIX)}INKBLOCK_(\\d+)${escapeRegex(INKBLOCK_PLACEHOLDER_PREFIX)}`,
     "g"
   );
   return html.replace(placeholderRegex, (_, index: string) => {
     const i = parseInt(index, 10);
     return blocks[i] ?? "";
   });
-}
-
-function escapeRegExp(str: string): string {
-  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function renderBlocks(input: string, width: number): string[] {

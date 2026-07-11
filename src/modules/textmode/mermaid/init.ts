@@ -67,42 +67,26 @@ function ensureMermaid() {
 }
 
 export async function initMermaidDiagrams(): Promise<void> {
-  // 从 DOM 获取未处理的图表，[data-processed] 属性在 DOM 层面去重
   const diagrams = document.querySelectorAll<HTMLElement>("pre.mermaid:not([data-processed])");
   if (diagrams.length === 0) return;
 
   const mermaid = await ensureMermaid();
-
-  for (const diagram of diagrams) {
-    const id = `mermaid-${Math.random().toString(36).slice(2, 11)}`;
-    try {
-      const { svg } = await mermaid.render(id, diagram.textContent || "");
-      diagram.innerHTML = svg;
-      diagram.setAttribute("data-processed", "true");
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      diagram.innerHTML =
-        `<div style="color:var(--ansi-red, #f7768e);padding:1rem;border:1px solid var(--ansi-red, #f7768e);` +
-        `font-family:var(--text-font, monospace);font-size:var(--text-size, 14px);">` +
-        `Diagram error: ${message}</div>`;
-      diagram.setAttribute("data-processed", "true");
-    }
-  }
+  await renderDiagrams(diagrams, mermaid);
 }
 
-/**
- * 为单个元素初始化 Mermaid 图表
- *
- * 用于懒加载场景：新激活的块可能包含 Mermaid 图表
- *
- * @param element - 需要初始化 Mermaid 的元素
- */
 export async function initMermaidForElement(element: HTMLElement): Promise<void> {
   const diagrams = element.querySelectorAll<HTMLElement>("pre.mermaid:not([data-processed])");
   if (diagrams.length === 0) return;
 
   const mermaid = await ensureMermaid();
+  await renderDiagrams(diagrams, mermaid);
+}
 
+/** 渲染一组 Mermaid 图表元素 */
+async function renderDiagrams(
+  diagrams: NodeListOf<HTMLElement>,
+  mermaid: Awaited<ReturnType<typeof ensureMermaid>>
+): Promise<void> {
   for (const diagram of diagrams) {
     const id = `mermaid-${Math.random().toString(36).slice(2, 11)}`;
     try {

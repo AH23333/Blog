@@ -11,6 +11,7 @@
 import { installMermaidLightbox } from "../textmode/lightbox/mermaid";
 import { initMermaidForElement } from "../textmode/mermaid/init";
 import { initTypewriterForElement } from "../textmode/typewriter/install";
+import { PerformanceMonitor, type PerformanceReport } from "./performance-monitor";
 
 console.log("[LazyRender] Module loaded");
 
@@ -42,6 +43,9 @@ let placeholderObserver: IntersectionObserver | null = null;
 /** 已激活的块 ID */
 const activatedChunks = new Set<string>();
 
+/** 性能监控器（按需启用） */
+let performanceMonitor: PerformanceMonitor | null = null;
+
 /**
  * 初始化懒加载系统
  *
@@ -72,7 +76,8 @@ export function initLazyRender(): void {
   }
 
   // 初始化性能监控
-  initPerformanceMonitor();
+  performanceMonitor = new PerformanceMonitor();
+  performanceMonitor.start();
 }
 
 /**
@@ -204,97 +209,12 @@ async function activateChunk(chunkId: string): Promise<void> {
 }
 
 /**
- * 性能监控
- *
- * 记录首次渲染时间、滚动流畅度、内存占用等指标
- */
-function initPerformanceMonitor(): void {
-  // 首次渲染时间（从页面加载到首屏打字机完成）
-  if (window.__typewriterDone) {
-    recordMetric("firstRenderComplete", performance.now());
-  } else {
-    window.addEventListener("typewriter-done", () => {
-      recordMetric("firstRenderComplete", performance.now());
-    });
-  }
-
-  // 滚动流畅度监控
-  let lastScrollTime = 0;
-  let scrollFrameCount = 0;
-  let scrollJankCount = 0;
-
-  window.addEventListener(
-    "scroll",
-    () => {
-      const now = performance.now();
-      const delta = now - lastScrollTime;
-
-      if (delta > 50) {
-        // 超过 50ms 认为是卡顿
-        scrollJankCount++;
-      }
-
-      scrollFrameCount++;
-      lastScrollTime = now;
-    },
-    { passive: true }
-  );
-
-  // 每 5 秒记录一次滚动流畅度
-  setInterval(() => {
-    if (scrollFrameCount > 0) {
-      const jankRate = scrollJankCount / scrollFrameCount;
-      recordMetric("scrollJankRate", jankRate);
-    }
-    scrollFrameCount = 0;
-    scrollJankCount = 0;
-  }, 5000);
-
-  // 内存占用监控（如果 API 可用）
-  // @ts-expect-error performance.memory 是非标准 API，仅在 Chrome 中可用
-  if (performance.memory) {
-    setInterval(() => {
-      // @ts-expect-error performance.memory 是非标准 API
-      const usedMB = (performance.memory.usedJSHeapSize / 1024 / 1024).toFixed(2);
-      recordMetric("memoryUsedMB", parseFloat(usedMB));
-    }, 10000);
-  }
-}
-
-/** 性能指标存储 */
-const metrics: Map<string, number[]> = new Map();
-
-function recordMetric(name: string, value: number): void {
-  if (!metrics.has(name)) {
-    metrics.set(name, []);
-  }
-  metrics.get(name)?.push(value);
-
-  // 发送指标事件（供测试和调试）
-  window.dispatchEvent(
-    new CustomEvent("lazy-metric", {
-      detail: { name, value }
-    })
-  );
-}
-
-/**
  * 获取性能指标报告
+ *
+ * 委托给 PerformanceMonitor 实例，若监控未启用则返回空报告。
  */
-export function getPerformanceReport(): Record<string, { avg: number; max: number; min: number; count: number }> {
-  const report: Record<string, { avg: number; max: number; min: number; count: number }> = {};
-
-  for (const [name, values] of metrics) {
-    if (values.length === 0) continue;
-
-    const avg = values.reduce((a, b) => a + b, 0) / values.length;
-    const max = Math.max(...values);
-    const min = Math.min(...values);
-
-    report[name] = { avg, max, min, count: values.length };
-  }
-
-  return report;
+export function getPerformanceReport(): PerformanceReport {
+  return performanceMonitor?.getReport() ?? {};
 }
 
 /**
@@ -310,6 +230,9 @@ export function cleanupLazyRender(): void {
 
   state.pendingActivations.clear();
   activatedChunks.clear();
+
+  performanceMonitor?.stop();
+  performanceMonitor = null;
 }
 
 // 类型声明扩展
