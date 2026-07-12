@@ -178,15 +178,12 @@ function setCrtStyle(effectId: string): void {
 
 function applyCrtStyle(effectId: string): void {
   const body = document.body;
-  const overlay = document.getElementById("crt-overlay");
   for (const { id } of CRT_STYLES) {
     if (id) body.classList.remove(id);
   }
-  if (effectId && overlay) {
+  // 视觉效果由 body::after 伪元素通过 CSS 选择器自动渲染，无需手动操作 DOM 节点
+  if (effectId) {
     body.classList.add(effectId);
-    overlay.style.display = "";
-  } else if (overlay) {
-    overlay.style.display = "none";
   }
 }
 

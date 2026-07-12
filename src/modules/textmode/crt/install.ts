@@ -28,20 +28,18 @@ function saveEffect(effect: string): void {
 
 function applyEffect(effectId: string): void {
   const body = document.body;
-  const overlay = document.getElementById("crt-overlay");
 
-  // 移除所有效果类
+  // 移除所有效果类（伪元素随之自动消失）
   for (const { id } of EFFECTS) {
     if (id) body.classList.remove(id);
   }
 
   currentEffect = effectId;
 
-  if (effectId && overlay) {
+  // 视觉效果由 body::after 伪元素通过 CSS 选择器自动渲染，
+  // 无需手动操作 DOM 节点
+  if (effectId) {
     body.classList.add(effectId);
-    overlay.style.display = "";
-  } else if (overlay) {
-    overlay.style.display = "none";
   }
 }
 
