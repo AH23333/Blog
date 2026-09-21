@@ -56,8 +56,6 @@ StarMark 是一款面向 Chrome/Edge（Manifest V3）的浏览器扩展。它将
 
 ## 📸 界面速览
 
-> 截图文件放置于 `docs/screenshots/`（对照 [`docs/screenshots/README.md`](docs/screenshots/README.md) 的拍摄清单逐一截图后按文件名放入即可）。
-
 | | |
 |:---:|:---:|
 | ![侧边栏搜索](Blog\public\images\volume-2\primary-work\StarMark\01-sidepanel-search.png) | ![收藏夹树](Blog\public\images\volume-2\primary-work\StarMark\02-sidepanel-browse.png) |

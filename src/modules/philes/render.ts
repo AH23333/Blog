@@ -25,7 +25,7 @@ import type { Phile } from "./model";
  */
 function resolveImagePath(src: string, articleDir: string): string {
   // 规范化路径分隔符：\ → /
-  const normalized = src.replaceAll("\\", "/");
+  const normalized = src.replaceAll("\\", "/").replace(/%5c/gi, "/");
 
   // 绝对路径（以 / 或协议开头）原样返回
   if (normalized.startsWith("/") || /^https?:\/\//i.test(normalized)) {
@@ -119,7 +119,8 @@ export async function renderPhileBodyBlocks(phile: Phile): Promise<PhileBodyBloc
   resetEquationCounter();
   resetEquationLabels();
 
-  const blocks = splitBodyBlocks(phile.body ?? "", getArticleDir(phile.route.sourcePath));
+  const articleDir = getArticleDir(phile.route.sourcePath);
+  const blocks = splitBodyBlocks(phile.body ?? "", articleDir);
   const results: PhileBodyBlock[] = [];
 
   for (const block of blocks) {
@@ -146,7 +147,7 @@ export async function renderPhileBodyBlocks(phile: Phile): Promise<PhileBodyBloc
       const maxLen = Math.max(textParts.length, mathBlocks.length);
       for (let i = 0; i < maxLen; i++) {
         if (i < textParts.length && textParts[i].trim().length > 0) {
-          results.push(await renderTextBlock(textParts[i], inlineMath));
+          results.push(await renderTextBlock(textParts[i], inlineMath, articleDir));
         }
         if (i < mathBlocks.length) {
           results.push({
@@ -156,7 +157,7 @@ export async function renderPhileBodyBlocks(phile: Phile): Promise<PhileBodyBloc
         }
       }
     } else {
-      results.push(await renderTextBlock(cleanText, inlineMath));
+      results.push(await renderTextBlock(cleanText, inlineMath, articleDir));
     }
   }
 
@@ -183,7 +184,11 @@ function transformMermaidCodeBlocks(html: string): string {
   );
 }
 
-export async function renderTextBlock(text: string, inlineMath: Map<string, string>): Promise<PhileBodyBlock> {
+export async function renderTextBlock(
+  text: string,
+  inlineMath: Map<string, string>,
+  articleDir = ""
+): Promise<PhileBodyBlock> {
   // 创建占位符管道，按注册顺序提取所有占位符（plain-text → ink → code → ansi）
   const pipeline = createPhilePipeline(textmodeConfig.bodyWidth);
   const { processed: textWithPlaceholders, contexts } = pipeline.extract(text);
@@ -200,6 +205,7 @@ export async function renderTextBlock(text: string, inlineMath: Map<string, stri
     if (segment.kind === "container") {
       hasContainers = true;
       let innerHtml = renderMarkdownToHtml(segment.content);
+      innerHtml = normalizeHtmlImageSrcs(innerHtml, articleDir);
       innerHtml = highlightCodeBlocks(innerHtml);
       innerHtml = pipeline.restoreSome(innerHtml, contexts, POST_MARKDOWN_IDS);
       const typeLabel = segment.type.toUpperCase();
@@ -212,6 +218,7 @@ export async function renderTextBlock(text: string, inlineMath: Map<string, stri
       );
     } else {
       let segmentHtml = renderMarkdownToHtml(segment.content);
+      segmentHtml = normalizeHtmlImageSrcs(segmentHtml, articleDir);
       segmentHtml = highlightCodeBlocks(segmentHtml);
       // 恢复 ANSI、Ink、Plain Text 占位符
       segmentHtml = pipeline.restoreSome(segmentHtml, contexts, POST_MARKDOWN_IDS);
@@ -294,6 +301,29 @@ function parseImageLine(line: string): { src: string; alt: string } | undefined 
     src,
     alt: readHtmlAttr(attrs, "alt") ?? ""
   };
+}
+
+/**
+ * 将 markdown-it 渲染结果中的所有 <img> src 统一规范化。
+ *
+ * 整行图片已在 splitBodyBlocks 阶段经 resolveImagePath 解析为 /images/ 路径；
+ * 但表格单元格 / 行内图片走 markdown-it 渲染时 src 保持原文
+ * （如作者指南约定的 `Blog\public\images\...` 或 `./x.png`），浏览器无法解析。
+ * 此函数对渲染后 HTML 统一套用 resolveImagePath，与整行图片语义一致。
+ */
+function normalizeHtmlImageSrcs(html: string, articleDir: string): string {
+  return html.replace(
+    /<img\b([^>]*?)\bsrc="([^"]*)"([^>]*)>/gi,
+    (_match, before: string, src: string, after: string) => {
+      const resolved = resolveImagePath(src, articleDir);
+      const imgTag = `<img${before.trim()} src="${escapeHtml(resolved)}"${after}>`;
+      // 本地图片（/images/...）包成可点击的灯箱触发按钮；外部资源（https 等）保持原样
+      if (resolved.startsWith("/images/")) {
+        return `<button class="phile-image-trigger phile-image-trigger-inline" type="button" data-lightbox-image aria-label="Open image preview">${imgTag}</button>`;
+      }
+      return imgTag;
+    }
+  );
 }
 
 function readHtmlAttr(attrs: string, name: string): string | undefined {
@@ -546,7 +576,9 @@ export async function renderPhileBodyBlocksLazy(phile: Phile): Promise<LazyRende
   const allBlocks = await renderPhileBodyBlocks(phile);
 
   // 判断是否有图片和 Mermaid
-  const hasImages = allBlocks.some((block) => block.kind === "image");
+  const hasImages = allBlocks.some(
+    (block) => block.kind === "image" || (block.kind === "text" && /<img[\s>]/i.test(block.html))
+  );
   const hasMermaid = allBlocks.some((block) => block.kind === "text" && block.html.includes('class="mermaid"'));
 
   // 将渲染后的块分组为 chunks

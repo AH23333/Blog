@@ -25,7 +25,9 @@ const lazyResult = useLazyLoad ? await renderPhileBodyBlocksLazy(phile) : null;
 const bodyBlocks = useLazyLoad ? [] : (isRedacted ? [] : await renderPhileBodyBlocks(phile));
 
 // 判断是否有图片和 Mermaid
-const hasImages = useLazyLoad ? (lazyResult?.hasImages ?? false) : bodyBlocks.some((block) => block.kind === "image");
+const hasImages = useLazyLoad ? (lazyResult?.hasImages ?? false) : bodyBlocks.some(
+  (block) => block.kind === "image" || (block.kind === "text" && /<img[\s>]/i.test(block.html))
+);
 const hasMermaid = useLazyLoad ? (lazyResult?.hasMermaid ?? false) : bodyBlocks.some(
   (block) => block.kind === "text" && block.html.includes('class="mermaid"')
 );
@@ -72,7 +74,30 @@ const footerHtml = renderPhileFooterPre(phile);
     <script>
       import { installImageLightbox } from "../../modules/textmode/lightbox/images";
 
-      installImageLightbox();
+      // 等待打字机动画完成后再初始化图片灯箱，
+      // 避免打字机重建 DOM 时销毁已绑定的触发按钮（表格内图片位于 .phile-body 中）
+      function whenTypewriterDone(): Promise<void> {
+        return new Promise((resolve) => {
+          if (window.__typewriterDone) {
+            resolve();
+            return;
+          }
+          const handler = () => {
+            window.removeEventListener("typewriter-done", handler);
+            resolve();
+          };
+          window.addEventListener("typewriter-done", handler);
+          // 兜底：若 8 秒内打字机未触发（如无 .textmode-pre 元素），直接初始化
+          setTimeout(() => {
+            window.removeEventListener("typewriter-done", handler);
+            resolve();
+          }, 8000);
+        });
+      }
+
+      whenTypewriterDone().then(() => {
+        installImageLightbox();
+      });
     </script>
   )
 }

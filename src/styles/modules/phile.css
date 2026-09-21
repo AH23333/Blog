@@ -527,6 +527,12 @@
   outline: 0;
 }
 
+/* 表格 / 行内图片的灯箱触发按钮：按内容收缩，随单元格对齐 */
+.phile-image-trigger-inline {
+  display: inline-block;
+  vertical-align: middle;
+}
+
 .phile-image figcaption {
   margin-top: var(--text-size);
   color: var(--fg);
