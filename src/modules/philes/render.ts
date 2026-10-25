@@ -137,7 +137,7 @@ export async function renderPhileBodyBlocks(phile: Phile): Promise<PhileBodyBloc
     const preprocessedText = convertBlockMathInTableRows(block.text);
 
     // 处理数学公式
-    const { text: cleanText, blockMath, inlineMath } = processMathInText(preprocessedText);
+    const { text: cleanText, blockMath, inlineMath, tallBlockMath } = processMathInText(preprocessedText);
 
     // 处理块级公式：在文本前后插入 math 块
     if (blockMath.length > 0 || inlineMath.size > 0) {
@@ -147,7 +147,7 @@ export async function renderPhileBodyBlocks(phile: Phile): Promise<PhileBodyBloc
       const maxLen = Math.max(textParts.length, mathBlocks.length);
       for (let i = 0; i < maxLen; i++) {
         if (i < textParts.length && textParts[i].trim().length > 0) {
-          results.push(await renderTextBlock(textParts[i], inlineMath, articleDir));
+          results.push(await renderTextBlock(textParts[i], inlineMath, tallBlockMath, articleDir));
         }
         if (i < mathBlocks.length) {
           results.push({
@@ -157,7 +157,7 @@ export async function renderPhileBodyBlocks(phile: Phile): Promise<PhileBodyBloc
         }
       }
     } else {
-      results.push(await renderTextBlock(cleanText, inlineMath, articleDir));
+      results.push(await renderTextBlock(cleanText, inlineMath, tallBlockMath, articleDir));
     }
   }
 
@@ -187,6 +187,7 @@ function transformMermaidCodeBlocks(html: string): string {
 export async function renderTextBlock(
   text: string,
   inlineMath: Map<string, string>,
+  tallBlockMath: Map<string, string> = new Map(),
   articleDir = ""
 ): Promise<PhileBodyBlock> {
   // 创建占位符管道，按注册顺序提取所有占位符（plain-text → ink → code → ansi）
@@ -209,7 +210,10 @@ export async function renderTextBlock(
       innerHtml = highlightCodeBlocks(innerHtml);
       innerHtml = pipeline.restoreSome(innerHtml, contexts, POST_MARKDOWN_IDS);
       const typeLabel = segment.type.toUpperCase();
-      const displayLabel = segment.title ? `${typeLabel}: ${escapeHtml(segment.title)}` : typeLabel;
+      // 容器标题可能含 ANSI 占位符（::: 标题行在占位符提取阶段已被处理），
+      // 需与正文一样恢复，否则 PUA 字符泄漏到页面
+      const rawLabel = segment.title ? `${typeLabel}: ${segment.title}` : typeLabel;
+      const displayLabel = pipeline.restoreSome(escapeHtml(rawLabel), contexts, POST_MARKDOWN_IDS);
       parts.push(
         `<div class="phile-container phile-container-${segment.type}" data-no-typewriter>`,
         `<div class="phile-container-label">${displayLabel}</div>`,
@@ -227,6 +231,11 @@ export async function renderTextBlock(
   }
 
   let html = parts.join("\n");
+
+  // 高公式（cases/aligned 等）恢复为块级元素
+  for (const [marker, tallHtml] of tallBlockMath) {
+    html = html.replaceAll(marker, () => tallHtml);
+  }
 
   if (inlineMath.size > 0) {
     html = replaceMathPlaceholders(html, inlineMath);
