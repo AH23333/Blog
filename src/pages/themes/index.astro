@@ -1,0 +1,141 @@
+---
+/**
+ * 主题风格选择页（noindex）：默认 textmode 与三套备选主题的入口。
+ */
+
+const themeCards = [
+  {
+    id: "textmode",
+    name: "Textmode",
+    tagline: "默认 · 终端位图风格，ANSI 配色与定宽排版",
+    href: "/",
+    current: true
+  },
+  {
+    id: "erudite",
+    name: "Erudite",
+    tagline: "简洁编辑风 · 衬线标题，昼夜自适应灰阶",
+    href: "/themes/erudite/",
+    current: false
+  },
+  {
+    id: "paper",
+    name: "Paper",
+    tagline: "极简黑白 · 等宽标题，亮暗手动切换",
+    href: "/themes/paper/",
+    current: false
+  },
+  {
+    id: "retypeset",
+    name: "Retypeset",
+    tagline: "暖色杂志风 · 米色纸感衬线正文",
+    href: "/themes/retypeset/",
+    current: false
+  }
+];
+---
+
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Themes :: AH's Blog</title>
+    <meta name="robots" content="noindex,nofollow" />
+    <style is:inline>
+      :root {
+        color-scheme: light dark;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 1.5rem;
+        padding: 2rem;
+        font-family: system-ui, -apple-system, "Segoe UI", "PingFang SC",
+          "Microsoft YaHei", sans-serif;
+        background: light-dark(#fcfcfc, #111);
+        color: light-dark(#202020, #eee);
+      }
+      h1 {
+        font-size: 1.5rem;
+        margin: 0;
+      }
+      p.sub {
+        margin: 0;
+        opacity: 0.6;
+        font-size: 0.85rem;
+      }
+      ul {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+        gap: 0.8rem;
+        width: min(52rem, 100%);
+      }
+      a.card {
+        display: block;
+        padding: 1rem 1.2rem;
+        border: 1px solid light-dark(#e0e0e0, #313131);
+        border-radius: 10px;
+        text-decoration: none;
+        color: inherit;
+        background: light-dark(#f5f5f5, #1a1a1a);
+        transition: border-color 0.15s ease, transform 0.15s ease;
+      }
+      a.card:hover {
+        border-color: light-dark(#999, #777);
+        transform: translateY(-2px);
+      }
+      a.card .name {
+        font-weight: 700;
+        font-size: 1.05rem;
+      }
+      a.card .tagline {
+        display: block;
+        margin-top: 0.35rem;
+        font-size: 0.8rem;
+        opacity: 0.65;
+      }
+      a.card .badge {
+        display: inline-block;
+        margin-left: 0.5rem;
+        padding: 0.05rem 0.45rem;
+        border-radius: 999px;
+        font-size: 0.68rem;
+        font-weight: 600;
+        background: light-dark(#e8e8e8, #2a2a2a);
+        opacity: 0.9;
+      }
+      a.back {
+        font-size: 0.8rem;
+        opacity: 0.6;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>选择阅读风格</h1>
+    <p class="sub">所有风格渲染同一批文章，仅外观不同。</p>
+    <ul>
+      {
+        themeCards.map((card) => (
+          <li>
+            <a class="card" href={card.href}>
+              <span class="name">
+                {card.name}
+                {card.current && <span class="badge">默认</span>}
+              </span>
+              <span class="tagline">{card.tagline}</span>
+            </a>
+          </li>
+        ))
+      }
+    </ul>
+    <a class="back" href="/">← 返回</a>
+  </body>
+</html>

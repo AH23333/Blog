@@ -29,6 +29,11 @@ type Props = {
     &#x2191; TOP
   </button>
 
+  <!-- 主题风格入口按钮 -->
+  <a id="nav-themes" class="nav-btn" href="/themes/" aria-label="选择阅读风格" title="选择阅读风格">
+    &#x25CE; THEMES
+  </a>
+
   <main class="screen">
     <slot />
   </main>
@@ -112,6 +117,13 @@ type Props = {
   #nav-back {
     top: 8px;
     left: 8px;
+  }
+
+  /* 主题风格入口按钮 - 左下角 */
+  #nav-themes {
+    bottom: 12px;
+    left: 8px;
+    text-decoration: none;
   }
 
   /* 返回顶部按钮 - 右下角 */
