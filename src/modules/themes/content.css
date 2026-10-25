@@ -227,6 +227,9 @@
 
 /* ── ANSI 颜色标记 ────────────────────────────────────────────────────── */
 
+.prose .ansi-black {
+  color: var(--ansi-black);
+}
 .prose .ansi-red {
   color: var(--ansi-red);
 }
@@ -376,6 +379,23 @@
   overflow-y: hidden;
 }
 
+/* 高公式（cases/aligned 等）：限制纵向溢出，避免行高裁切 */
+.prose .math-block-tall {
+  overflow-y: visible;
+  padding: 0.25em 0;
+}
+
+.prose .math-inline-tall-block {
+  display: block;
+  font-size: 1em;
+  line-height: 1.4;
+}
+
+.prose .math-inline {
+  display: inline;
+  max-width: 100%;
+}
+
 .prose .math-block .katex-display {
   margin: 0.4em 0;
 }
@@ -396,4 +416,8 @@
 
 .prose .katex {
   font-size: 1.05em;
+}
+
+.prose .math-inline-tall-block .katex {
+  font-size: 1em;
 }

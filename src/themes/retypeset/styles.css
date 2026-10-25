@@ -25,6 +25,8 @@
   --raised: #f2ecdf;
   --accent: #a63d2f;
   --accent-weak: rgba(166, 61, 47, 0.09);
+  --link: #a63d2f;
+  --link-hover: #8a3226;
 
   --prose-fg: var(--fg);
   --prose-muted: var(--muted);
@@ -75,6 +77,8 @@
   --raised: #26211c;
   --accent: #d98e63;
   --accent-weak: rgba(217, 142, 99, 0.1);
+  --link: #d98e63;
+  --link-hover: #e6a67f;
 
   --prose-fg: var(--fg);
   --prose-muted: var(--muted);
