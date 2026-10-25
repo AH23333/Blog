@@ -1,0 +1,98 @@
+---
+/**
+ * 主题切换器：在 textmode / erudite / paper / retypeset 之间跳转，
+ * 保持当前浏览位置（首页 / 卷 / 文章）。
+ */
+
+type ThemeId = "textmode" | "erudite" | "paper" | "retypeset";
+
+type Props = {
+  current: ThemeId;
+  volume?: number;
+  slug?: string;
+};
+
+const props = Astro.props;
+
+const themes: Array<{ id: ThemeId; label: string }> = [
+  { id: "textmode", label: "Textmode" },
+  { id: "erudite", label: "Erudite" },
+  { id: "paper", label: "Paper" },
+  { id: "retypeset", label: "Retypeset" }
+];
+
+function urlFor(id: ThemeId): string {
+  const { volume, slug } = props;
+
+  if (id === "textmode") {
+    if (volume !== undefined && slug) {
+      return `/volume/${volume}/${slug}/`;
+    }
+    if (volume !== undefined) {
+      return `/volume/${volume}/`;
+    }
+    return "/";
+  }
+
+  if (volume !== undefined && slug) {
+    return `/themes/${id}/volume/${volume}/${slug}/`;
+  }
+  if (volume !== undefined) {
+    return `/themes/${id}/volume/${volume}/`;
+  }
+  return `/themes/${id}/`;
+}
+---
+
+<nav class="theme-switcher" aria-label="主题风格切换">
+  {
+    themes.map((theme) => (
+      <a
+        class:list={{ link: true, active: theme.id === props.current }}
+        href={urlFor(theme.id)}
+        aria-current={theme.id === props.current ? "page" : undefined}
+      >
+        {theme.label}
+      </a>
+    ))
+  }
+</nav>
+
+<style>
+  .theme-switcher {
+    position: fixed;
+    right: 1rem;
+    bottom: 1rem;
+    z-index: 90;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.3rem 0.5rem;
+    border-radius: 999px;
+    backdrop-filter: blur(8px);
+    background: color-mix(in srgb, canvastext 6%, transparent);
+    box-shadow: 0 1px 8px rgb(0 0 0 / 12%);
+    font-size: 0.72rem;
+    line-height: 1;
+  }
+
+  .link {
+    padding: 0.35rem 0.6rem;
+    border-radius: 999px;
+    text-decoration: none;
+    opacity: 0.65;
+    transition:
+      opacity 0.15s ease,
+      background-color 0.15s ease;
+  }
+
+  .link:hover {
+    opacity: 1;
+  }
+
+  .link.active {
+    opacity: 1;
+    font-weight: 600;
+    background: color-mix(in srgb, canvastext 10%, transparent);
+  }
+</style>

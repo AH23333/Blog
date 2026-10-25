@@ -408,7 +408,7 @@ function unescapeAnsiText(input: string): string {
   return input.replace(/\\([#[\]|\\])/g, "$1");
 }
 
-function roleForMask(char: string | undefined): string | undefined {
+export function roleForMask(char: string | undefined): string | undefined {
   if (!char || char === "." || char === " ") {
     return undefined;
   }
