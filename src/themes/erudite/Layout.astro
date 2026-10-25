@@ -2,6 +2,9 @@
 import katexCssUrl from "katex/dist/katex.min.css?url";
 import { siteConfig } from "../../config";
 import ThemeSwitcher from "../../modules/themes/ThemeSwitcher.astro";
+import Sidebar from "./Sidebar.astro";
+import sansWoff2 from "./fonts/IBMPlexSans-VariableFont_wdth,wght.woff2?url";
+import sansItalicWoff2 from "./fonts/IBMPlexSans-Italic-VariableFont_wdth,wght.woff2?url";
 import "../../modules/themes/content.css";
 import "./styles.css";
 
@@ -14,6 +17,8 @@ type Props = {
   publishedTime?: Date;
   volume?: number;
   slug?: string;
+  /** 左侧边栏面包屑 */
+  crumbs?: { label: string; href: string }[];
 };
 
 const props = Astro.props;
@@ -22,6 +27,7 @@ const pageTitle = `${props.title} :: ${siteConfig.name}`;
 const description = props.description ?? siteConfig.description;
 const canonicalUrl = `https://www.cubeyond.net${props.canonicalPath}`;
 const pageType = props.pageType ?? "website";
+const year = new Date().getFullYear();
 ---
 
 <!doctype html>
@@ -44,26 +50,46 @@ const pageType = props.pageType ?? "website";
       )
     }
     <link rel="stylesheet" href={katexCssUrl} />
+    <link rel="preload" href={sansWoff2} as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href={sansItalicWoff2} as="font" type="font/woff2" crossorigin />
+    <script is:inline>
+      const theme = localStorage.getItem("theme");
+      if (theme === "light" || theme === "dark")
+        document.documentElement.dataset.theme = theme;
+    </script>
   </head>
   <body>
-    <header class="site-header">
-      <a class="site-title" href="/themes/erudite/">{siteConfig.name}</a>
-      <nav class="site-nav">
-        <a href="/themes/erudite/">Home</a>
-        <a href="https://www.cubeyond.net/">Textmode</a>
-        <a href="https://github.com/AH23333/Blog" rel="noreferrer">GitHub</a>
-      </nav>
-    </header>
-
-    <main class="site-main">
-      <slot />
-    </main>
-
-    <footer class="site-footer">
-      <span>
-        {siteConfig.name} · erudite theme · <a href="/themes/">切换风格</a>
-      </span>
-    </footer>
+    <page-grid>
+      <page-header>
+        <page-nav>
+          <Sidebar crumbs={props.crumbs} />
+        </page-nav>
+        {
+          Astro.slots.has("toc") && (
+            <page-toc>
+              <slot name="toc" />
+            </page-toc>
+          )
+        }
+      </page-header>
+      <page-content>
+        <main>
+          <slot />
+        </main>
+        <page-footer>
+          <footer>
+            <p>
+              &copy; {year}
+              {siteConfig.name}
+            </p>
+            <nav aria-label="站点链接">
+              <a href="/themes/">切换风格</a>
+              <a href="https://www.cubeyond.net/">Textmode</a>
+            </nav>
+          </footer>
+        </page-footer>
+      </page-content>
+    </page-grid>
 
     <ThemeSwitcher current="erudite" volume={props.volume} slug={props.slug} />
 
@@ -80,3 +106,137 @@ const pageType = props.pageType ?? "website";
     </script>
   </body>
 </html>
+
+<style>
+  page-grid {
+    position: relative;
+    isolation: isolate;
+    display: grid;
+    grid-template-columns: repeat(var(--grid-columns), minmax(0, 1fr));
+    gap: var(--grid-gutter);
+    max-width: var(--grid-max-width);
+    min-height: 100svh;
+    margin-inline: auto;
+    padding-inline: var(--grid-gutter);
+    padding-block-start: var(--page-offset-top);
+  }
+
+  @media (width < 64rem) {
+    page-grid {
+      grid-template-columns: 1fr;
+      grid-template-rows: auto 1fr;
+      padding-block-start: 0;
+    }
+  }
+
+  page-header {
+    display: contents;
+  }
+
+  @media (width < 64rem) {
+    page-header {
+      display: block;
+      grid-column: 1 / -1;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      min-width: 0;
+      margin-inline: calc(-1 * var(--grid-gutter));
+    }
+  }
+
+  page-nav {
+    display: block;
+    min-width: 0;
+    grid-column: 1 / 3;
+    grid-row: 1;
+  }
+
+  @media screen and (width >= 64rem) {
+    page-nav {
+      position: fixed;
+      inset-block: var(--page-offset-top) var(--page-offset-bottom);
+      inset-inline-start: var(--grid-edge);
+      width: calc(2 * var(--grid-column-width) + var(--grid-gutter));
+    }
+  }
+
+  page-toc {
+    display: block;
+    min-width: 0;
+    grid-column: 10 / 13;
+    grid-row: 1;
+  }
+
+  @media screen and (width >= 64rem) {
+    page-toc {
+      position: fixed;
+      inset-block: var(--page-offset-top) var(--page-offset-bottom);
+      inset-inline-end: var(--grid-edge);
+      width: calc(3 * var(--grid-column-width) + 2 * var(--grid-gutter));
+    }
+  }
+
+  page-content {
+    display: flex;
+    flex-direction: column;
+    grid-column: 3 / 10;
+    grid-row: 1;
+    min-width: 0;
+    margin-block-start: -0.1em;
+  }
+
+  page-content main {
+    flex: 1;
+  }
+
+  page-content page-footer {
+    display: block;
+    margin-block-start: var(--space-xl);
+  }
+
+  @media (width < 64rem) {
+    page-content {
+      grid-column: 1 / -1;
+      grid-row: auto;
+      inline-size: 100%;
+      max-inline-size: var(--measure);
+      margin-inline: auto;
+    }
+  }
+
+  page-footer footer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-block: var(--space-xs) var(--page-offset-bottom);
+    border-top: 1.5px solid var(--border);
+    padding-block-start: var(--space-s);
+  }
+
+  @media (width >= 40rem) {
+    page-footer footer {
+      flex-direction: row;
+      justify-content: space-between;
+    }
+  }
+
+  page-footer footer p {
+    font-size: var(--step--1);
+    color: var(--muted-foreground);
+  }
+
+  page-footer footer nav {
+    display: flex;
+    gap: var(--space-s);
+    font-size: var(--step--1);
+  }
+
+  page-footer footer nav a {
+    color: var(--muted-foreground);
+  }
+
+  page-footer footer nav a:hover {
+    color: var(--foreground);
+  }
+</style>

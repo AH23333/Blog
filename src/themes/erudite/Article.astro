@@ -3,6 +3,8 @@ import type { Phile } from "../../modules/philes/model";
 import type { ThemeArticleContent } from "../../modules/themes/render";
 import { phileExcerpt } from "../../modules/seo/xml";
 import Layout from "./Layout.astro";
+import ScrollToTop from "./ScrollToTop.astro";
+import TOC from "./TOC.astro";
 
 type Props = {
   phile: Phile;
@@ -12,6 +14,8 @@ type Props = {
 const props = Astro.props;
 const phile = props.phile;
 const description = phileExcerpt(phile);
+const hasToc = props.content.headings.length > 0;
+const volumeHref = `/themes/erudite/volume/${phile.route.volume}/`;
 ---
 
 <Layout
@@ -22,28 +26,88 @@ const description = phileExcerpt(phile);
   publishedTime={phile.data.date}
   volume={phile.route.volume}
   slug={phile.route.slug}
+  crumbs={[
+    { label: `Volume ${phile.route.volume}`, href: volumeHref },
+    { label: phile.data.title, href: "#" },
+  ]}
 >
+  {
+    hasToc && (
+      <TOC slot="toc" title={phile.data.title} headings={props.content.headings} />
+    )
+  }
+
   <article>
-    <header class="article-header">
-      <div class="article-kicker">
-        <a href="/themes/erudite/">Home</a>
-        <span>/</span>
-        <a href={`/themes/erudite/volume/${phile.route.volume}/`}>Volume {phile.route.volume}</a>
-      </div>
+    <header>
       <h1>{phile.data.title}</h1>
-      <div class="article-meta">
+      <post-meta>
         <span>{phile.data.author}</span>
         <time datetime={phile.data.date.toISOString()}>
           {phile.data.date.toISOString().slice(0, 10)}
         </time>
-      </div>
+      </post-meta>
+      <p>{description}</p>
     </header>
 
     <div class="prose" set:html={props.content.html} />
 
     <footer class="article-footer">
-      <a href={`/themes/erudite/volume/${phile.route.volume}/`}>← 返回 Volume {phile.route.volume}</a>
+      <a href={volumeHref}>← 返回 Volume {phile.route.volume}</a>
       <a href="/themes/erudite/">首页</a>
     </footer>
   </article>
+
+  <ScrollToTop />
 </Layout>
+
+<style>
+  article header {
+    margin-block-end: var(--space-m);
+  }
+
+  article header h1 {
+    font-size: var(--step-3);
+    line-height: calc(var(--leading-offset) + 1em);
+    font-weight: var(--font-weight-medium);
+  }
+
+  post-meta {
+    --underline: var(--muted-foreground);
+
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3xs);
+    margin-block-start: var(--space-3xs);
+    font-size: var(--step--1);
+    color: var(--muted-foreground);
+  }
+
+  post-meta span ~ time::before {
+    content: "·";
+    margin-inline-end: var(--space-3xs);
+  }
+
+  article header > p {
+    margin-block-start: var(--space-2xs);
+    font-size: var(--step--1);
+    color: var(--muted-foreground);
+  }
+
+  .article-footer {
+    margin-block-start: var(--space-xl);
+    padding-block-start: var(--space-s);
+    border-block-start: 1.5px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    font-size: var(--step--1);
+  }
+
+  .article-footer a {
+    color: var(--muted-foreground);
+  }
+
+  .article-footer a:hover {
+    color: var(--foreground);
+  }
+</style>

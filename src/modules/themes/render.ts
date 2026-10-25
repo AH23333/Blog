@@ -67,9 +67,17 @@ const INK_PREFIX = "\uE500";
 /** Plain Text 块占位符 */
 const PT_PREFIX = "\uE501";
 
+export type ThemeHeading = {
+  depth: number;
+  slug: string;
+  text: string;
+};
+
 export type ThemeArticleContent = {
   html: string;
   hasMermaid: boolean;
+  /** 目录数据（h2–h4，带 id，客户端 scrollspy 用） */
+  headings: ThemeHeading[];
 };
 
 // ── 章节分隔转换 ──────────────────────────────────────────────────────────
@@ -343,6 +351,52 @@ function escapeRegExp(text: string): string {
   return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+// ── 标题 id / 目录数据 ────────────────────────────────────────────────────
+
+const HEADING_TAG_PATTERN = /<h([1-6])>([\s\S]*?)<\/h\1>/g;
+
+function stripTags(html: string): string {
+  return html.replace(/<[^>]+>/g, "");
+}
+
+/** GitHub 风格 slug：小写、空白转 -、去除标点（保留中日韩文字与字母数字） */
+function slugifyHeading(text: string): string {
+  return text
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "-")
+    .replace(/[^\p{L}\p{N}-]/gu, "");
+}
+
+/**
+ * 为正文标题补 id 与悬浮锚点链接，并抽取目录数据（h2–h4）。
+ * 在全部占位符恢复之后调用，标题文本已是最终 HTML。
+ */
+function annotateHeadings(html: string, headings: ThemeHeading[]): string {
+  const usedSlugs = new Map<string, number>();
+
+  return html.replace(HEADING_TAG_PATTERN, (_match: string, depthText: string, inner: string) => {
+    const depth = parseInt(depthText, 10);
+    const text = stripTags(inner).trim();
+
+    let slug = slugifyHeading(text);
+    if (slug.length === 0) {
+      slug = "section";
+    }
+    const seen = usedSlugs.get(slug) ?? 0;
+    usedSlugs.set(slug, seen + 1);
+    const id = seen === 0 ? slug : `${slug}-${seen}`;
+
+    if (depth >= 2 && depth <= 4 && text.length > 0) {
+      headings.push({ depth, slug: id, text });
+    }
+
+    const anchor = depth >= 2 ? `<a data-heading-anchor href="#${id}" aria-hidden="true"></a>` : "";
+
+    return `<h${depth} id="${id}">${inner}${anchor}</h${depth}>`;
+  });
+}
+
 const BOX_ART_CHARS = /[─│┌┐└┘├┤┬┴┼►▼✓✗═║╔╗╚╝╠╣╦╩╬]/g;
 
 /**
@@ -507,9 +561,14 @@ export function renderPhileForThemes(phile: Phile): ThemeArticleContent {
     html = replaceMathPlaceholders(html, inlineMath);
   }
 
+  // 标题 id + 目录数据
+  const headings: ThemeHeading[] = [];
+  html = annotateHeadings(html, headings);
+
   const result: ThemeArticleContent = {
     html,
-    hasMermaid: /class="mermaid"/.test(html)
+    hasMermaid: /class="mermaid"/.test(html),
+    headings
   };
 
   renderCache.set(phile.id, result);

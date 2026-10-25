@@ -16,21 +16,75 @@ const props = Astro.props;
     <p class="hero-sub">{siteConfig.description}</p>
   </section>
 
-  <section>
+  <ul class="volume-list">
     {
       props.volumes.map((volume) => (
-        <a class="volume-card" href={`/themes/erudite/volume/${volume.number}/`}>
-          <span class="volume-name">Volume {volume.number}</span>
-          <span class="volume-meta">
-            {volume.philes.length} 篇文章 · 最近更新{" "}
-            {volume.philes
-              .map((p) => p.data.date)
-              .reduce((a, b) => (a > b ? a : b))
-              .toISOString()
-              .slice(0, 10)}
-          </span>
-        </a>
+        <li>
+          <a href={`/themes/erudite/volume/${volume.number}/`}>
+            Volume {volume.number}
+          </a>
+          <volume-meta>
+            <span>{volume.philes.length} 篇文章</span>
+            <span>
+              最近更新{" "}
+              {volume.philes
+                .map((p) => p.data.date)
+                .reduce((a, b) => (a > b ? a : b))
+                .toISOString()
+                .slice(0, 10)}
+            </span>
+          </volume-meta>
+        </li>
       ))
     }
-  </section>
+  </ul>
 </Layout>
+
+<style>
+  .home-hero {
+    margin-block-end: var(--space-l);
+  }
+
+  .home-hero h1 {
+    font-size: var(--step-3);
+    line-height: calc(var(--leading-offset) + 1em);
+    font-weight: var(--font-weight-medium);
+  }
+
+  .home-hero .hero-sub {
+    margin-block-start: var(--space-3xs);
+    color: var(--muted-foreground);
+  }
+
+  .volume-list {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-m);
+  }
+
+  .volume-list li {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .volume-list li > a {
+    font-size: var(--step-1);
+    line-height: calc(var(--leading-offset) + 1em);
+    font-weight: var(--font-weight-medium);
+    width: fit-content;
+  }
+
+  volume-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3xs);
+    margin-block-start: var(--space-3xs);
+    font-size: var(--step--1);
+    color: var(--muted-foreground);
+  }
+
+  volume-meta span + span::before {
+    content: "·";
+    margin-inline-end: var(--space-3xs);
+  }
+</style>

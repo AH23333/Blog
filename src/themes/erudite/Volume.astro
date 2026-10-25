@@ -10,12 +10,17 @@ const props = Astro.props;
 const volume = props.volume;
 ---
 
-<Layout title={`Volume ${volume.number}`} volume={volume.number} canonicalPath={`/volume/${volume.number}/`}>
+<Layout
+  title={`Volume ${volume.number}`}
+  volume={volume.number}
+  canonicalPath={`/volume/${volume.number}/`}
+  crumbs={[{ label: `Volume ${volume.number}`, href: `/themes/erudite/volume/${volume.number}/` }]}
+>
   <h1 class="page-title">Volume {volume.number}</h1>
 
   {
     volume.groups.map((group) => (
-      <section>
+      <section class="volume-group">
         <h2 class="group-title">{group.label || "Articles"}</h2>
         <ul class="phile-list">
           {group.philes.map((phile) => (
@@ -25,7 +30,9 @@ const volume = props.volume;
                 href={`/themes/erudite/volume/${volume.number}/${phile.route.slug}/`}
               >
                 <span class="phile-title">{phile.data.title}</span>
-                <span class="phile-date">{phile.data.date.toISOString().slice(0, 10)}</span>
+                <span class="phile-date">
+                  {phile.data.date.toISOString().slice(0, 10)}
+                </span>
               </a>
             </li>
           ))}
@@ -34,3 +41,56 @@ const volume = props.volume;
     ))
   }
 </Layout>
+
+<style>
+  .page-title {
+    font-size: var(--step-3);
+    line-height: calc(var(--leading-offset) + 1em);
+    font-weight: var(--font-weight-medium);
+    margin-block-end: var(--space-m);
+  }
+
+  .volume-group + .volume-group {
+    margin-block-start: var(--space-l);
+  }
+
+  .group-title {
+    font-size: var(--step--1);
+    font-weight: var(--font-weight-medium);
+    color: var(--muted-foreground);
+    margin-block-end: var(--space-2xs);
+  }
+
+  .phile-list {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .phile-link {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: var(--space-s);
+    padding-block: var(--space-3xs);
+    text-decoration: none;
+  }
+
+  .phile-link .phile-title {
+    color: var(--foreground);
+    font-size: var(--step-0);
+  }
+
+  .phile-link:hover .phile-title {
+    text-decoration: underline;
+    text-decoration-thickness: max(1px, 0.0625em);
+    text-underline-position: under;
+    text-underline-offset: -0.06em;
+  }
+
+  .phile-link .phile-date {
+    color: var(--muted-foreground);
+    font-size: var(--step--1);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+</style>

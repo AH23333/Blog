@@ -1,0 +1,70 @@
+---
+/**
+ * 回到顶部（模板 ScrollToTop.astro 移植，仅浮动移动端形态）。
+ */
+---
+
+<button
+  data-icon-button
+  data-scroll-top
+  data-floating
+  aria-label="回到顶部"
+>
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" aria-hidden="true">
+    <path
+      fill="currentColor"
+      d="M208.49 120.49a12 12 0 0 1-17 0L140 69v147a12 12 0 0 1-24 0V69l-51.51 51.49a12 12 0 0 1-17-17l72-72a12 12 0 0 1 17 0l72 72a12 12 0 0 1 0 17"
+    ></path>
+  </svg>
+</button>
+
+<style>
+  button {
+    color: var(--foreground);
+    visibility: hidden;
+  }
+
+  button[data-visible] {
+    visibility: visible;
+  }
+
+  button[data-floating] {
+    position: fixed;
+    /* 避让右下角的 ThemeSwitcher 浮层 */
+    inset-inline-start: var(--grid-gutter);
+    inset-inline-end: auto;
+    inset-block-end: var(--grid-gutter);
+    z-index: 10;
+    width: 2.5rem;
+    height: 2.5rem;
+    background-color: color-mix(in oklab, var(--background) 90%, transparent);
+    backdrop-filter: blur(var(--blur-sm));
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius-md);
+  }
+
+  @media (width >= 64rem) {
+    button[data-floating] {
+      display: none;
+    }
+  }
+</style>
+
+<script>
+  const buttons = [
+    ...document.querySelectorAll<HTMLElement>("[data-scroll-top]"),
+  ];
+
+  const update = () => {
+    const past = scrollY > innerHeight * 0.5;
+    for (const button of buttons) button.toggleAttribute("data-visible", past);
+  };
+
+  addEventListener("scroll", update, { passive: true });
+  update();
+
+  document.addEventListener("click", (event) => {
+    if ((event.target as Element).closest("[data-scroll-top]"))
+      window.scrollTo({ top: 0 });
+  });
+</script>
