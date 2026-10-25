@@ -11,6 +11,20 @@
  *   --prose-fg / --prose-muted / --prose-border
  */
 
+/* 灯箱对话框样式（与 textmode 共用同一实现） */
+@import "../../styles/modules/lightbox.css";
+@import "../../styles/modules/mermaid.css";
+
+/* 灯箱 CSS 使用 textmode token（--fg/--text-font/--text-size/--text-cell），
+ * 主题不定义这些变量，在对话框上桥接为中性亮色（对话框底色为半透明黑，跨主题一致） */
+dialog.image-lightbox,
+dialog.mermaid-lightbox {
+  --fg: #f2f2f2;
+  --text-font: var(--font-body, sans-serif);
+  --text-size: 1rem;
+  --text-cell: 0.55rem;
+}
+
 /* ── 基础排版 ─────────────────────────────────────────────────────────── */
 
 .prose {
@@ -99,6 +113,42 @@
   max-width: 100%;
   height: auto;
   border-radius: 8px;
+}
+
+/* ── 图片（灯箱触发器，与 textmode 的 phile-image 契约一致） ───────────── */
+
+.prose .phile-image {
+  margin: 1.4em 0;
+}
+
+.prose .phile-image-trigger {
+  display: block;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: zoom-in;
+  font: inherit;
+}
+
+/* 表格 / 行内图片的灯箱触发按钮：按内容收缩，随单元格对齐 */
+.prose .phile-image-trigger-inline {
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.prose .phile-image img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+.prose .phile-image figcaption {
+  margin-top: 0.5em;
+  text-align: center;
+  color: var(--prose-muted);
+  font-size: 0.88em;
 }
 
 .prose table {

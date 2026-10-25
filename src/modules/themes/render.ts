@@ -312,6 +312,37 @@ function transformMermaidCodeBlocks(html: string): string {
   );
 }
 
+/**
+ * 本地图片包成灯箱触发按钮（与 textmode 管线的 phile-image 契约一致）：
+ *  - 行内 / 表格内图片 → <button data-lightbox-image> 行内触发器
+ *  - 整段图片 → <figure class="phile-image"> + figcaption（alt 非空时）
+ * 外部图片（https 等）保持原样。
+ */
+function wrapLightboxImages(html: string): string {
+  const inlineTrigger =
+    '<button class="phile-image-trigger phile-image-trigger-inline" type="button" data-lightbox-image aria-label="Open image preview">';
+
+  const wrapped = html.replace(/<img\b[^>]*>/gi, (tag) => {
+    if (!/\bsrc="\/images\//.test(tag)) {
+      return tag;
+    }
+    return `${inlineTrigger}${tag}</button>`;
+  });
+
+  return wrapped.replace(
+    new RegExp(`<p>${escapeRegExp(inlineTrigger)}(<img\\b[^>]*>)</button></p>`, "g"),
+    (_match, img: string) => {
+      const alt = img.match(/\balt="([^"]*)"/i)?.[1] ?? "";
+      const caption = alt.trim().length > 0 ? `<figcaption>${escapeHtml(alt)}</figcaption>` : "";
+      return `<figure class="phile-image">${inlineTrigger.replace("phile-image-trigger-inline", "phile-image-trigger")}${img}</button>${caption}</figure>`;
+    }
+  );
+}
+
+function escapeRegExp(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 const BOX_ART_CHARS = /[─│┌┐└┘├┤┬┴┼►▼✓✗═║╔╗╚╝╠╣╦╩╬]/g;
 
 /**
@@ -409,6 +440,7 @@ function renderMarkdownHtml(text: string, articleDir: string): string {
   });
   let html = md.render(protectedCode).replace(/\uE300/g, "|");
   html = normalizeImages(html, articleDir);
+  html = wrapLightboxImages(html);
   html = transformAsciiArtParagraphs(html);
   html = transformBareCodeBlocks(html);
   html = transformMermaidCodeBlocks(html);

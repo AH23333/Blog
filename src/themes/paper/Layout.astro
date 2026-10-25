@@ -87,8 +87,14 @@ const pageType = props.pageType ?? "website";
 
     <script>
       import { initThemeMermaid } from "../../modules/themes/mermaid-client";
+      import { installImageLightbox } from "../../modules/textmode/lightbox/images";
+      import { installMermaidLightbox } from "../../modules/textmode/lightbox/mermaid";
 
-      initThemeMermaid("paper");
+      installImageLightbox();
+
+      initThemeMermaid("paper").then(() => {
+        installMermaidLightbox();
+      });
 
       // 亮暗切换
       const toggle = document.querySelector<HTMLButtonElement>("[data-theme-toggle]");

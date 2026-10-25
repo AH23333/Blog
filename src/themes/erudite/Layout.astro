@@ -69,8 +69,14 @@ const pageType = props.pageType ?? "website";
 
     <script>
       import { initThemeMermaid } from "../../modules/themes/mermaid-client";
+      import { installImageLightbox } from "../../modules/textmode/lightbox/images";
+      import { installMermaidLightbox } from "../../modules/textmode/lightbox/mermaid";
 
-      initThemeMermaid("erudite");
+      installImageLightbox();
+
+      initThemeMermaid("erudite").then(() => {
+        installMermaidLightbox();
+      });
     </script>
   </body>
 </html>
