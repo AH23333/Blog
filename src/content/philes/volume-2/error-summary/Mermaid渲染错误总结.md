@@ -54,6 +54,7 @@ Mermaid语法规范要求rect块的颜色参数必须使用英文括号包裹。
 **解决方案**：
 将所有rect块中的中文方括号替换为英文括号：
 ```mermaid
+sequenceDiagram
 rect rgba(240, 248, 255, 0.4)
     Note over SVC,MP: ===== 阶段 1：代理拦截 =====
     SVC->>MP: userMapper.insert【user】
@@ -62,7 +63,7 @@ end
 
 **特殊注意**：
 JVM深度解析文档中还使用了中文逗号`，`，需要同时替换为英文逗号`,`：
-```mermaid
+```text
 rect rgba【240， 248， 255， 0.4】  ❌
 rect rgba(240, 248, 255, 0.4)     ✅
 ```
@@ -144,7 +145,7 @@ Mermaid sequenceDiagram使用`->`、`-->`、`->>`等箭头符号表示消息传�
 使用HTML实体替换Lambda箭头：
 ```mermaid
 sequenceDiagram
-    Note over TIMER: timer.record(() -&gt; { seckillService.execute(); })
+    Note over TIMER: timer.record(() → { seckillService.execute() })
 ```
 
 **替换规则**：
