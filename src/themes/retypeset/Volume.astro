@@ -1,0 +1,36 @@
+---
+import type { Volume } from "../../modules/volumes/model";
+import Layout from "./Layout.astro";
+
+type Props = {
+  volume: Volume;
+};
+
+const props = Astro.props;
+const volume = props.volume;
+---
+
+<Layout title={`Volume ${volume.number}`} volume={volume.number} canonicalPath={`/volume/${volume.number}/`}>
+  <h1 class="page-title">Volume {volume.number}</h1>
+
+  {
+    volume.groups.map((group) => (
+      <section>
+        <h2 class="group-title">{group.label || "Articles"}</h2>
+        <ul class="phile-list">
+          {group.philes.map((phile) => (
+            <li>
+              <a
+                class="phile-link"
+                href={`/themes/retypeset/volume/${volume.number}/${phile.route.slug}/`}
+              >
+                <span class="phile-title">{phile.data.title}</span>
+                <span class="phile-date">{phile.data.date.toISOString().slice(0, 10)}</span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      </section>
+    ))
+  }
+</Layout>

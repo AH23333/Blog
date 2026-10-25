@@ -1,0 +1,25 @@
+---
+import Article from "../../../../../../themes/retypeset/Article.astro";
+import { getAllPhiles, getPhileByRoute } from "../../../../../../modules/philes/repository";
+import { renderPhileForThemes } from "../../../../../../modules/themes/render";
+
+export async function getStaticPaths() {
+  const philes = await getAllPhiles();
+  return philes.map((phile) => ({
+    params: {
+      volume: String(phile.route.volume),
+      slug: phile.route.slug
+    }
+  }));
+}
+
+const phile = await getPhileByRoute(Number(Astro.params.volume), Astro.params.slug ?? "");
+
+if (!phile) {
+  return Astro.redirect("/themes/retypeset/");
+}
+
+const content = renderPhileForThemes(phile);
+---
+
+<Article phile={phile} content={content} />

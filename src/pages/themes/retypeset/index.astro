@@ -1,0 +1,8 @@
+---
+import Home from "../../../themes/retypeset/Home.astro";
+import { getAllVolumes } from "../../../modules/volumes/repository";
+
+const volumes = await getAllVolumes();
+---
+
+<Home volumes={volumes} />
