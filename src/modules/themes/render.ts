@@ -32,7 +32,7 @@ import type { Phile } from "../philes/model";
 import { convertBlockMathInTableRows, getArticleDir, resolveImagePath } from "../philes/render";
 import { type AnsiInlineMarker, processAnsiInlineMarkup, roleForMask } from "../textmode/ansi/render";
 import { escapeHtml } from "../textmode/core/html";
-import { extractFencedCodeBlocks } from "../textmode/markdown/codeblock";
+import { extractFencedCodeBlocks, extractPlainTextFences, fencedLineIndices } from "../textmode/markdown/codeblock";
 import { splitContainerSegments } from "../textmode/markdown/container";
 import { highlightCode } from "../textmode/markdown/highlight";
 
@@ -56,9 +56,6 @@ const md = new MarkdownIt({
 md.enable(["table", "strikethrough"]);
 
 // ── 占位符 ────────────────────────────────────────────────────────────────
-
-/** Plain Text 围栏块（先于通用围栏提取，避免空格语言名被跳过） */
-const PTBLOCK_REGEX = /```Plain Text\n([\s\S]*?)```/g;
 
 /** 代码块占位符前缀（与 textmode 管线约定一致，PUA 区） */
 const CODE_PREFIX = "\uE502";
@@ -191,11 +188,14 @@ function renderThemeInkBlock(lines: string[]): string {
 /** 提取所有 --[ ink ]-- 块并渲染，替换为占位符 */
 function extractThemeInkBlocks(text: string, blocks: string[]): string {
   const lines = text.split("\n");
+  // 围栏代码块内的 --[ ink ]-- 是文档示例，不是 INK 块标记；
+  // 若不跳过，提取会吞掉闭栏行导致围栏失衡（下游 Markdown 渲染级联错乱）
+  const fencedLines = fencedLineIndices(text);
   const outputLines: string[] = [];
   let cursor = 0;
 
   while (cursor < lines.length) {
-    if (!lines[cursor].match(inkBlockPattern)) {
+    if (!lines[cursor].match(inkBlockPattern) || fencedLines.has(cursor)) {
       outputLines.push(lines[cursor]);
       cursor += 1;
       continue;
@@ -224,10 +224,13 @@ function restoreThemeInkBlocks(html: string, blocks: string[]): string {
 // ── Plain Text 块 ─────────────────────────────────────────────────────────
 
 function extractPlainTextBlocks(text: string, blocks: string[]): string {
-  return text.replace(PTBLOCK_REGEX, (_, content: string) => {
+  const { processed, blocks: rawBlocks } = extractPlainTextFences(text, (i) => `${PT_PREFIX}PT_${i}${PT_PREFIX}`);
+
+  for (const content of rawBlocks) {
     blocks.push(`<pre class="ascii-art">${escapeHtml(content.replace(/\n$/, ""))}</pre>`);
-    return `${PT_PREFIX}PT_${blocks.length - 1}${PT_PREFIX}`;
-  });
+  }
+
+  return processed;
 }
 
 function restorePlainTextBlocks(html: string, blocks: string[]): string {
