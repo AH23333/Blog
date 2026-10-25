@@ -11,6 +11,7 @@ import {
 import { escapeHtml, link, textHtml } from "../textmode/core/html";
 import { wrapWordsCells } from "../textmode/core/layout";
 
+import { fencedLineIndices } from "../textmode/markdown/codeblock";
 import { highlightCodeBlocks } from "../textmode/markdown/highlight";
 import { renderMarkdownToHtml, splitContainerSegments } from "../textmode/markdown/parser";
 import { createPhilePipeline } from "../textmode/shared/placeholder";
@@ -256,9 +257,12 @@ type ParsedBodyBlock = { kind: "text"; text: string } | { kind: "image"; src: st
 function splitBodyBlocks(input: string, articleDir: string): ParsedBodyBlock[] {
   const blocks: ParsedBodyBlock[] = [];
   const textLines: string[] = [];
+  // 围栏代码块内的整行图片是文档示例文本，不拆分为图片块；
+  // 否则围栏被从中间劈开，闭栏行配对错乱会导致下游渲染级联翻转
+  const fencedLines = fencedLineIndices(input);
 
-  for (const line of input.split("\n")) {
-    const image = parseImageLine(line);
+  for (const [index, line] of input.split("\n").entries()) {
+    const image = fencedLines.has(index) ? undefined : parseImageLine(line);
 
     if (!image) {
       textLines.push(line);
