@@ -116,13 +116,15 @@ function renderMathBlock(latex: string, display: boolean, label?: string): MathB
     registerEquationLabel(label, number);
   }
 
-  const html = katex.renderToString(latex, {
-    displayMode: display,
-    throwOnError: false,
-    output: "html",
-    trust: false,
-    strict: false
-  });
+  const html = escapePuaGlyphs(
+    katex.renderToString(latex, {
+      displayMode: display,
+      throwOnError: false,
+      output: "html",
+      trust: false,
+      strict: false
+    })
+  );
 
   return {
     kind: "math",
@@ -137,13 +139,15 @@ function renderMathBlock(latex: string, display: boolean, label?: string): MathB
 function renderInlineMath(latex: string): InlineMathResult {
   const isTall = detectTallFormula(latex);
 
-  const html = katex.renderToString(latex, {
-    displayMode: false,
-    throwOnError: false,
-    output: "html",
-    trust: false,
-    strict: false
-  });
+  const html = escapePuaGlyphs(
+    katex.renderToString(latex, {
+      displayMode: false,
+      throwOnError: false,
+      output: "html",
+      trust: false,
+      strict: false
+    })
+  );
 
   return {
     kind: "inline-math",
@@ -151,6 +155,19 @@ function renderInlineMath(latex: string): InlineMathResult {
     html,
     isTall
   };
+}
+
+/**
+ * 将 KaTeX 输出中的私用区字符转为数字字符引用。
+ *
+ * KaTeX 用私用区码位引用字体字形（如 \ne 的否定斜线是 U+E020），
+ * 与本项目的占位符（U+E000–U+E0FF 等）码位冲突：轻则占位符泄漏到
+ * 最终 HTML，重则公式 HTML 内的字形被 restore 阶段误替换为另一条
+ * 公式（嵌套损坏）。转为 &#xE020; 后浏览器解码渲染完全一致，但对
+ * 字符串替换不可见。
+ */
+function escapePuaGlyphs(html: string): string {
+  return html.replace(/[\uE000-\uF8FF]/g, (ch) => `&#x${ch.charCodeAt(0).toString(16)};`);
 }
 
 // ── 公式 HTML 生成 ────────────────────────────────────────────────────────
@@ -185,13 +202,15 @@ export function inlineMathHtml(inline: InlineMathResult): string {
  * 但外部包裹块级容器以独立成行。
  */
 function mathBlockHtmlForTall(latex: string): string {
-  const html = katex.renderToString(latex, {
-    displayMode: false,
-    throwOnError: false,
-    output: "html",
-    trust: false,
-    strict: false
-  });
+  const html = escapePuaGlyphs(
+    katex.renderToString(latex, {
+      displayMode: false,
+      throwOnError: false,
+      output: "html",
+      trust: false,
+      strict: false
+    })
+  );
 
   return `<div class="math-block math-block-tall"><span class="math-inline-tall-block">${html}</span></div>`;
 }

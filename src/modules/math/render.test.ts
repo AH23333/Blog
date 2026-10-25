@@ -230,3 +230,30 @@ describe("交叉引用", () => {
     assert.ok(result.text.includes("math-ref"));
   });
 });
+
+describe("KaTeX PUA 字形与占位符冲突", () => {
+  it("\\ne 的 KaTeX 字形 (U+E020) 不应泄漏或误替换行内公式占位符", () => {
+    resetEquationCounter();
+    resetEquationLabels();
+
+    // KaTeX 渲染 \ne 时输出 U+E020 字形字符（KaTeX_Main 字体的否定斜线）。
+    // 构造 32 条前置公式后，第 33 条占位符恰为 U+E020；若字形未被转义，
+    // 第 35 条 (\ne) 的 HTML 会在 restore 后残留 U+E020（泄漏），
+    // 或更糟：字形被误替换为其他公式的 HTML（嵌套损坏）。
+    const parts: string[] = [];
+    for (let i = 0; i < 32; i++) {
+      parts.push(`$x_{${i}}$`);
+    }
+    parts.push("$L_0$");
+    parts.push("$L_1$");
+    parts.push("$\\ne 0$");
+    const result = processMathInText(parts.join(" "));
+
+    assert.equal(result.inlineMath.size, 35);
+    const html = replaceMathPlaceholders(result.text, result.inlineMath);
+    assert.ok(!/[\uE000-\uF8FF]/.test(html), "最终 HTML 不应残留私用区字符");
+    assert.equal((html.match(/<span class="math-inline">/g) || []).length, 35);
+    // \ne 的字形应以数字字符引用形式存在（浏览器渲染等价）
+    assert.ok(html.includes("&#xe020;"), "KaTeX 字形应转义为数字字符引用");
+  });
+});
