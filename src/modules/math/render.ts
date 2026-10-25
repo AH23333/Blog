@@ -329,6 +329,13 @@ export function processMathInText(text: string): ProcessedMathText {
 
     let latex = processed.slice(blockStart + 2, end).trim();
 
+    // 裸 $$ 会吞掉大段文本：跨越代码占位符的“块级公式”不是公式，按普通文本处理
+    if (/[\uE100-\uE1FF]/.test(latex)) {
+      result += "$$";
+      cursor = blockStart + 2;
+      continue;
+    }
+
     // 检测标签：可能在公式内部末尾，也可能在 $$ 闭合之后
     let label: string | undefined;
 
@@ -364,6 +371,7 @@ export function processMathInText(text: string): ProcessedMathText {
           if (latex.length > 0) {
             const block = renderMathBlock(latex, true, label);
             blockMath.push(block);
+            result += BLOCK_MATH_PLACEHOLDER;
           }
           continue;
         }
@@ -402,6 +410,14 @@ export function processMathInText(text: string): ProcessedMathText {
     }
 
     const latex = processed.slice(dollar + 1, end).trim();
+
+    // 未配对的裸 $ 会把后续段落（含代码/块级公式占位符）误认为行内公式，
+    // 产生吞掉大段文本的 KaTeX 错误输出；此类匹配按普通 $ 处理
+    if (latex.includes(BLOCK_MATH_PLACEHOLDER) || /[\uE100-\uE1FF]/.test(latex)) {
+      result += "$";
+      cursor = dollar + 1;
+      continue;
+    }
     // 剥离 \label{...}（KaTeX 不支持，行内公式通常不需要标签）
     const cleanLatex = latex.replace(/\\label\{[^}]+\}/g, "").trim();
     if (cleanLatex.length > 0) {
