@@ -134,7 +134,7 @@ export function initTypewriterForElement(element: HTMLElement): Promise<void> {
     const allLines: { lineHtml: string }[] = lines.map((lineHtml) => {
       let restored = lineHtml;
       for (let i = 0; i < noTypewriterBlocks.length; i++) {
-        restored = restored.replaceAll(`\uE400NT${i}\uE400`, noTypewriterBlocks[i]);
+        restored = restored.replaceAll(`\uE400NT${i}\uE400`, () => noTypewriterBlocks[i]);
       }
       return { lineHtml: restored };
     });
@@ -299,7 +299,7 @@ export function initTypewriter(): void {
     for (const lineHtml of lines) {
       let restored = lineHtml;
       for (let i = 0; i < noTypewriterBlocks.length; i++) {
-        restored = restored.replaceAll(`\uE400NT${i}\uE400`, noTypewriterBlocks[i]);
+        restored = restored.replaceAll(`\uE400NT${i}\uE400`, () => noTypewriterBlocks[i]);
       }
       allLines.push({ el: preEl, lineHtml: restored });
     }

@@ -281,7 +281,7 @@ function restoreCodeRegions(text: string, codeBlocks: Map<string, string>): stri
 
   let result = text;
   for (const [placeholder, code] of sortedEntries) {
-    result = result.replaceAll(placeholder, code);
+    result = result.replaceAll(placeholder, () => code);
   }
   return result;
 }
@@ -466,7 +466,7 @@ export function replaceMathPlaceholders(html: string, inlineMath: Map<string, st
   let result = html;
 
   for (const [placeholder, mathHtml] of inlineMath) {
-    result = result.replaceAll(placeholder, mathHtml);
+    result = result.replaceAll(placeholder, () => mathHtml);
   }
 
   return result;

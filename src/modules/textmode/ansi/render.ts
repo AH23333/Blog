@@ -125,7 +125,7 @@ export function restoreAnsiInlineMarkup(html: string, markers: Map<string, AnsiI
   for (const [placeholder, { role, text }] of markers) {
     const escaped = escapeHtml(text);
     const replacement = `<span class="ansi ansi-${role}">${escaped}</span>`;
-    result = result.replaceAll(placeholder, replacement);
+    result = result.replaceAll(placeholder, () => replacement);
   }
 
   return result;
