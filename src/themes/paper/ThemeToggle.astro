@@ -1,0 +1,92 @@
+---
+/**
+ * paper 明暗切换按钮（模板 Header.astro theme-btn + scripts/theme.ts 移植）。
+ * localStorage key = "theme"（与 retypeset 共用）；data-theme + .dark 双通道；meta theme-color 运行时填充。
+ */
+---
+
+<li class="theme-btn-item">
+  <button id="theme-btn" class="theme-btn" type="button" title="切换明暗模式" aria-label="auto" aria-live="polite">
+    <svg
+      class="icon-moon"
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      aria-hidden="true"
+    >
+      <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+      <path d="M12 3c.132 0 .263 0 .393 0a7.5 7.5 0 0 0 7.92 12.446a9 9 0 1 1 -8.313 -12.454z"></path>
+    </svg>
+    <svg
+      class="icon-sun"
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      stroke-width="2"
+      stroke-linecap="round"
+      stroke-linejoin="round"
+      aria-hidden="true"
+    >
+      <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+      <path d="M14.828 14.828a4 4 0 1 0 -5.656 -5.656a4 4 0 0 0 5.656 5.656z"></path>
+      <path d="M6.343 17.657l-1.414 1.414"></path>
+      <path d="M6.343 6.343l-1.414 -1.414"></path>
+      <path d="M17.657 6.343l1.414 -1.414"></path>
+      <path d="M17.657 17.657l1.414 1.414"></path>
+      <path d="M4 12h-2"></path>
+      <path d="M12 4v-2"></path>
+      <path d="M20 12h2"></path>
+      <path d="M12 20v2"></path>
+    </svg>
+  </button>
+</li>
+
+<script>
+  // 模板 scripts/theme.ts 移植
+  const THEME_KEY = "theme";
+
+  const btn = document.getElementById("theme-btn");
+
+  function getPreferredTheme(): string {
+    const stored = localStorage.getItem(THEME_KEY);
+    if (stored) return stored;
+    return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  }
+
+  let themeValue: string =
+    (window as unknown as { __theme?: { value: string } }).__theme?.value ?? getPreferredTheme();
+
+  function reflect(): void {
+    const root = document.documentElement;
+    root.setAttribute("data-theme", themeValue);
+    root.classList.toggle("dark", themeValue === "dark");
+    btn?.setAttribute("aria-label", themeValue);
+
+    // 用 body 实际背景色填充 theme-color，与模板一致
+    const bg = window.getComputedStyle(document.body).backgroundColor;
+    document.querySelector("meta[name='theme-color']")?.setAttribute("content", bg);
+  }
+
+  function persist(): void {
+    localStorage.setItem(THEME_KEY, themeValue);
+    reflect();
+  }
+
+  reflect();
+
+  btn?.addEventListener("click", () => {
+    themeValue = themeValue === "light" ? "dark" : "light";
+    persist();
+  });
+
+  // 跟随系统明暗偏好变化
+  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", (event) => {
+    themeValue = event.matches ? "dark" : "light";
+    persist();
+  });
+</script>

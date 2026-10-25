@@ -1,8 +1,15 @@
 ---
+/**
+ * paper Layout（模板 Layout.astro + PostLayout.astro 合并移植）。
+ * data-theme + .dark 双通道明暗切换；app-layout = 48rem 居中容器由各页 main 承载。
+ */
+
 import katexCssUrl from "katex/dist/katex.min.css?url";
 import { siteConfig } from "../../config";
 import ThemeSwitcher from "../../modules/themes/ThemeSwitcher.astro";
 import "../../modules/themes/content.css";
+import Footer from "./Footer.astro";
+import Header from "./Header.astro";
 import "./styles.css";
 
 type Props = {
@@ -43,45 +50,27 @@ const pageType = props.pageType ?? "website";
         <meta property="article:published_time" content={props.publishedTime.toISOString()} />
       )
     }
+    <meta name="theme-color" content="" />
     <link rel="stylesheet" href={katexCssUrl} />
     <script is:inline>
-      // 防闪烁：渲染前恢复上次的主题选择
+      // 防闪烁：渲染前恢复主题（模板 FOUC-prevention script）
       (function () {
-        var stored = localStorage.getItem("theme-pref");
-        if (stored === "light" || stored === "dark") {
-          document.documentElement.setAttribute("data-theme", stored);
+        var stored = localStorage.getItem("theme");
+        var prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        var theme = stored ?? (prefersDark ? "dark" : "light");
+        var root = document.firstElementChild;
+        if (root) {
+          root.setAttribute("data-theme", theme);
+          root.classList.toggle("dark", theme === "dark");
         }
+        window.__theme = { value: theme };
       })();
     </script>
   </head>
   <body>
-    <header class="site-header">
-      <a class="site-title" href="/themes/paper/">{siteConfig.name}</a>
-      <nav class="site-nav">
-        <a href="/themes/paper/">Home</a>
-        <a href="https://www.cubeyond.net/">Textmode</a>
-        <a href="https://github.com/AH23333/Blog" rel="noreferrer">GitHub</a>
-        <button
-          class="theme-toggle"
-          type="button"
-          aria-label="切换亮暗模式"
-          data-theme-toggle
-        >
-          <span data-theme-icon-light>◐</span>
-          <span data-theme-icon-dark hidden>◑</span>
-        </button>
-      </nav>
-    </header>
-
-    <main class="site-main">
-      <slot />
-    </main>
-
-    <footer class="site-footer">
-      <span>
-        {siteConfig.name} · paper theme · <a href="/themes/">切换风格</a>
-      </span>
-    </footer>
+    <Header />
+    <slot />
+    <Footer />
 
     <ThemeSwitcher current="paper" volume={props.volume} slug={props.slug} />
 
@@ -95,28 +84,6 @@ const pageType = props.pageType ?? "website";
       initThemeMermaid("paper").then(() => {
         installMermaidLightbox();
       });
-
-      // 亮暗切换
-      const toggle = document.querySelector<HTMLButtonElement>("[data-theme-toggle]");
-      if (toggle) {
-        const syncIcons = () => {
-          const isDark = document.documentElement.getAttribute("data-theme") === "dark";
-          const lightIcon = toggle.querySelector<HTMLElement>("[data-theme-icon-light]");
-          const darkIcon = toggle.querySelector<HTMLElement>("[data-theme-icon-dark]");
-          if (lightIcon) lightIcon.hidden = isDark;
-          if (darkIcon) darkIcon.hidden = !isDark;
-        };
-
-        syncIcons();
-
-        toggle.addEventListener("click", () => {
-          const isDark = document.documentElement.getAttribute("data-theme") === "dark";
-          const next = isDark ? "light" : "dark";
-          document.documentElement.setAttribute("data-theme", next);
-          localStorage.setItem("theme-pref", next);
-          syncIcons();
-        });
-      }
     </script>
   </body>
 </html>

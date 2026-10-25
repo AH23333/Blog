@@ -1,0 +1,82 @@
+---
+/**
+ * paper 页头（模板 Header.astro 移植）。
+ * 站点标题绝对定位（移动端）/ 静态（sm 起）；移动端汉堡菜单开合导航。
+ */
+
+import { siteConfig } from "../../config";
+import ThemeToggle from "./ThemeToggle.astro";
+---
+
+<a class="skip-link" href="#main-content">跳转到内容</a>
+
+<header class="site-header">
+  <div class="header-inner">
+    <a class="site-title" href="/themes/paper/">{siteConfig.name}</a>
+
+    <nav id="nav-menu" aria-label="主导航">
+      <button
+        id="menu-btn"
+        class="menu-btn"
+        type="button"
+        aria-label="打开菜单"
+        aria-expanded="false"
+        aria-controls="menu-items"
+      >
+        <svg
+          id="close-icon"
+          class="icon-close"
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+          <path d="M18 6l-12 12"></path>
+          <path d="M6 6l12 12"></path>
+        </svg>
+        <svg
+          id="menu-icon"
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+          <path d="M4 6h16"></path>
+          <path d="M7 12h13"></path>
+          <path d="M10 18h10"></path>
+        </svg>
+      </button>
+
+      <ul id="menu-items" class="menu-items">
+        <li><a class="active-nav" href="/themes/paper/">Home</a></li>
+        <li><a href="https://www.cubeyond.net/">Textmode</a></li>
+        <li><a href="/themes/">切换风格</a></li>
+        <ThemeToggle />
+      </ul>
+    </nav>
+  </div>
+</header>
+
+<script>
+  // 移动端菜单开合（模板 toggleNav 移植）
+  const menuBtn = document.getElementById("menu-btn");
+  const menuItems = document.getElementById("menu-items");
+
+  menuBtn?.addEventListener("click", () => {
+    const isOpen = menuBtn.getAttribute("aria-expanded") === "true";
+    menuBtn.setAttribute("aria-expanded", String(!isOpen));
+    menuBtn.setAttribute("aria-label", isOpen ? "打开菜单" : "关闭菜单");
+    menuBtn.classList.toggle("menu-open", !isOpen);
+    menuItems?.classList.toggle("open", !isOpen);
+  });
+</script>

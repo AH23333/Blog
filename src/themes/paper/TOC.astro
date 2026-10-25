@@ -1,0 +1,37 @@
+---
+/**
+ * paper 折叠目录（模板 remark-toc + remark-collapse 产物结构移植）。
+ * 正文内嵌 <details>，默认折叠，h2–h4 层级缩进。
+ */
+
+import type { ThemeHeading } from "../../modules/themes/render";
+
+type Props = {
+  headings: ThemeHeading[];
+};
+
+const props = Astro.props;
+const filtered = props.headings.filter(
+  (heading) => heading.depth >= 2 && heading.depth <= 4,
+);
+---
+
+{
+  filtered.length > 0 && (
+    <details class="toc">
+      <summary>目录</summary>
+      <ul>
+        {filtered.map((heading) => (
+          <li
+            class:list={{
+              "toc-depth-3": heading.depth === 3,
+              "toc-depth-4": heading.depth === 4,
+            }}
+          >
+            <a href={`#${heading.slug}`}>{heading.text}</a>
+          </li>
+        ))}
+      </ul>
+    </details>
+  )
+}

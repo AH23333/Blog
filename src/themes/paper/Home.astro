@@ -1,7 +1,13 @@
 ---
+/**
+ * paper 首页（模板 index.astro 移植）。
+ * hero 大标题 + 按 Volume 分区的文章卡片列表（模板 featured/recent 区块）。
+ */
+
 import type { Volume } from "../../modules/volumes/model";
-import Layout from "./Layout.astro";
 import { siteConfig } from "../../config";
+import Card from "./Card.astro";
+import Layout from "./Layout.astro";
 
 type Props = {
   volumes: Volume[];
@@ -11,26 +17,25 @@ const props = Astro.props;
 ---
 
 <Layout title="首页" canonicalPath="/">
-  <section class="home-hero">
-    <h1>{siteConfig.name}</h1>
-    <p class="hero-sub">{siteConfig.description}</p>
-  </section>
+  <main id="main-content" class="app-layout">
+    <section class="hero">
+      <h1>{siteConfig.name}</h1>
+      <p>{siteConfig.description}</p>
+    </section>
 
-  <section>
     {
       props.volumes.map((volume) => (
-        <a class="volume-card" href={`/themes/paper/volume/${volume.number}/`}>
-          <span class="volume-name">Volume {volume.number}</span>
-          <span class="volume-meta">
-            {volume.philes.length} 篇文章 · 最近更新{" "}
-            {volume.philes
-              .map((p) => p.data.date)
-              .reduce((a, b) => (a > b ? a : b))
-              .toISOString()
-              .slice(0, 10)}
-          </span>
-        </a>
+        <section class="posts-section">
+          <h2>
+            <a href={`/themes/paper/volume/${volume.number}/`}>Volume {volume.number}</a>
+          </h2>
+          <ul>
+            {volume.philes.map((phile) => (
+              <Card phile={phile} showDescription />
+            ))}
+          </ul>
+        </section>
       ))
     }
-  </section>
+  </main>
 </Layout>

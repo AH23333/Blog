@@ -1,8 +1,15 @@
 ---
+/**
+ * paper 文章页（模板 posts/[...slug]/index.astro 移植）。
+ * accent 标题 + 日期 + 折叠目录 + 正文 + 顶部进度条 / 标题锚点 / 代码复制按钮 / 返回顶部。
+ */
+
 import type { Phile } from "../../modules/philes/model";
 import type { ThemeArticleContent } from "../../modules/themes/render";
 import { phileExcerpt } from "../../modules/seo/xml";
+import Datetime from "./Datetime.astro";
 import Layout from "./Layout.astro";
+import TOC from "./TOC.astro";
 
 type Props = {
   phile: Phile;
@@ -23,27 +30,189 @@ const description = phileExcerpt(phile);
   volume={phile.route.volume}
   slug={phile.route.slug}
 >
-  <article>
-    <header class="article-header">
-      <div class="article-kicker">
-        <a href="/themes/paper/">Home</a>
-        <span>/</span>
-        <a href={`/themes/paper/volume/${phile.route.volume}/`}>Volume {phile.route.volume}</a>
-      </div>
-      <h1>{phile.data.title}</h1>
-      <div class="article-meta">
-        <span>{phile.data.author}</span>
-        <time datetime={phile.data.date.toISOString()}>
-          {phile.data.date.toISOString().slice(0, 10)}
-        </time>
-      </div>
-    </header>
+  <main id="main-content" class="app-layout">
+    <h1 class="post-title">{phile.data.title}</h1>
 
-    <div class="prose" set:html={props.content.html} />
+    <div class="post-meta">
+      <Datetime date={phile.data.date} size="lg" />
+    </div>
 
-    <footer class="article-footer">
-      <a href={`/themes/paper/volume/${phile.route.volume}/`}>← 返回 Volume {phile.route.volume}</a>
+    <article class="prose">
+      <TOC headings={props.content.headings} />
+      <div set:html={props.content.html} />
+    </article>
+
+    <hr class="hr-dashed" />
+
+    <div id="btt-btn-container">
+      <button data-button="back-to-top" type="button" aria-label="返回顶部">
+        <span id="progress-indicator"></span>
+        <svg
+          class="btt-mobile-icon"
+          xmlns="http://www.w3.org/2000/svg"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+          <path d="M5 12l14 0"></path>
+          <path d="M5 12l6 6"></path>
+          <path d="M5 12l6 -6"></path>
+        </svg>
+        <span class="btt-desktop-text">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            aria-hidden="true"
+          >
+            <path stroke="none" d="M0 0h24v24H0z" fill="none"></path>
+            <path d="M12 5l0 14"></path>
+            <path d="M16 9l-4 -4"></path>
+            <path d="M8 9l4 -4"></path>
+          </svg>
+          返回顶部
+        </span>
+      </button>
+    </div>
+
+    <nav class="article-nav" aria-label="文章导航">
+      <a href={`/themes/paper/volume/${phile.route.volume}/`}>
+        &larr; 返回 Volume {phile.route.volume}
+      </a>
       <a href="/themes/paper/">首页</a>
-    </footer>
-  </article>
+    </nav>
+  </main>
 </Layout>
+
+<script is:inline>
+  // 模板 posts/[...slug] 内联脚本移植：进度条 / 标题锚点 / 代码复制按钮 / 返回顶部
+  (function () {
+    // ── 顶部阅读进度条 ──
+    var progressContainer = document.createElement("div");
+    progressContainer.className = "progress-container";
+
+    var progressBar = document.createElement("div");
+    progressBar.className = "progress-bar";
+    progressBar.id = "myBar";
+
+    progressContainer.appendChild(progressBar);
+    document.body.appendChild(progressContainer);
+
+    function updateScrollProgress() {
+      var winScroll = document.body.scrollTop || document.documentElement.scrollTop;
+      var height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+      var scrolled = (winScroll / height) * 100;
+      var myBar = document.getElementById("myBar");
+      if (myBar) myBar.style.width = scrolled + "%";
+    }
+    document.addEventListener("scroll", updateScrollProgress, { passive: true });
+    updateScrollProgress();
+
+    // ── 标题锚点链接 ──
+    var headings = Array.prototype.slice.call(
+      document.querySelectorAll("article h2, article h3, article h4, article h5, article h6")
+    );
+    for (var i = 0; i < headings.length; i++) {
+      var heading = headings[i];
+      if (!heading.id) continue;
+
+      var link = document.createElement("a");
+      link.className = "heading-link";
+      link.href = "#" + heading.id;
+
+      var span = document.createElement("span");
+      span.setAttribute("aria-hidden", "true");
+      span.innerText = "#";
+      link.appendChild(span);
+      heading.appendChild(link);
+    }
+
+    // ── 代码复制按钮 ──
+    var codeBlocks = Array.prototype.slice.call(
+      document.querySelectorAll("article pre:not(.mermaid)")
+    );
+    for (var j = 0; j < codeBlocks.length; j++) {
+      (function (codeBlock) {
+        var wrapper = document.createElement("div");
+        wrapper.className = "code-wrap";
+
+        var copyButton = document.createElement("button");
+        copyButton.type = "button";
+        copyButton.className = "copy-btn";
+        copyButton.innerHTML = "Copy";
+
+        codeBlock.parentNode.insertBefore(wrapper, codeBlock);
+        wrapper.appendChild(codeBlock);
+        wrapper.appendChild(copyButton);
+
+        copyButton.addEventListener("click", function () {
+          var code = codeBlock.querySelector("code");
+          var text = code ? code.innerText : codeBlock.innerText;
+          navigator.clipboard.writeText(text ?? "").then(function () {
+            copyButton.innerText = "Copied";
+            setTimeout(function () {
+              copyButton.innerText = "Copy";
+            }, 700);
+          });
+        });
+      })(codeBlocks[j]);
+    }
+
+    // ── 返回顶部 ──
+    var rootElement = document.documentElement;
+    var btnContainer = document.getElementById("btt-btn-container");
+    var backToTopBtn = btnContainer
+      ? btnContainer.querySelector("[data-button='back-to-top']")
+      : null;
+    var progressIndicator = document.getElementById("progress-indicator");
+
+    if (btnContainer && backToTopBtn && progressIndicator) {
+      backToTopBtn.addEventListener("click", function () {
+        document.body.scrollTop = 0;
+        document.documentElement.scrollTop = 0;
+      });
+
+      var lastVisible = null;
+      function handleScroll() {
+        var scrollTotal = rootElement.scrollHeight - rootElement.clientHeight;
+        var scrollTop = rootElement.scrollTop;
+        var scrollPercent = Math.floor((scrollTop / scrollTotal) * 100);
+
+        progressIndicator.style.setProperty(
+          "background-image",
+          "conic-gradient(var(--accent), var(--accent) " +
+            scrollPercent +
+            "%, transparent " +
+            scrollPercent +
+            "%)"
+        );
+
+        var isVisible = scrollTop / scrollTotal > 0.3;
+        if (isVisible !== lastVisible) {
+          btnContainer.classList.toggle("visible", isVisible);
+          lastVisible = isVisible;
+        }
+      }
+
+      var ticking = false;
+      document.addEventListener("scroll", function () {
+        if (!ticking) {
+          window.requestAnimationFrame(function () {
+            handleScroll();
+            ticking = false;
+          });
+          ticking = true;
+        }
+      });
+    }
+  })();
+</script>

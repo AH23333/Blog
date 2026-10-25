@@ -1,5 +1,11 @@
 ---
+/**
+ * paper 卷页（模板 posts/[...page].astro + Breadcrumb.astro + Main.astro 移植）。
+ * 面包屑 + 页面标题 + 按分组分区的文章卡片列表。
+ */
+
 import type { Volume } from "../../modules/volumes/model";
+import Card from "./Card.astro";
 import Layout from "./Layout.astro";
 
 type Props = {
@@ -8,29 +14,41 @@ type Props = {
 
 const props = Astro.props;
 const volume = props.volume;
+const groups =
+  volume.groups.length > 0
+    ? volume.groups
+    : [{ dir: "", label: "Articles", philes: volume.philes }];
 ---
 
-<Layout title={`Volume ${volume.number}`} volume={volume.number} canonicalPath={`/volume/${volume.number}/`}>
-  <h1 class="page-title">Volume {volume.number}</h1>
+<Layout
+  title={`Volume ${volume.number}`}
+  canonicalPath={`/volume/${volume.number}/`}
+  volume={volume.number}
+>
+  <nav class="app-layout breadcrumb" aria-label="面包屑">
+    <ul>
+      <li>
+        <a href="/themes/paper/">Home</a>
+        <span class="crumb-sep" aria-hidden="true">&raquo;</span>
+      </li>
+      <li><span aria-current="page">Volume {volume.number}</span></li>
+    </ul>
+  </nav>
 
-  {
-    volume.groups.map((group) => (
-      <section>
-        <h2 class="group-title">{group.label || "Articles"}</h2>
-        <ul class="phile-list">
-          {group.philes.map((phile) => (
-            <li>
-              <a
-                class="phile-link"
-                href={`/themes/paper/volume/${volume.number}/${phile.route.slug}/`}
-              >
-                <span class="phile-title">{phile.data.title}</span>
-                <span class="phile-date">{phile.data.date.toISOString().slice(0, 10)}</span>
-              </a>
-            </li>
-          ))}
-        </ul>
-      </section>
-    ))
-  }
+  <main id="main-content" class="app-layout">
+    <h1 class="page-title">Volume {volume.number}</h1>
+
+    {
+      groups.map((group) => (
+        <section class="posts-section">
+          {volume.groups.length > 0 && <h2>{group.label || "Articles"}</h2>}
+          <ul>
+            {group.philes.map((phile) => (
+              <Card phile={phile} showDescription />
+            ))}
+          </ul>
+        </section>
+      ))
+    }
+  </main>
 </Layout>

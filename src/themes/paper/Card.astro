@@ -1,0 +1,29 @@
+---
+/**
+ * paper 文章卡片（模板 Card.astro 移植）。
+ * accent 虚线下划线标题 + 日历日期行 + （可选）描述。
+ */
+
+import type { Phile } from "../../modules/philes/model";
+import { phileExcerpt } from "../../modules/seo/xml";
+import Datetime from "./Datetime.astro";
+
+type Props = {
+  phile: Phile;
+  showDescription?: boolean;
+  heading?: "h2" | "h3";
+};
+
+const props = Astro.props;
+const phile = props.phile;
+const Heading = props.heading ?? "h3";
+const href = `/themes/paper/volume/${phile.route.volume}/${phile.route.slug}/`;
+---
+
+<li class="card">
+  <Heading>
+    <a class="card-title" href={href}>{phile.data.title}</a>
+  </Heading>
+  <Datetime date={phile.data.date} />
+  {props.showDescription && <p class="card-desc">{phileExcerpt(phile)}</p>}
+</li>
