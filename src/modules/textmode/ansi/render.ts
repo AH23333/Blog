@@ -1,6 +1,7 @@
 import { escapeHtml, textHtml } from "../core/html";
 import { cellWidth } from "../core/layout";
 import { normalizeText } from "../core/text";
+import { fencedLineIndices } from "../markdown/codeblock";
 import { escapeRegex } from "../shared/escape";
 
 type AnsiToken = {
@@ -142,13 +143,16 @@ const INKBLOCK_PLACEHOLDER_PREFIX = "\uE500";
 export function extractAndRenderInkBlocks(text: string, width: number): { processedText: string; blocks: string[] } {
   const blocks: string[] = [];
   const lines = text.split("\n");
+  // 围栏代码块内的 --[ ink ]-- 是文档示例，不是 INK 块标记；
+  // 若不跳过，提取会吞掉闭栏行导致围栏失衡（下游 Markdown 渲染级联错乱）
+  const fencedLines = fencedLineIndices(text);
   const outputLines: string[] = [];
   let cursor = 0;
 
   while (cursor < lines.length) {
     const match = lines[cursor].match(inkBlockPattern);
 
-    if (!match) {
+    if (!match || fencedLines.has(cursor)) {
       outputLines.push(lines[cursor]);
       cursor += 1;
       continue;

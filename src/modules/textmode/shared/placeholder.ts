@@ -18,7 +18,7 @@ import {
   restoreInkBlocks
 } from "../ansi/render";
 import { escapeHtml, textHtml } from "../core/html";
-import { extractFencedCodeBlocks } from "../markdown/codeblock";
+import { extractFencedCodeBlocks, extractPlainTextFences } from "../markdown/codeblock";
 
 // ── 接口 ─────────────────────────────────────────────────────────────────
 
@@ -109,7 +109,6 @@ export class PlaceholderPipeline {
 
 // ─ Plain Text 块管理器 ─
 
-const PTBLOCK_REGEX = /```Plain Text\n([\s\S]*?)```/g;
 const PTBLOCK_PREFIX = "\uE501";
 
 /**
@@ -122,14 +121,11 @@ class PlainTextBlockManager implements PlaceholderManager<string> {
   readonly id = "plain-text";
 
   extract(text: string): { processed: string; items: string[] } {
-    const items: string[] = [];
-
-    const processed = text.replace(PTBLOCK_REGEX, (_, content: string) => {
-      const index = items.length;
-      const lines = (content as string).split("\n");
+    const { processed, blocks } = extractPlainTextFences(text, (i) => `${PTBLOCK_PREFIX}PTBLOCK_${i}${PTBLOCK_PREFIX}`);
+    const items = blocks.map((content: string) => {
+      const lines = content.split("\n");
       const htmlLines = lines.map((line: string) => textHtml(line));
-      items.push(`<pre class="plaintext-pre">${htmlLines.join("\n")}</pre>`);
-      return `${PTBLOCK_PREFIX}PTBLOCK_${index}${PTBLOCK_PREFIX}`;
+      return `<pre class="plaintext-pre">${htmlLines.join("\n")}</pre>`;
     });
 
     return { processed, items };
