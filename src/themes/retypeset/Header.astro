@@ -1,0 +1,112 @@
+---
+/**
+ * retypeset 站点页眉（模板 Header.astro 移植）。
+ * 首页：大标题 h1 + 副标题；文章页：小标题 h2（移动端次要色），lg 起右列顶部。
+ */
+
+import { siteConfig } from "../../config";
+
+type Props = {
+  variant: "home" | "article";
+};
+
+const props = Astro.props;
+const isArticle = props.variant === "article";
+
+const TitleTag = isArticle ? "h2" : "h1";
+const SubtitleTag = isArticle ? "div" : "h2";
+---
+
+<header class:list={["site-header", { "site-header-article": isArticle }]}>
+  <TitleTag class:list={["site-title", { "site-title-article": isArticle }]}>
+    <a href="/themes/retypeset/">{siteConfig.name}</a>
+  </TitleTag>
+
+  <SubtitleTag
+    class:list={["site-subtitle", { "site-subtitle-article": isArticle }]}
+    aria-hidden={isArticle ? "true" : undefined}
+  >
+    {siteConfig.description}
+  </SubtitleTag>
+</header>
+
+<style>
+  .site-header {
+    margin-bottom: 2.625rem;
+    letter-spacing: 0.025em;
+  }
+
+  .site-header-article {
+    margin-bottom: 2.7rem;
+  }
+
+  .site-title {
+    margin: 0;
+    font-family: var(--font-title);
+    font-weight: 700;
+    color: var(--primary);
+  }
+
+  .site-title a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .site-title:not(.site-title-article) {
+    margin-bottom: 0.45rem;
+    width: 75%;
+    font-size: 2rem;
+  }
+
+  .site-subtitle {
+    margin: 0;
+    font-size: 0.875rem;
+    font-weight: 400;
+    font-family: var(--font-navbar);
+    font-style: italic;
+    color: var(--secondary);
+  }
+
+  .site-subtitle:not(.site-subtitle-article) {
+    width: 75%;
+  }
+
+  .site-title-article {
+    margin: 0.75rem 0 0.7rem;
+    font-size: 1.34375rem;
+    color: var(--secondary);
+  }
+
+  .site-subtitle-article {
+    opacity: 0;
+  }
+
+  @media (min-width: 64rem) {
+    .site-header {
+      position: fixed;
+      right: max(5rem, calc(50vw - 35rem));
+      top: 5rem;
+      width: 14rem;
+    }
+
+    .site-title:not(.site-title-article) {
+      width: 100%;
+      font-size: 2.25rem;
+    }
+
+    .site-subtitle:not(.site-subtitle-article) {
+      width: 100%;
+      font-size: 1rem;
+    }
+
+    .site-title-article {
+      margin: 0 0 0.45rem;
+      font-size: 2.25rem;
+      color: var(--primary);
+    }
+
+    .site-subtitle-article {
+      opacity: 1;
+    }
+  }
+</style>

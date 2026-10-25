@@ -1,8 +1,23 @@
 ---
+/**
+ * retypeset Layout（模板 Layout.astro + Head.astro 移植）。
+ * 容器数学：mobile mx-auto max-w-51.462rem + p-[min(7.25vw,3.731rem)] y-2.5rem；
+ * lg mx-[max(5.75rem,50vw-34.25rem)] my-20 max-w-[min(75vw-16rem,44rem)] p-0。
+ */
+
 import katexCssUrl from "katex/dist/katex.min.css?url";
 import { siteConfig } from "../../config";
 import ThemeSwitcher from "../../modules/themes/ThemeSwitcher.astro";
 import "../../modules/themes/content.css";
+import Footer from "./Footer.astro";
+import Header from "./Header.astro";
+import Navbar from "./Navbar.astro";
+import ThemeToggle from "./ThemeToggle.astro";
+import earlySummerSubset from "./fonts/EarlySummer-VF-Split/EarlySummer-VF-Subset.woff2?url";
+import snellBlack from "./fonts/Snell-Black-SF.woff2?url";
+import snellBold from "./fonts/Snell-Bold-SF.woff2?url";
+import stixItalic from "./fonts/STIX-Italic-VF.woff2?url";
+import stix from "./fonts/STIX-VF.woff2?url";
 import "./styles.css";
 
 type Props = {
@@ -14,21 +29,31 @@ type Props = {
   publishedTime?: Date;
   volume?: number;
   slug?: string;
+  /** 页眉变体：首页大标题 / 文章页小标题 */
+  variant?: "home" | "article";
+  /** 是否为主题首页（导航高亮） */
+  isHome?: boolean;
 };
 
 const props = Astro.props;
+const isArticle = props.variant === "article";
 
 const pageTitle = `${props.title} :: ${siteConfig.name}`;
 const description = props.description ?? siteConfig.description;
 const canonicalUrl = `https://www.cubeyond.net${props.canonicalPath}`;
 const pageType = props.pageType ?? "website";
+const lightMode = "#f4f3f6";
+const darkMode = "#3a383f";
 ---
 
 <!doctype html>
-<html lang="zh-CN">
+<html lang="zh-CN" class:list={[{ "scroll-smooth": isArticle }]}>
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
     <title>{pageTitle}</title>
     <meta name="description" content={description} />
     <meta name="robots" content="noindex,follow" />
@@ -43,46 +68,61 @@ const pageType = props.pageType ?? "website";
         <meta property="article:published_time" content={props.publishedTime.toISOString()} />
       )
     }
+    <meta name="theme-color" content={lightMode} />
     <link rel="stylesheet" href={katexCssUrl} />
-    <script is:inline>
-      // 防闪烁：渲染前恢复上次的主题选择
+    <link rel="preload" href={earlySummerSubset} as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href={snellBlack} as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href={snellBold} as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href={stix} as="font" type="font/woff2" crossorigin />
+    <link rel="preload" href={stixItalic} as="font" type="font/woff2" crossorigin />
+    <script
+      is:inline
+      define:vars={{
+        lightMode,
+        darkMode,
+      }}
+    >
       (function () {
-        var stored = localStorage.getItem("theme-pref");
-        if (stored === "light" || stored === "dark") {
-          document.documentElement.setAttribute("data-theme", stored);
+        // 主题初始化：localStorage 优先，默认浅色（模板 defaultMode: light）
+        function initTheme() {
+          var stored = localStorage.getItem("theme");
+          var isDark = stored === "dark";
+          document.documentElement.classList.toggle("dark", isDark);
+
+          var meta = document.head.querySelector('meta[name="theme-color"]');
+          if (meta) {
+            meta.setAttribute("content", isDark ? darkMode : lightMode);
+          }
         }
+
+        // reduce-motion：系统偏好或不支持 View Transitions 时关闭动画
+        function initMotionPref() {
+          var prefersReduced = window.matchMedia(
+            "(prefers-reduced-motion: reduce)",
+          ).matches;
+          var supportsVT = "startViewTransition" in document;
+          document.documentElement.classList.toggle(
+            "reduce-motion",
+            prefersReduced || !supportsVT,
+          );
+        }
+
+        initTheme();
+        initMotionPref();
       })();
     </script>
   </head>
   <body>
-    <header class="site-header">
-      <a class="site-title" href="/themes/retypeset/">{siteConfig.name}</a>
-      <nav class="site-nav">
-        <a href="/themes/retypeset/">Home</a>
-        <a href="https://www.cubeyond.net/">Textmode</a>
-        <a href="https://github.com/AH23333/Blog" rel="noreferrer">GitHub</a>
-        <button
-          class="theme-toggle"
-          type="button"
-          aria-label="切换亮暗模式"
-          data-theme-toggle
-        >
-          <span data-theme-icon-light>◐</span>
-          <span data-theme-icon-dark hidden>◑</span>
-        </button>
-      </nav>
-    </header>
+    <div class="shell">
+      <Header variant={props.variant ?? "home"} />
+      <Navbar isArticle={isArticle} isHome={props.isHome ?? false} />
+      <main class="shell-main">
+        <slot />
+      </main>
+      <Footer />
+    </div>
 
-    <main class="site-main">
-      <slot />
-    </main>
-
-    <footer class="site-footer">
-      <span>
-        {siteConfig.name} · retypeset theme · <a href="/themes/">切换风格</a>
-      </span>
-    </footer>
-
+    <ThemeToggle />
     <ThemeSwitcher current="retypeset" volume={props.volume} slug={props.slug} />
 
     <script>
@@ -95,28 +135,30 @@ const pageType = props.pageType ?? "website";
       initThemeMermaid("retypeset").then(() => {
         installMermaidLightbox();
       });
-
-      // 亮暗切换
-      const toggle = document.querySelector<HTMLButtonElement>("[data-theme-toggle]");
-      if (toggle) {
-        const syncIcons = () => {
-          const isDark = document.documentElement.getAttribute("data-theme") === "dark";
-          const lightIcon = toggle.querySelector<HTMLElement>("[data-theme-icon-light]");
-          const darkIcon = toggle.querySelector<HTMLElement>("[data-theme-icon-dark]");
-          if (lightIcon) lightIcon.hidden = isDark;
-          if (darkIcon) darkIcon.hidden = !isDark;
-        };
-
-        syncIcons();
-
-        toggle.addEventListener("click", () => {
-          const isDark = document.documentElement.getAttribute("data-theme") === "dark";
-          const next = isDark ? "light" : "dark";
-          document.documentElement.setAttribute("data-theme", next);
-          localStorage.setItem("theme-pref", next);
-          syncIcons();
-        });
-      }
     </script>
   </body>
 </html>
+
+<style>
+  .shell {
+    margin-inline: auto;
+    max-width: 51.462rem;
+    width: 100%;
+    min-height: 100dvh;
+    padding: 2.5rem min(7.25vw, 3.731rem);
+  }
+
+  .shell-main {
+    margin-bottom: 3rem;
+  }
+
+  @media (min-width: 64rem) {
+    .shell {
+      margin-inline: max(5.75rem, calc(50vw - 34.25rem));
+      margin-block: 5rem;
+      max-width: min(calc(75vw - 16rem), 44rem);
+      min-height: 100%;
+      padding: 0;
+    }
+  }
+</style>

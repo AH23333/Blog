@@ -1,0 +1,104 @@
+---
+/**
+ * retypeset 站点导航（模板 Navbar.astro 移植）。
+ * 移动端：文章页隐藏；lg 起 fixed 右列下方。
+ */
+
+type NavItem = {
+  href: string;
+  label: string;
+  active: boolean;
+};
+
+type Props = {
+  /** 当前是否为文章页（移动端隐藏导航） */
+  isArticle: boolean;
+  /** 当前是否为主题首页 */
+  isHome: boolean;
+};
+
+const props = Astro.props;
+
+const items: NavItem[] = [
+  { href: "/themes/retypeset/", label: "首页", active: props.isHome },
+  {
+    href: "https://www.cubeyond.net/",
+    label: "Textmode",
+    active: false,
+  },
+  { href: "/themes/", label: "切换风格", active: false },
+];
+---
+
+<nav class:list={["site-nav", { "nav-hidden-mobile": props.isArticle }]} aria-label="站点导航">
+  <ul>
+    {
+      items.map((item) => (
+        <li>
+          <a
+            href={item.href}
+            class:list={[
+              "nav-link",
+              item.active ? "highlight-static nav-link-active" : "highlight-hover",
+            ]}
+          >
+            {item.label}
+          </a>
+        </li>
+      ))
+    }
+  </ul>
+</nav>
+
+<style>
+  .site-nav {
+    margin-bottom: 2.625rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    line-height: 2.45em;
+    font-family: var(--font-navbar);
+    font-style: italic;
+  }
+
+  .nav-hidden-mobile {
+    display: none;
+  }
+
+  .site-nav ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .nav-link {
+    color: var(--secondary);
+    text-decoration: none;
+    --highlight-offset: 0.7em;
+  }
+
+  .nav-link:hover {
+    color: var(--primary);
+    font-weight: 700;
+  }
+
+  .nav-link-active {
+    color: var(--primary);
+    font-weight: 700;
+  }
+
+  @media (min-width: 64rem) {
+    .site-nav {
+      position: fixed;
+      right: max(5rem, calc(50vw - 35rem));
+      bottom: min(calc(9.04rem + 3.85vw), 12.5rem);
+      display: block;
+      width: 14rem;
+      font-size: 1rem;
+      letter-spacing: 0.025em;
+    }
+
+    .nav-hidden-mobile {
+      display: block;
+    }
+  }
+</style>

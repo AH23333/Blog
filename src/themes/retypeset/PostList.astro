@@ -1,0 +1,135 @@
+---
+/**
+ * retypeset 文章列表（模板 PostList.astro 移植）。
+ * 移动端：标题 + Snell 时间行；lg 起：时间内联 + （首页）描述。
+ */
+
+import type { Phile } from "../../modules/philes/model";
+import { phileExcerpt } from "../../modules/seo/xml";
+import PostDate from "./PostDate.astro";
+import { estimateReadingMinutes } from "./reading";
+
+type Props = {
+  philes: Phile[];
+  /** 首页列表显示描述 */
+  showDescription?: boolean;
+};
+
+const props = Astro.props;
+---
+
+<ul class="post-list">
+  {
+    props.philes.map((phile) => {
+      const href = phile.route.href.startsWith("/themes/retypeset/")
+        ? phile.route.href
+        : `/themes/retypeset/volume/${phile.route.volume}/${phile.route.slug}/`;
+
+      return (
+        <li class="post-item" class:list={{ "post-item-home": props.showDescription }}>
+          <h3 class="post-item-title">
+            <a class="post-item-link" href={href}>
+              {phile.data.title}
+            </a>
+          </h3>
+
+          <div class="post-time-mobile">
+            <PostDate
+              date={phile.data.date}
+              minutes={estimateReadingMinutes(phile.body)}
+              spacing="list"
+            />
+          </div>
+
+          <div class="post-time-desktop">
+            <PostDate
+              date={phile.data.date}
+              minutes={estimateReadingMinutes(phile.body)}
+              spacing="list"
+            />
+          </div>
+
+          {props.showDescription && (
+            <p class="post-description">{phileExcerpt(phile)}</p>
+          )}
+        </li>
+      );
+    })
+  }
+</ul>
+
+<style>
+  .post-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .post-item {
+    margin-bottom: 1.375rem;
+  }
+
+  .post-item-home {
+    margin-bottom: 1.375rem;
+  }
+
+  .post-item-title {
+    display: inline;
+    margin: 0;
+    font-size: inherit;
+    font-weight: inherit;
+    transition: color 0.15s ease-out;
+  }
+
+  .post-item-title:hover {
+    color: var(--primary);
+  }
+
+  .post-item-link {
+    color: inherit;
+    text-decoration: none;
+    letter-spacing: 0.025em;
+  }
+
+  .post-time-mobile {
+    padding-block: 0.8em;
+    font-size: 0.875rem;
+    font-family: var(--font-time);
+  }
+
+  .post-time-desktop {
+    display: none;
+    font-size: 0.9125rem;
+    font-family: var(--font-time);
+  }
+
+  .post-description {
+    display: none;
+    margin: 0;
+  }
+
+  @media (min-width: 64rem) {
+    .post-item-home {
+      margin-bottom: 2.5rem;
+    }
+
+    .post-item-home .post-item-link {
+      font-weight: 500;
+      font-size: 1.125rem;
+    }
+
+    .post-time-mobile {
+      display: none;
+    }
+
+    .post-time-desktop {
+      display: inline;
+      margin-left: 0.625rem;
+    }
+
+    .post-item-home .post-description {
+      display: block;
+      margin-top: 0.5625rem;
+    }
+  }
+</style>

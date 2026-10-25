@@ -1,0 +1,147 @@
+---
+/**
+ * retypeset 目录（模板 TOC.astro 移植）。
+ * 移动端：checkbox 手风琴卡片；96rem+：fixed 左侧栏，`:target-current` scrollspy。
+ */
+
+import type { ThemeHeading } from "../../modules/themes/render";
+
+type Props = {
+  headings: ThemeHeading[];
+};
+
+const props = Astro.props;
+const filtered = props.headings.filter(
+  (heading) => heading.depth >= 2 && heading.depth <= 4,
+);
+---
+
+{
+  filtered.length > 0 && (
+    <div id="toc-container">
+      <input type="checkbox" id="toc-toggle" hidden />
+
+      <div class="toggle-row">
+        <label for="toc-toggle" class="toggle-label">
+          <span id="toc-mobile-text">目录</span>
+          <svg
+            id="toc-desktop-icon"
+            aria-hidden="true"
+            fill="currentColor"
+            viewBox="0 0 24 24"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M22.2 2.3H1.8V4h19.9zM22.2 20H1.8v1.7h19.9zM15.5 11.2H1.8v1.6H15z"
+            ></path>
+          </svg>
+        </label>
+      </div>
+
+      <div id="toc-accordion-wrapper">
+        <nav id="toc-accordion-content" aria-label="目录">
+          <ul id="toc-links-list">
+            {filtered.map((heading) => (
+              <li
+                class:list={{
+                  "depth-2": heading.depth === 2,
+                  "depth-3": heading.depth === 3,
+                  "depth-4": heading.depth === 4,
+                }}
+              >
+                <a href={`#${heading.slug}`}>{heading.text}</a>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      </div>
+    </div>
+  )
+}
+
+<script>
+  const is2xl = window.matchMedia("(min-width: 1536px)");
+
+  let ticking = false;
+  let lastLink: Element | null = null;
+
+  function scrollToActiveLink() {
+    const tocList = document.getElementById("toc-links-list");
+    if (!tocList) {
+      ticking = false;
+      return;
+    }
+
+    const activeLink = tocList.querySelector("a:target-current");
+    if (activeLink && activeLink !== lastLink) {
+      activeLink.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      lastLink = activeLink;
+    }
+
+    ticking = false;
+  }
+
+  function handleScroll() {
+    if (!ticking && is2xl.matches) {
+      window.requestAnimationFrame(scrollToActiveLink);
+      ticking = true;
+    }
+  }
+
+  const tocList = document.getElementById("toc-links-list");
+  if (tocList && CSS.supports("selector(:target-current)")) {
+    document.addEventListener("scroll", handleScroll, { passive: true });
+  }
+</script>
+
+<style>
+  .toggle-row {
+    position: relative;
+    height: 3rem;
+    width: 100%;
+  }
+
+  .toggle-label {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+  }
+
+  #toc-desktop-icon {
+    display: none;
+    width: 1.05rem;
+    aspect-ratio: 1;
+  }
+
+  .depth-3 {
+    margin-left: 1rem;
+  }
+
+  .depth-4 {
+    margin-left: 2rem;
+  }
+
+  @media (min-width: 96rem) {
+    .toggle-label {
+      position: static;
+      display: flex;
+      color: color-mix(in oklab, var(--secondary) 60%, transparent);
+      transition: color 0.15s ease-out;
+    }
+
+    .toggle-label:hover {
+      color: var(--primary);
+    }
+
+    #toc-desktop-icon {
+      display: block;
+      margin-top: 1rem;
+    }
+
+    #toc-mobile-text {
+      display: none;
+    }
+  }
+</style>

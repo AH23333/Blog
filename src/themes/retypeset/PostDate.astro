@@ -1,0 +1,34 @@
+---
+/**
+ * retypeset 日期 + 阅读时长（模板 PostDate.astro 移植，YYYY-MM-DD 格式）。
+ */
+
+type Props = {
+  date: Date;
+  minutes: number;
+  /** 文章页：间距 0.4375rem；列表：0.375rem */
+  spacing?: "article" | "list";
+};
+
+const props = Astro.props;
+const spacingClass =
+  props.spacing === "list" ? "spacing-list" : "spacing-article";
+const isoDate = props.date.toISOString().slice(0, 10);
+---
+
+<time datetime={isoDate}>{isoDate}</time>
+<span class={spacingClass}>{props.minutes} min</span>
+
+<style>
+  span {
+    display: inline-block;
+  }
+
+  .spacing-article {
+    margin-left: 0.4375rem;
+  }
+
+  .spacing-list {
+    margin-left: 0.375rem;
+  }
+</style>

@@ -1,0 +1,76 @@
+---
+/**
+ * retypeset 页脚（模板 Footer.astro 移植）。
+ * 移动端在文档流内；lg 起 fixed 右列底部。
+ */
+
+import { siteConfig } from "../../config";
+
+const year = new Date().getFullYear();
+---
+
+<footer class="site-footer">
+  <p>
+    <a
+      class="highlight-hover footer-link"
+      href="https://www.cubeyond.net/"
+      target="_blank"
+      rel="noopener noreferrer">Textmode</a
+    >
+    /
+    <a class="highlight-hover footer-link" href="/themes/">切换风格</a>
+  </p>
+
+  <p>&copy; {year} {siteConfig.name}</p>
+
+  <p>
+    Powered by
+    <a
+      class="highlight-hover footer-link"
+      href="https://astro.build/"
+      target="_blank"
+      rel="noopener noreferrer">Astro</a
+    >
+    and
+    <a
+      class="highlight-hover footer-link"
+      href="https://github.com/radishzzz/astro-theme-retypeset"
+      target="_blank"
+      rel="noopener noreferrer">Retypeset</a
+    >
+  </p>
+</footer>
+
+<style>
+  .site-footer {
+    font-size: 0.75rem;
+    line-height: 1.25em;
+    font-family: var(--font-navbar);
+    font-style: italic;
+  }
+
+  .site-footer p {
+    margin: 0;
+  }
+
+  .footer-link {
+    color: var(--secondary);
+    text-decoration: none;
+    padding-block: 0.8em;
+    --highlight-offset: 0.35em;
+  }
+
+  .footer-link:hover {
+    color: var(--primary);
+  }
+
+  @media (min-width: 64rem) {
+    .site-footer {
+      position: fixed;
+      right: max(5rem, calc(50vw - 35rem));
+      bottom: 5rem;
+      width: 14rem;
+      font-size: 0.875rem;
+    }
+  }
+</style>

@@ -1,6 +1,12 @@
 ---
+/**
+ * retypeset 卷页（模板列表页结构移植）。
+ * post-title + 按子目录分组：装饰线 + 组标签（font-navbar）+ PostList。
+ */
+
 import type { Volume } from "../../modules/volumes/model";
 import Layout from "./Layout.astro";
+import PostList from "./PostList.astro";
 
 type Props = {
   volume: Volume;
@@ -8,29 +14,69 @@ type Props = {
 
 const props = Astro.props;
 const volume = props.volume;
+const groups =
+  volume.groups.length > 0
+    ? volume.groups
+    : [{ dir: "", label: "", philes: volume.philes }];
 ---
 
-<Layout title={`Volume ${volume.number}`} volume={volume.number} canonicalPath={`/volume/${volume.number}/`}>
-  <h1 class="page-title">Volume {volume.number}</h1>
+<Layout
+  title={`Volume ${volume.number}`}
+  volume={volume.number}
+  canonicalPath={`/volume/${volume.number}/`}
+>
+  <h1 class="post-title">Volume {volume.number}</h1>
 
   {
-    volume.groups.map((group) => (
-      <section>
-        <h2 class="group-title">{group.label || "Articles"}</h2>
-        <ul class="phile-list">
-          {group.philes.map((phile) => (
-            <li>
-              <a
-                class="phile-link"
-                href={`/themes/retypeset/volume/${volume.number}/${phile.route.slug}/`}
-              >
-                <span class="phile-title">{phile.data.title}</span>
-                <span class="phile-date">{phile.data.date.toISOString().slice(0, 10)}</span>
-              </a>
-            </li>
-          ))}
-        </ul>
+    groups.map((group) => (
+      <section class="group-section">
+        <div class="decorative-line" />
+        {group.label && <h2 class="group-label">{group.label}</h2>}
+        <PostList philes={group.philes} />
       </section>
     ))
   }
 </Layout>
+
+<style>
+  .post-title {
+    margin: 0 0 0.5rem;
+    font-family: var(--font-title);
+    font-weight: 700;
+    font-size: 2.125rem;
+    line-height: 1.33;
+    color: var(--primary);
+    text-wrap: balance;
+  }
+
+  .group-section {
+    margin-bottom: 1.875rem;
+  }
+
+  .decorative-line {
+    margin-bottom: 1.125rem;
+    height: 1px;
+    width: 2.5rem;
+    background: color-mix(in oklab, var(--secondary) 25%, transparent);
+  }
+
+  .group-label {
+    margin: 0 0 1rem;
+    font-size: 1rem;
+    font-weight: 400;
+    font-family: var(--font-navbar);
+    font-style: italic;
+    color: var(--secondary);
+  }
+
+  @media (min-width: 64rem) {
+    .post-title {
+      font-size: 2.25rem;
+    }
+
+    .decorative-line {
+      margin-bottom: 1.5rem;
+      width: 2.75rem;
+    }
+  }
+</style>

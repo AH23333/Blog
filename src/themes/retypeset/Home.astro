@@ -1,7 +1,12 @@
 ---
+/**
+ * retypeset 主题首页（模板 index.astro 移植）。
+ * 按 volume 分组：装饰线 + volume 标记（font-time）+ PostList（含描述）。
+ */
+
 import type { Volume } from "../../modules/volumes/model";
 import Layout from "./Layout.astro";
-import { siteConfig } from "../../config";
+import PostList from "./PostList.astro";
 
 type Props = {
   volumes: Volume[];
@@ -10,27 +15,55 @@ type Props = {
 const props = Astro.props;
 ---
 
-<Layout title="首页" canonicalPath="/">
-  <section class="home-hero">
-    <h1>{siteConfig.name}</h1>
-    <p class="hero-sub">{siteConfig.description}</p>
-  </section>
-
-  <section>
-    {
-      props.volumes.map((volume) => (
-        <a class="volume-card" href={`/themes/retypeset/volume/${volume.number}/`}>
-          <span class="volume-name">Volume {volume.number}</span>
-          <span class="volume-meta">
-            {volume.philes.length} 篇文章 · 最近更新{" "}
-            {volume.philes
-              .map((p) => p.data.date)
-              .reduce((a, b) => (a > b ? a : b))
-              .toISOString()
-              .slice(0, 10)}
-          </span>
-        </a>
-      ))
-    }
-  </section>
+<Layout title="首页" canonicalPath="/" isHome>
+  {
+    props.volumes.map((volume) => (
+      <section class="volume-section">
+        <div class="decorative-line" />
+        <h2 class="volume-label">
+          <a href={`/themes/retypeset/volume/${volume.number}/`}>
+            Volume {volume.number}
+          </a>
+        </h2>
+        <PostList philes={volume.philes} showDescription />
+      </section>
+    ))
+  }
 </Layout>
+
+<style>
+  .volume-section {
+    margin-bottom: 1.875rem;
+  }
+
+  .decorative-line {
+    margin-bottom: 1.125rem;
+    height: 1px;
+    width: 2.5rem;
+    background: color-mix(in oklab, var(--secondary) 25%, transparent);
+  }
+
+  .volume-label {
+    margin: 0 0 1rem;
+    font-size: 0.875rem;
+    font-weight: 400;
+    font-family: var(--font-time);
+    color: var(--secondary);
+  }
+
+  .volume-label a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .volume-label a:hover {
+    color: var(--primary);
+  }
+
+  @media (min-width: 64rem) {
+    .decorative-line {
+      margin-bottom: 1.5rem;
+      width: 2.75rem;
+    }
+  }
+</style>

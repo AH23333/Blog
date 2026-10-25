@@ -1,8 +1,17 @@
 ---
+/**
+ * retypeset 文章页（模板 posts/[slug].astro 移植）。
+ * 结构：BackButton + post-title → #post-date → TOC → #post-content(.prose)。
+ */
+
 import type { Phile } from "../../modules/philes/model";
 import type { ThemeArticleContent } from "../../modules/themes/render";
 import { phileExcerpt } from "../../modules/seo/xml";
+import BackButton from "./BackButton.astro";
 import Layout from "./Layout.astro";
+import PostDate from "./PostDate.astro";
+import { estimateReadingMinutes } from "./reading";
+import TOC from "./TOC.astro";
 
 type Props = {
   phile: Phile;
@@ -12,6 +21,8 @@ type Props = {
 const props = Astro.props;
 const phile = props.phile;
 const description = phileExcerpt(phile);
+const hasToc = props.content.headings.length > 0;
+const minutes = estimateReadingMinutes(phile.body);
 ---
 
 <Layout
@@ -22,28 +33,51 @@ const description = phileExcerpt(phile);
   publishedTime={phile.data.date}
   volume={phile.route.volume}
   slug={phile.route.slug}
+  variant="article"
 >
-  <article>
-    <header class="article-header">
-      <div class="article-kicker">
-        <a href="/themes/retypeset/">Home</a>
-        <span>/</span>
-        <a href={`/themes/retypeset/volume/${phile.route.volume}/`}>Volume {phile.route.volume}</a>
-      </div>
-      <h1>{phile.data.title}</h1>
-      <div class="article-meta">
-        <span>{phile.data.author}</span>
-        <time datetime={phile.data.date.toISOString()}>
-          {phile.data.date.toISOString().slice(0, 10)}
-        </time>
-      </div>
-    </header>
+  <article class="heti">
+    <div class="title-row">
+      <BackButton />
+      <h1 class="post-title">{phile.data.title}</h1>
+    </div>
 
-    <div class="prose" set:html={props.content.html} />
+    <div id="post-date" class="post-date">
+      <PostDate date={phile.data.date} minutes={minutes} spacing="article" />
+    </div>
 
-    <footer class="article-footer">
-      <a href={`/themes/retypeset/volume/${phile.route.volume}/`}>← 返回 Volume {phile.route.volume}</a>
-      <a href="/themes/retypeset/">首页</a>
-    </footer>
+    {hasToc && <TOC headings={props.content.headings} />}
+
+    <div id="post-content">
+      <div class="prose" set:html={props.content.html} />
+    </div>
   </article>
 </Layout>
+
+<style>
+  .title-row {
+    position: relative;
+  }
+
+  .post-title {
+    margin: 0 0 0.5rem;
+    font-family: var(--font-title);
+    font-weight: 700;
+    font-size: 2.125rem;
+    line-height: 1.33;
+    color: var(--primary);
+    text-wrap: balance;
+  }
+
+  @media (min-width: 64rem) {
+    .post-title {
+      font-size: 2.25rem;
+    }
+  }
+
+  .post-date {
+    display: block;
+    margin-bottom: 4.3rem;
+    color: var(--primary);
+    font-family: var(--font-time);
+  }
+</style>

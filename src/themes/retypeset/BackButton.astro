@@ -1,0 +1,70 @@
+---
+/**
+ * retypeset 返回按钮（模板 BackButton.astro 移植）。
+ * lg 起显示在文章标题左侧。
+ */
+---
+
+<button
+  id="back-button"
+  class="back-button"
+  type="button"
+  aria-label="返回上一页"
+>
+  <svg
+    aria-hidden="true"
+    fill="currentColor"
+    viewBox="0 0 24 24"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    <path
+      d="M17.8.7L4,12l13.8,11.4.7-.9L7.2,12,18.5,1.5l-.7-.8Z"
+    ></path>
+  </svg>
+</button>
+
+<script>
+  const button = document.getElementById("back-button");
+  button?.addEventListener("click", () => {
+    if (window.history.length > 1) {
+      window.history.back();
+      return;
+    }
+    window.location.assign("/themes/retypeset/");
+  });
+</script>
+
+<style>
+  .back-button {
+    display: none;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: color-mix(in oklab, var(--secondary) 60%, transparent);
+    cursor: pointer;
+    transition: color 0.15s ease-out;
+  }
+
+  .back-button:hover {
+    color: var(--primary);
+  }
+
+  .back-button:active {
+    transform: scale(0.9);
+  }
+
+  .back-button svg {
+    display: block;
+    width: 1.125rem;
+    aspect-ratio: 1;
+  }
+
+  @media (min-width: 64rem) {
+    .back-button {
+      position: absolute;
+      left: -2.5rem;
+      top: 0.95rem;
+      display: block;
+    }
+  }
+</style>
