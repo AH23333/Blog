@@ -1,0 +1,49 @@
+---
+import type { Phile } from "../../modules/philes/model";
+import type { ThemeArticleContent } from "../../modules/themes/render";
+import { phileExcerpt } from "../../modules/seo/xml";
+import Layout from "./Layout.astro";
+
+type Props = {
+  phile: Phile;
+  content: ThemeArticleContent;
+};
+
+const props = Astro.props;
+const phile = props.phile;
+const description = phileExcerpt(phile);
+---
+
+<Layout
+  title={phile.data.title}
+  description={description}
+  canonicalPath={`/volume/${phile.route.volume}/${phile.route.slug}/`}
+  pageType="article"
+  publishedTime={phile.data.date}
+  volume={phile.route.volume}
+  slug={phile.route.slug}
+>
+  <article>
+    <header class="article-header">
+      <div class="article-kicker">
+        <a href="/themes/paper/">Home</a>
+        <span>/</span>
+        <a href={`/themes/paper/volume/${phile.route.volume}/`}>Volume {phile.route.volume}</a>
+      </div>
+      <h1>{phile.data.title}</h1>
+      <div class="article-meta">
+        <span>{phile.data.author}</span>
+        <time datetime={phile.data.date.toISOString()}>
+          {phile.data.date.toISOString().slice(0, 10)}
+        </time>
+      </div>
+    </header>
+
+    <div class="prose" set:html={props.content.html} />
+
+    <footer class="article-footer">
+      <a href={`/themes/paper/volume/${phile.route.volume}/`}>← 返回 Volume {phile.route.volume}</a>
+      <a href="/themes/paper/">首页</a>
+    </footer>
+  </article>
+</Layout>
