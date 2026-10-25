@@ -23,7 +23,7 @@ import type { Phile } from "./model";
  * - `../shared/icon.png` → `/images/<parentDir>/shared/icon.png`
  * - `/images/foo.png` 和 `https://...` 原样返回
  */
-function resolveImagePath(src: string, articleDir: string): string {
+export function resolveImagePath(src: string, articleDir: string): string {
   // 规范化路径分隔符：\ → /
   const normalized = src.replaceAll("\\", "/").replace(/%5c/gi, "/");
 
@@ -57,7 +57,7 @@ function resolveImagePath(src: string, articleDir: string): string {
  * 从 sourcePath 中提取文章所在目录。
  * 例如 "volume-1/fuzz/article.md" → "volume-1/fuzz"
  */
-function getArticleDir(sourcePath: string): string {
+export function getArticleDir(sourcePath: string): string {
   const lastSlash = sourcePath.lastIndexOf("/");
   return lastSlash >= 0 ? sourcePath.slice(0, lastSlash) : "";
 }
@@ -101,7 +101,7 @@ export function renderPhileHeader(phile: Phile): PhileHeader {
  * 该函数逐行处理文本，将表格行（以 | 开头、非分隔行的行）
  * 中的 $$...$$ 替换为 $...$，使其作为行内公式保留在表格结构内。
  */
-function convertBlockMathInTableRows(text: string): string {
+export function convertBlockMathInTableRows(text: string): string {
   const lines = text.split("\n");
   return lines
     .map((line) => {
