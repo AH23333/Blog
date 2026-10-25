@@ -1,0 +1,36 @@
+---
+import type { Volume } from "../../modules/volumes/model";
+import Layout from "./Layout.astro";
+import { siteConfig } from "../../config";
+
+type Props = {
+  volumes: Volume[];
+};
+
+const props = Astro.props;
+---
+
+<Layout title="首页" canonicalPath="/">
+  <section class="home-hero">
+    <h1>{siteConfig.name}</h1>
+    <p class="hero-sub">{siteConfig.description}</p>
+  </section>
+
+  <section>
+    {
+      props.volumes.map((volume) => (
+        <a class="volume-card" href={`/themes/erudite/volume/${volume.number}/`}>
+          <span class="volume-name">Volume {volume.number}</span>
+          <span class="volume-meta">
+            {volume.philes.length} 篇文章 · 最近更新{" "}
+            {volume.philes
+              .map((p) => p.data.date)
+              .reduce((a, b) => (a > b ? a : b))
+              .toISOString()
+              .slice(0, 10)}
+          </span>
+        </a>
+      ))
+    }
+  </section>
+</Layout>

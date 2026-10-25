@@ -1,0 +1,19 @@
+---
+import Volume from "../../../../../themes/erudite/Volume.astro";
+import { getAllVolumes, getVolume } from "../../../../../modules/volumes/repository";
+
+export async function getStaticPaths() {
+  const volumes = await getAllVolumes();
+  return volumes.map((volume) => ({
+    params: { volume: String(volume.number) }
+  }));
+}
+
+const volume = await getVolume(Number(Astro.params.volume));
+
+if (!volume) {
+  return Astro.redirect("/themes/erudite/");
+}
+---
+
+<Volume volume={volume} />

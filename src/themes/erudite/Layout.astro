@@ -1,0 +1,76 @@
+---
+import katexCssUrl from "katex/dist/katex.min.css?url";
+import { siteConfig } from "../../config";
+import ThemeSwitcher from "../../modules/themes/ThemeSwitcher.astro";
+import "../../modules/themes/content.css";
+import "./styles.css";
+
+type Props = {
+  title: string;
+  description?: string;
+  /** 主站等价路径，用于 canonical 与 og:url */
+  canonicalPath: string;
+  pageType?: "website" | "article";
+  publishedTime?: Date;
+  volume?: number;
+  slug?: string;
+};
+
+const props = Astro.props;
+
+const pageTitle = `${props.title} :: ${siteConfig.name}`;
+const description = props.description ?? siteConfig.description;
+const canonicalUrl = `https://www.cubeyond.net${props.canonicalPath}`;
+const pageType = props.pageType ?? "website";
+---
+
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{pageTitle}</title>
+    <meta name="description" content={description} />
+    <meta name="robots" content="noindex,follow" />
+    <link rel="canonical" href={canonicalUrl} />
+    <meta property="og:site_name" content={siteConfig.name} />
+    <meta property="og:title" content={pageTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content={pageType} />
+    <meta property="og:url" content={canonicalUrl} />
+    {
+      props.publishedTime && (
+        <meta property="article:published_time" content={props.publishedTime.toISOString()} />
+      )
+    }
+    <link rel="stylesheet" href={katexCssUrl} />
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="site-title" href="/themes/erudite/">{siteConfig.name}</a>
+      <nav class="site-nav">
+        <a href="/themes/erudite/">Home</a>
+        <a href="https://www.cubeyond.net/">Textmode</a>
+        <a href="https://github.com/AH23333/Blog" rel="noreferrer">GitHub</a>
+      </nav>
+    </header>
+
+    <main class="site-main">
+      <slot />
+    </main>
+
+    <footer class="site-footer">
+      <span>
+        {siteConfig.name} · erudite theme · <a href="/themes/">切换风格</a>
+      </span>
+    </footer>
+
+    <ThemeSwitcher current="erudite" volume={props.volume} slug={props.slug} />
+
+    <script>
+      import { initThemeMermaid } from "../../modules/themes/mermaid-client";
+
+      initThemeMermaid("erudite");
+    </script>
+  </body>
+</html>
