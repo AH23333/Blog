@@ -35,6 +35,7 @@ import { escapeHtml } from "../textmode/core/html";
 import { extractFencedCodeBlocks, extractPlainTextFences, fencedLineIndices } from "../textmode/markdown/codeblock";
 import { splitContainerSegments } from "../textmode/markdown/container";
 import { highlightCode } from "../textmode/markdown/highlight";
+import { normalizeTableSeparators } from "../textmode/markdown/parser";
 
 // ── markdown-it 实例 ──────────────────────────────────────────────────────
 
@@ -398,7 +399,15 @@ function renderTextChunk(text: string, articleDir: string): string {
 }
 
 function renderMarkdownHtml(text: string, articleDir: string): string {
-  let html = md.render(text);
+  // 规范化表格分隔行：ANSI 标记（#[C|text]）内的 | 被提取后，
+  // 作者为"补偿"而多写的分隔列会导致分隔行与表头列数不一致，整表降级为段落
+  const normalized = normalizeTableSeparators(text);
+  // 保护行内代码中的 | 避免被表格解析器误解析（与 textmode 管线一致）
+  const protectedCode = normalized.replace(/`([^`\n]+)`/g, (match, content: string) => {
+    if (!content.includes("|")) return match;
+    return `\`${content.replace(/\|/g, "\uE300")}\``;
+  });
+  let html = md.render(protectedCode).replace(/\uE300/g, "|");
   html = normalizeImages(html, articleDir);
   html = transformAsciiArtParagraphs(html);
   html = transformBareCodeBlocks(html);

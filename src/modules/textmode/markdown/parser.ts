@@ -68,7 +68,7 @@ md.renderer.rules.text = (tokens, idx) => {
  *     | --- | --- |
  *     | 1 | 2 |
  */
-function normalizeTableSeparators(text: string): string {
+export function normalizeTableSeparators(text: string): string {
   const lines = text.split("\n");
   const result: string[] = [];
 
