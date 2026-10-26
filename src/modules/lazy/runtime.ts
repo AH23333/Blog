@@ -8,6 +8,7 @@
  * - Mermaid 图表在可见时初始化
  */
 
+import { installImageLightbox } from "../textmode/lightbox/images";
 import { installMermaidLightbox } from "../textmode/lightbox/mermaid";
 import { initMermaidForElement } from "../textmode/mermaid/init";
 import { initTypewriterForElement } from "../textmode/typewriter/install";
@@ -196,6 +197,13 @@ async function activateChunk(chunkId: string): Promise<void> {
       installMermaidLightbox(el);
     }
   }
+
+  // 图片灯箱：按文档粒度安装（内部有 ready 守卫不会重复绑定），
+  // 使 allTriggers 保持“已激活块”的累积集合，跨块 prev/next 导航才正确；
+  // 不能只传新块——installImageLightbox(root) 会用 root 内的触发器整体替换 allTriggers，
+  // 按块调用会让导航列表退化成最后一个块。首屏之外的 [data-lightbox-image]
+  // 由此处补装，否则懒激活块的图片按钮永远没有监听。
+  installImageLightbox();
 
   const elapsed = performance.now() - startTime;
   console.log(`[LazyRender] Activated ${chunkId} in ${elapsed.toFixed(2)}ms`);
