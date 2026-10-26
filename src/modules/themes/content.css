@@ -435,11 +435,14 @@ dialog.mermaid-lightbox {
 /* ── Mermaid ──────────────────────────────────────────────────────────── */
 
 /* useMaxWidth: false → 自然尺寸渲染；宽图横向滚动（mermaid.css 已设 overflow-x）。
-   不用 justify-content 居中：居中的溢出内容左半部分无法滚动到达，
-   改由 svg 的 auto margin 实现居中（小图居中、宽图两侧均可滚动）。 */
+   共享 mermaid.css 的 pre.mermaid 带 justify-content: center，溢出时属于
+   不安全居中：左半部分因 scrollLeft 下限为 0 永远无法滚到，这里改为 flex-start。
+   小图由 svg 的 margin-inline: auto 居中（auto 在溢出时按规范解析为 0，安全）；
+   宽图由 mermaid-client.ts 标记 .mermaid-wide 取消居中，保证整图可滚动到达。 */
 .prose pre.mermaid {
   display: flex;
   align-items: center;
+  justify-content: flex-start;
   background: var(--mermaid-bg);
   min-height: 80px;
 }
@@ -449,6 +452,10 @@ dialog.mermaid-lightbox {
   max-width: none;
   height: auto;
   margin-inline: auto;
+}
+
+.prose pre.mermaid.mermaid-wide svg {
+  margin-inline: 0;
 }
 
 .prose .mermaid-error {

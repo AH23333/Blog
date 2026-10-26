@@ -27,6 +27,21 @@ type MermaidModule = typeof import("mermaid")["default"];
 const PRELOAD_MARGIN_PX = 600;
 
 /**
+ * 宽图标记：svg 宽于 pre 内容区时取消 auto margin 居中。
+ *
+ * 共享 mermaid.css 的 pre.mermaid 使用 justify-content: center（content.css
+ * 已覆盖为 flex-start）；svg 的 margin-inline: auto 在溢出时按规范解析为 0，
+ * 但为防浏览器差异，宽图仍加 mermaid-wide 类显式左对齐，保证整图
+ * 可通过横向滚动到达；未溢出的小图不受影响，保持居中。
+ */
+function markWideMermaid(diagram: HTMLElement): void {
+  const svg = diagram.querySelector("svg");
+  if (svg && svg.getBoundingClientRect().width > diagram.getBoundingClientRect().width) {
+    diagram.classList.add("mermaid-wide");
+  }
+}
+
+/**
  * 各类图统一按自然尺寸渲染（useMaxWidth: false）。
  *
  * 主题正文列宽有限（erudite ≈ 40rem），宽图（如多参与者的时序图）
@@ -274,6 +289,7 @@ export function initThemeMermaid(style: ThemeMermaidStyle): void {
           const { svg } = await mermaid.render(id, diagram.textContent ?? "");
           diagram.innerHTML = svg;
           diagram.setAttribute("data-processed", "true");
+          markWideMermaid(diagram);
         } catch (err) {
           const message = err instanceof Error ? err.message : String(err);
           diagram.innerHTML = `<div class="mermaid-error">Diagram error: ${message}</div>`;
