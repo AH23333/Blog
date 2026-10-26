@@ -36,6 +36,7 @@ import { extractFencedCodeBlocks, extractPlainTextFences, fencedLineIndices } fr
 import { splitContainerSegments } from "../textmode/markdown/container";
 import { highlightCode } from "../textmode/markdown/highlight";
 import { normalizeTableSeparators } from "../textmode/markdown/parser";
+import { localImageSize } from "./image-dimensions";
 
 // ── markdown-it 实例 ──────────────────────────────────────────────────────
 
@@ -293,7 +294,7 @@ function restoreAnsiMarkers(html: string, markers: Map<string, AnsiInlineMarker>
 
 // ── HTML 后处理 ───────────────────────────────────────────────────────────
 
-/** 图片路径规范化 + 懒加载 */
+/** 图片路径规范化 + 懒加载 + 预留宽高比（防锚点跳转漂移 / CLS） */
 function normalizeImages(html: string, articleDir: string): string {
   return html.replace(/<img\b[^>]*>/gi, (tag) => {
     const srcMatch = tag.match(/\bsrc="([^"]*)"/i);
@@ -306,6 +307,16 @@ function normalizeImages(html: string, articleDir: string): string {
 
     if (!/\bloading=/.test(result)) {
       result = result.replace(/\/?>$/, ' loading="lazy" decoding="async" />');
+    }
+
+    // width/height 让浏览器在加载前预留宽高比：
+    // 锚点跳转后视口上方懒图才加载，无预留尺寸则从 0 长到实际高度，
+    // 把目标节推出视口（Chromium 滚动锚定不补偿锚定节点内的增长）。
+    if (!/\bwidth=/.test(result)) {
+      const size = localImageSize(resolved);
+      if (size) {
+        result = result.replace(/\/?>$/, ` width="${size.width}" height="${size.height}"$&`);
+      }
     }
 
     return result;

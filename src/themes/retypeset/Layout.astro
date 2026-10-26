@@ -133,11 +133,16 @@ const darkMode = "#3a383f";
     <ThemeSwitcher current="retypeset" volume={props.volume} slug={props.slug} />
 
     <script>
+      import { initAnchorReseek } from "../../modules/themes/anchor-reseek";
       import { initThemeLazyLists } from "../../modules/themes/lazy-list-client";
       import { initThemeMermaid } from "../../modules/themes/mermaid-client";
       import { installImageLightbox } from "../../modules/textmode/lightbox/images";
 
       installImageLightbox();
+
+      // retypeset 文章页为 scroll-behavior: smooth，锚点动画期间上方懒渲染
+      // 内容长高会让动画落在陈旧位置——点击锚点后短时间重寻位到目标
+      initAnchorReseek();
 
       // 列表分批懒加载（无批次时为空操作）
       initThemeLazyLists();

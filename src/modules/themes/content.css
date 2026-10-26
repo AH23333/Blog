@@ -36,12 +36,18 @@ dialog.mermaid-lightbox {
  * contain-intrinsic-size 提供占位高度（auto 使浏览器记住已渲染过的真实尺寸）。
  * 对 jvm 深度解析这类含 80+ 代码块 / 70+ 表格的长文，可大幅缩短
  * 首屏布局时间；DOM 与无 JS 行为不受影响。
+ *
+/* 注意 pre.mermaid 与 .phile-image 不参与 c-v：这两类元素的尺寸在
+ * 加载/渲染后会发生剧变（懒加载 PNG、懒渲染 SVG），而 Chromium 的
+ * 滚动锚定不补偿 c-v 元素的高度变化——目录锚点跳转后上方内容
+ * 逐个加载会把目标节推出视口数千像素（跳转漂移）。它们的成本
+ * 已由 loading="lazy" / IO 懒渲染控制。纯静态块（代码/公式/表格/
+ * INK，服务端渲染后不再变化）保留 c-v 安全且收益最大。
  */
 
-.prose pre,
+.prose pre:not(.mermaid),
 .prose .ink-block,
-.prose .math-block,
-.prose .phile-image {
+.prose .math-block {
   content-visibility: auto;
   contain-intrinsic-size: auto 12rem;
 }
