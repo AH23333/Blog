@@ -2,9 +2,9 @@
  * 多主题 Mermaid 客户端初始化
  *
  * 与 textmode 的 init.ts 逻辑一致，但配色按主题区分：
- *  - erudite  ：中性灰，light/dark 自适应（"neutral" 基础主题）
+ *  - erudite  ：浅色 neutral / 暗色深灰双套，随 data-theme 自适应
  *  - paper    ：跟随 data-theme 的亮/暗双套配色
- *  - retypeset：暖色杂志风
+ *  - retypeset：暖色杂志风，亮/暗双套
  *
  * 逐图懒渲染：只有当 <pre class="mermaid"> 接近视口时才加载
  * mermaid 库并渲染该图，渲染完成后立即安装该图的灯箱。
@@ -82,6 +82,34 @@ function neutralPalette(): Record<string, string> {
     edgeLabelBackground: "#f5f5f5",
     noteBackgroundColor: "#f5f5f5",
     noteBorderColor: "#9e9e9e"
+  };
+}
+
+/**
+ * erudite 暗色配色：对齐 styles.css 的 --gray-* 暗色梯度
+ * （#111 页面底 → #3a 边框）。此前暗色下仍用浅色 neutral 配色，
+ * cluster 底 #f2f2f2 在深色页面上呈现为刺眼的浅灰大块，且节点
+ * #ececec 与 cluster 底几乎同色，整体看起来就是一块纯色。
+ */
+function eruditeDarkPalette(): Record<string, string> {
+  return {
+    background: "transparent",
+    primaryColor: "#2a2a2a",
+    primaryBorderColor: "#5a5a5a",
+    primaryTextColor: "#ececec",
+    secondaryColor: "#222222",
+    secondaryBorderColor: "#666666",
+    secondaryTextColor: "#d9d9d9",
+    tertiaryColor: "#191919",
+    tertiaryBorderColor: "#5a5a5a",
+    tertiaryTextColor: "#d9d9d9",
+    lineColor: "#6e6e6e",
+    textColor: "#e0e0e0",
+    clusterBkg: "#191919",
+    clusterBorder: "#3a3a3a",
+    edgeLabelBackground: "#191919",
+    noteBackgroundColor: "#191919",
+    noteBorderColor: "#5a5a5a"
   };
 }
 
@@ -169,12 +197,13 @@ function ensureMermaid(style: ThemeMermaidStyle): Promise<MermaidModule> {
       const mermaid = (m.default ?? m) as MermaidModule;
 
       if (style === "erudite") {
+        const dark = document.documentElement.getAttribute("data-theme") === "dark";
         mermaid.initialize({
           startOnLoad: false,
-          theme: "neutral",
+          theme: dark ? "base" : "neutral",
           fontFamily: "inherit",
           securityLevel: "loose",
-          themeVariables: neutralPalette(),
+          themeVariables: dark ? eruditeDarkPalette() : neutralPalette(),
           ...diagramSizeConfigs
         });
       } else if (style === "paper") {
