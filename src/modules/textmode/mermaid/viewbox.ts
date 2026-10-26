@@ -22,6 +22,13 @@ export function repairInflatedViewBox(svg: SVGSVGElement): void {
     return;
   }
 
+  // 内容 bbox 全零说明 svg 在不可见容器中被测量（display:none 等），
+  // 此时任何真实 viewBox 都满足“超出内容两倍”，继续会按 ~16×16 重设导致图形整体消失，
+  // 与被污染的放大正好相反方向
+  if (bb.width === 0 && bb.height === 0) {
+    return;
+  }
+
   if (vb.width > bb.width * 2 + 16 || vb.height > bb.height * 2 + 16) {
     const pad = 8;
     const x = bb.x - pad;

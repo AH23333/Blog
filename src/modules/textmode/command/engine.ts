@@ -80,8 +80,16 @@ class HistoryManager {
     try {
       const raw = localStorage.getItem("cmd-history");
       if (raw) {
-        this.history = JSON.parse(raw);
-        this.index = this.history.length;
+        const parsed: unknown = JSON.parse(raw);
+        // 存储损坏（非数组或含非字符串项）时弃用并重置，
+        // 否则后续 push/索引会持续报错且跨页复现
+        if (Array.isArray(parsed) && parsed.every((item): item is string => typeof item === "string")) {
+          this.history = parsed;
+          this.index = parsed.length;
+        } else {
+          this.history = [];
+          this.save();
+        }
       }
     } catch {
       this.history = [];
