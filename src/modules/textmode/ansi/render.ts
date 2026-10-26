@@ -123,7 +123,10 @@ export function processAnsiInlineMarkup(text: string): { processed: string; mark
 export function restoreAnsiInlineMarkup(html: string, markers: Map<string, AnsiInlineMarker>): string {
   let result = html;
 
-  for (const [placeholder, { role, text }] of markers) {
+  // 按占位符长度降序恢复，避免单字符占位符（\uE400）吞掉多字符占位符（\uE400AN{n}\uE401）的前缀
+  const ordered = [...markers.entries()].sort((a, b) => b[0].length - a[0].length);
+
+  for (const [placeholder, { role, text }] of ordered) {
     const escaped = escapeHtml(text);
     const replacement = `<span class="ansi ansi-${role}">${escaped}</span>`;
     result = result.replaceAll(placeholder, () => replacement);
