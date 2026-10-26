@@ -75,9 +75,9 @@ const pageType = props.pageType ?? "website";
     </script>
   </head>
   <body>
-    <Header />
+    <Header volume={props.volume} slug={props.slug} />
     <slot />
-    <Footer />
+    <Footer volume={props.volume} slug={props.slug} />
 
     <ThemeSwitcher current="paper" volume={props.volume} slug={props.slug} />
 

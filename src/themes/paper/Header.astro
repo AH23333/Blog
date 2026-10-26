@@ -5,7 +5,16 @@
  */
 
 import { siteConfig } from "../../config";
+import { themeUrl } from "../../modules/themes/theme-routes";
 import ThemeToggle from "./ThemeToggle.astro";
+
+type Props = {
+  volume?: number;
+  slug?: string;
+};
+
+const props = Astro.props;
+const textmodeHref = themeUrl("textmode", props.volume, props.slug);
 ---
 
 <a class="skip-link" href="#main-content">跳转到内容</a>
@@ -59,7 +68,7 @@ import ThemeToggle from "./ThemeToggle.astro";
 
       <ul id="menu-items" class="menu-items">
         <li><a class="active-nav" href="/themes/paper/">Home</a></li>
-        <li><a href="https://www.cubeyond.net/">Textmode</a></li>
+        <li><a href={textmodeHref}>Textmode</a></li>
         <li><a href="/themes/">切换风格</a></li>
         <ThemeToggle />
       </ul>

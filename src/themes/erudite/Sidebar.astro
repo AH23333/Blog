@@ -4,13 +4,17 @@
  * 站点标题 + 导航（Home / 面包屑 / Textmode / GitHub）+ 主题切换。
  */
 import { siteConfig } from "../../config";
+import { themeUrl } from "../../modules/themes/theme-routes";
 import ThemeToggle from "./ThemeToggle.astro";
 
 type Props = {
   crumbs?: { label: string; href: string }[];
+  volume?: number;
+  slug?: string;
 };
 
-const { crumbs = [] } = Astro.props;
+const { crumbs = [], volume, slug } = Astro.props;
+const textmodeHref = themeUrl("textmode", volume, slug);
 ---
 
 <aside data-bar>
@@ -37,7 +41,7 @@ const { crumbs = [] } = Astro.props;
             )
           }
         </li>
-        <li><a href="https://www.cubeyond.net/">Textmode</a></li>
+        <li><a href={textmodeHref}>Textmode</a></li>
         <li>
           <a href="https://github.com/AH23333/Blog" rel="noreferrer">GitHub</a>
         </li>

@@ -4,12 +4,14 @@
  * 保持当前浏览位置（首页 / 卷 / 文章）。
  */
 
-type ThemeId = "textmode" | "erudite" | "paper" | "retypeset";
+import { themeUrl, type ThemeId } from "./theme-routes";
 
 type Props = {
   current: ThemeId;
   volume?: number;
   slug?: string;
+  /** textmode 页面使用等宽终端风格变体（避开右下角返回顶部按钮） */
+  variant?: "default" | "textmode";
 };
 
 const props = Astro.props;
@@ -20,36 +22,18 @@ const themes: Array<{ id: ThemeId; label: string }> = [
   { id: "paper", label: "Paper" },
   { id: "retypeset", label: "Retypeset" }
 ];
-
-function urlFor(id: ThemeId): string {
-  const { volume, slug } = props;
-
-  if (id === "textmode") {
-    if (volume !== undefined && slug) {
-      return `/volume/${volume}/${slug}/`;
-    }
-    if (volume !== undefined) {
-      return `/volume/${volume}/`;
-    }
-    return "/";
-  }
-
-  if (volume !== undefined && slug) {
-    return `/themes/${id}/volume/${volume}/${slug}/`;
-  }
-  if (volume !== undefined) {
-    return `/themes/${id}/volume/${volume}/`;
-  }
-  return `/themes/${id}/`;
-}
 ---
 
-<nav class="theme-switcher" aria-label="主题风格切换">
+<nav
+  class="theme-switcher"
+  data-variant={props.variant ?? "default"}
+  aria-label="主题风格切换"
+>
   {
     themes.map((theme) => (
       <a
         class:list={{ link: true, active: theme.id === props.current }}
-        href={urlFor(theme.id)}
+        href={themeUrl(theme.id, props.volume, props.slug)}
         aria-current={theme.id === props.current ? "page" : undefined}
       >
         {theme.label}
@@ -94,5 +78,41 @@ function urlFor(id: ThemeId): string {
     opacity: 1;
     font-weight: 600;
     background: color-mix(in srgb, canvastext 10%, transparent);
+  }
+
+  /* textmode 终端风格变体：等宽字体 + ANSI 边框，位于返回顶部按钮上方 */
+  .theme-switcher[data-variant="textmode"] {
+    right: 12px;
+    bottom: 48px;
+    gap: 0;
+    padding: 0;
+    border-radius: 0;
+    border: 1px solid var(--ansi-bright-black);
+    background: var(--bg);
+    backdrop-filter: none;
+    box-shadow: none;
+    font-family: var(--text-font);
+    font-size: var(--text-size);
+    line-height: 1.2;
+  }
+
+  .theme-switcher[data-variant="textmode"] .link {
+    padding: 4px 10px;
+    border-radius: 0;
+    color: var(--ansi-cyan);
+    opacity: 0.6;
+  }
+
+  .theme-switcher[data-variant="textmode"] .link:hover {
+    color: var(--link);
+    background: var(--link-hover-bg);
+    opacity: 1;
+  }
+
+  .theme-switcher[data-variant="textmode"] .link.active {
+    color: var(--link);
+    background: var(--link-hover-bg);
+    font-weight: normal;
+    text-decoration: underline;
   }
 </style>

@@ -2,6 +2,7 @@
 import katexCssUrl from "katex/dist/katex.min.css?url";
 import { siteConfig } from "../../config";
 import ThemeSwitcher from "../../modules/themes/ThemeSwitcher.astro";
+import { themeUrl } from "../../modules/themes/theme-routes";
 import Sidebar from "./Sidebar.astro";
 import sansWoff2 from "./fonts/IBMPlexSans-VariableFont_wdth,wght.woff2?url";
 import sansItalicWoff2 from "./fonts/IBMPlexSans-Italic-VariableFont_wdth,wght.woff2?url";
@@ -62,7 +63,7 @@ const year = new Date().getFullYear();
     <page-grid>
       <page-header>
         <page-nav>
-          <Sidebar crumbs={props.crumbs} />
+          <Sidebar crumbs={props.crumbs} volume={props.volume} slug={props.slug} />
         </page-nav>
         {
           Astro.slots.has("toc") && (
@@ -84,7 +85,7 @@ const year = new Date().getFullYear();
             </p>
             <nav aria-label="站点链接">
               <a href="/themes/">切换风格</a>
-              <a href="https://www.cubeyond.net/">Textmode</a>
+              <a href={themeUrl("textmode", props.volume, props.slug)}>Textmode</a>
             </nav>
           </footer>
         </page-footer>

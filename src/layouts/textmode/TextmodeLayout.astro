@@ -1,5 +1,6 @@
 ---
 import BaseLayout from "../base/BaseLayout.astro";
+import ThemeSwitcher from "../../modules/themes/ThemeSwitcher.astro";
 
 type Props = {
   title?: string;
@@ -9,6 +10,19 @@ type Props = {
   pageType?: "website" | "article";
   publishedTime?: Date;
 };
+
+// 从当前路径解析卷/文章，供主题切换器同步浏览位置
+// `/volume/0/xxx/` → volume=0, slug=xxx；`/volume/0/` → volume=0；其余 → 首页
+// slug 解码：与主题页 themeUrl(phile.route.slug) 输出的解码形式保持一致
+const pathMatch = Astro.url.pathname.match(/^\/volume\/(\d+)(?:\/([^/]+))?\/$/);
+const currentVolume = pathMatch ? Number(pathMatch[1]) : undefined;
+const rawSlug = pathMatch?.[2];
+let currentSlug: string | undefined;
+try {
+  currentSlug = rawSlug ? decodeURIComponent(rawSlug) : undefined;
+} catch {
+  currentSlug = rawSlug;
+}
 ---
 
 <BaseLayout
@@ -37,6 +51,14 @@ type Props = {
   <main class="screen">
     <slot />
   </main>
+
+  <!-- 主题切换器：保持当前文章路径切换阅读风格 -->
+  <ThemeSwitcher
+    current="textmode"
+    volume={currentVolume}
+    slug={currentSlug}
+    variant="textmode"
+  />
 </BaseLayout>
 
 <script>

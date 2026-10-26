@@ -122,11 +122,11 @@ const darkMode = "#3a383f";
   <body>
     <div class="shell">
       <Header variant={props.variant ?? "home"} />
-      <Navbar isArticle={isArticle} isHome={props.isHome ?? false} />
+      <Navbar isArticle={isArticle} isHome={props.isHome ?? false} volume={props.volume} slug={props.slug} />
       <main class="shell-main">
         <slot />
       </main>
-      <Footer />
+      <Footer volume={props.volume} slug={props.slug} />
     </div>
 
     <ThemeToggle />

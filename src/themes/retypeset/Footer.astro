@@ -5,6 +5,14 @@
  */
 
 import { siteConfig } from "../../config";
+import { themeUrl } from "../../modules/themes/theme-routes";
+
+type Props = {
+  volume?: number;
+  slug?: string;
+};
+
+const props = Astro.props;
 
 const year = new Date().getFullYear();
 ---
@@ -13,9 +21,7 @@ const year = new Date().getFullYear();
   <p>
     <a
       class="highlight-hover footer-link"
-      href="https://www.cubeyond.net/"
-      target="_blank"
-      rel="noopener noreferrer">Textmode</a
+      href={themeUrl("textmode", props.volume, props.slug)}>Textmode</a
     >
     /
     <a class="highlight-hover footer-link" href="/themes/">切换风格</a>

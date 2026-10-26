@@ -4,6 +4,8 @@
  * 移动端：文章页隐藏；lg 起 fixed 右列下方。
  */
 
+import { themeUrl } from "../../modules/themes/theme-routes";
+
 type NavItem = {
   href: string;
   label: string;
@@ -15,6 +17,8 @@ type Props = {
   isArticle: boolean;
   /** 当前是否为主题首页 */
   isHome: boolean;
+  volume?: number;
+  slug?: string;
 };
 
 const props = Astro.props;
@@ -22,7 +26,7 @@ const props = Astro.props;
 const items: NavItem[] = [
   { href: "/themes/retypeset/", label: "首页", active: props.isHome },
   {
-    href: "https://www.cubeyond.net/",
+    href: themeUrl("textmode", props.volume, props.slug),
     label: "Textmode",
     active: false,
   },
