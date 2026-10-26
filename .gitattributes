@@ -1,0 +1,18 @@
+# 统一行尾：仓库与工作副本一律 LF。
+# biome formatter 配置为 LF，而 core.autocrlf=true 会在检出时改写为 CRLF，
+# 导致 pnpm check 的格式检查随分支切换反复变红。本文件优先级高于 autocrlf。
+* text=auto eol=lf
+
+# 二进制资产明确排除文本处理
+*.woff2 -text
+*.woff -text
+*.ttf -text
+*.png -text
+*.jpg -text
+*.jpeg -text
+*.gif -text
+*.ico -text
+*.webp -text
+*.avif -text
+*.pdf -text
+*.zip -text
