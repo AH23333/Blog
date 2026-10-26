@@ -284,12 +284,16 @@ graph TB
             DM3[""缓冲技术<br/>单缓冲/双缓冲/循环""]
             DM4[""SPOOLing<br/>脱机I/O/虚拟设备""]
         end
+
+        PM4 ~~~ MM1
+        FM4 ~~~ DM1
     end
 
     subgraph "三大核心主题"
         T1[""并发 Concurrency<br/>进程/线程/同步/死锁""]
         T2[""虚拟化 Virtualization<br/>虚拟内存/虚拟设备/SPOOLing""]
         T3[""持久化 Persistence<br/>文件系统/磁盘I/O/存储""]
+        T1 ~~~ T2 ~~~ T3
     end
 
     subgraph "进程通信 IPC"
@@ -299,6 +303,8 @@ graph TB
         IPC4["信号量 sem"]
         IPC5["信号 signal"]
         IPC6["Socket 套接字"]
+        IPC1 ~~~ IPC2 ~~~ IPC3
+        IPC4 ~~~ IPC5 ~~~ IPC6
     end
 
     PM1 --> PM2
