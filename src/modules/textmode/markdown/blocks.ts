@@ -3,6 +3,7 @@
  */
 
 import { textHtml } from "../core/html";
+import { cellWidth, truncateCells } from "../core/layout";
 import { ansiText, expandTabs } from "./ansi";
 import { boxChars } from "./box-chars";
 
@@ -67,7 +68,7 @@ export function renderContainer(type: string, text: string, width: number, title
 
   const style = styles[type] || { color: "W", label: type.toUpperCase() };
   const displayLabel = title ? `${style.label}: ${title}` : style.label;
-  const labelPad = Math.max(0, innerWidth - displayLabel.length - 5);
+  const labelPad = Math.max(0, innerWidth - cellWidth(displayLabel) - 5);
   const topBorder = `${boxChars.tl}${boxChars.h} ${displayLabel} ${boxChars.h.repeat(labelPad)}${boxChars.tr}`;
   lines.push(ansiText(topBorder, style.color));
 
@@ -90,7 +91,8 @@ export function renderTable(rows: string[][], width: number): string[] {
   const colWidths: number[] = [];
 
   for (let i = 0; i < colCount; i++) {
-    const maxLen = Math.max(...rows.map((r) => (r[i] || "").length));
+    // 按显示宽度取最大列宽（CJK 等宽字符记 2 列），避免中文表格边框错位
+    const maxLen = Math.max(...rows.map((r) => cellWidth(r[i] || "")));
     colWidths.push(Math.min(maxLen + 2, 18));
   }
 
@@ -107,8 +109,9 @@ export function renderTable(rows: string[][], width: number): string[] {
   for (let i = 0; i < rows.length; i++) {
     const cells = rows[i].map((cell, j) => {
       const w = finalWidths[j] || 10;
-      const truncated = cell.length > w - 1 ? cell.slice(0, w - 1) : cell;
-      const pad = Math.max(0, w - truncated.length - 1);
+      // 显示宽度感知的截断（不劈开代理对），空位按显示宽度补齐
+      const truncated = truncateCells(cell, w - 1, "");
+      const pad = Math.max(0, w - cellWidth(truncated) - 1);
       return ` ${truncated}${" ".repeat(pad)}`;
     });
 

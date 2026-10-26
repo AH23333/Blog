@@ -258,6 +258,12 @@ function formatEntries(entries: ContentsEntry[]): string[] {
         partWidth += cw;
       }
 
+      // 防御：缩进过深使可用宽度 ≤0（或首字符超宽）时 part 为空，
+      // 不强制前进会让 while (remaining.length > 0) 死循环
+      if (part.length === 0) {
+        part = [...remaining][0] ?? "";
+      }
+
       result.push(`${prefix}${part}`);
 
       remaining = remaining.slice(part.length);
