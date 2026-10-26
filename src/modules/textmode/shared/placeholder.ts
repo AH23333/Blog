@@ -235,10 +235,18 @@ function restoreAnsiInlineMarkupFromItems(html: string, items: AnsiInlineMarker[
   const ANSI_PLACEHOLDER_MAX = 0xe4ff;
   let result = html;
 
-  for (let i = 0; i < items.length; i++) {
-    const codePoint = ANSI_PLACEHOLDER_START + i;
-    const placeholder = codePoint > ANSI_PLACEHOLDER_MAX ? `\uE400AN${i}\uE401` : String.fromCodePoint(codePoint);
-    const { role, text } = items[i];
+  // 按占位符长度降序恢复：多字符占位符（\uE400AN{n}\uE401）以单字符占位符
+  // （\uE400，index 0）为前缀，顺序恢复会先吞掉其前缀，>256 个标记时成批丢失
+  const ordered = items
+    .map((item, index) => {
+      const codePoint = ANSI_PLACEHOLDER_START + index;
+      const placeholder = codePoint > ANSI_PLACEHOLDER_MAX ? `\uE400AN${index}\uE401` : String.fromCodePoint(codePoint);
+      return { placeholder, item };
+    })
+    .sort((a, b) => b.placeholder.length - a.placeholder.length);
+
+  for (const { placeholder, item } of ordered) {
+    const { role, text } = item;
     const escaped = escapeHtml(text);
     const replacement = `<span class="ansi ansi-${role}">${escaped}</span>`;
     result = result.replaceAll(placeholder, () => replacement);

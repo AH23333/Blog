@@ -196,7 +196,7 @@ This is a critical point that needs emphasis.
 without markdown-it interpreting 4-space indents as code blocks.
 
 **Usage**:
-```
+````
 ```Plain Text
 ┌──────────────────────────────────┐
 │  This content preserves          │
@@ -205,7 +205,7 @@ without markdown-it interpreting 4-space indents as code blocks.
 └──────────────────────────────────┘
     Indented line stays indented.
 ```
-```
+````
 
 **When to use**:
 - ASCII art diagrams
@@ -242,7 +242,7 @@ without markdown-it interpreting 4-space indents as code blocks.
 - Use Chinese or English text in labels freely
 
 **Example**:
-```
+````
 ```mermaid
 sequenceDiagram
     participant A as Process A
@@ -254,7 +254,7 @@ sequenceDiagram
     B-->>A: Response
     end
 ```
-```
+````
 
 **Note**: Mermaid is loaded dynamically (`import("mermaid")`). Pages without
 mermaid blocks do NOT load the mermaid library (~595KB), improving performance.
@@ -304,7 +304,7 @@ escaping conflicts with LaTeX command syntax.
 **Supported Languages**: All languages supported by highlight.js (190+ languages).
 
 **Common Languages**:
-```
+````
 ```c          — C 语言
 ```python     — Python
 ```java       — Java
@@ -314,8 +314,7 @@ escaping conflicts with LaTeX command syntax.
 ```bash       — Shell/Bash
 ```yaml       — YAML
 ```json       — JSON
-```
-```
+````
 
 **Note**: Code blocks inside `:::container` blocks are also highlighted.
 
@@ -394,7 +393,7 @@ Understanding the pipeline helps avoid syntax conflicts:
 
 ## 15.0 Quick Reference Card (速查卡)
 
-```
+````
 ┌─ Frontmatter ────────────────────────────────────────────────────┐
 │ ---                                                               │
 │ title: "Title" | date: YYYY-MM-DD | author: "Name"               │
@@ -439,7 +438,7 @@ Understanding the pipeline helps avoid syntax conflicts:
 │ ⚠ Do NOT put ANSI #[...] inside $...$                            │
 │ ⚠ $$...$$ in table cells → auto-converted to $...$               │
 └──────────────────────────────────────────────────────────────────┘
-```
+````
 
 ---
 
@@ -460,7 +459,7 @@ Understanding the pipeline helps avoid syntax conflicts:
 
 ## 17.0 Complete Example (完整示例)
 
-```
+````
 ---
 title: "Example Article"
 date: 2026-06-26
@@ -526,7 +525,7 @@ int main() {
 This example covers all major syntax elements. For detailed syntax reference,
 see the #[c|editing-guide] and #[c|writing-format-reference] articles.
 :::
-```
+````
 
 ---
 

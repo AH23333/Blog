@@ -16,6 +16,9 @@ const RESEEK_TIMEOUT_MS = 3000;
 const RESEEK_DRIFT_PX = 24;
 const STABLE_TICKS_TO_STOP = 8;
 
+/** 当前进行中的重寻位循环的停止句柄；新循环开始前取消旧循环 */
+let activeStop: (() => void) | null = null;
+
 export function initAnchorReseek(): void {
   document.addEventListener("click", (event) => {
     const node = event.target;
@@ -44,6 +47,9 @@ export function initAnchorReseek(): void {
     }
     const target: HTMLElement = dest;
 
+    // 取消上一次仍在进行的重寻位循环（快速连点目录项时两个循环会互相覆盖 scrollTo）
+    activeStop?.();
+
     const scrollMargin = Number.parseFloat(getComputedStyle(dest).scrollMarginTop) || 0;
     const startedAt = performance.now();
     let stableTicks = 0;
@@ -51,6 +57,9 @@ export function initAnchorReseek(): void {
 
     const stop = (): void => {
       stopped = true;
+      if (activeStop === stop) {
+        activeStop = null;
+      }
       window.removeEventListener("wheel", stop);
       window.removeEventListener("touchstart", stop);
       window.removeEventListener("keydown", stop);
@@ -59,6 +68,8 @@ export function initAnchorReseek(): void {
     window.addEventListener("wheel", stop, { passive: true, capture: true });
     window.addEventListener("touchstart", stop, { passive: true, capture: true });
     window.addEventListener("keydown", stop, { capture: true });
+
+    activeStop = stop;
 
     const reseek = (): void => {
       if (stopped) {

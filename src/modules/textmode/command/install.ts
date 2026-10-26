@@ -58,13 +58,32 @@ function onTouchEnd(e: TouchEvent): void {
     } else {
       window.scrollBy({ top: -window.innerHeight * 0.6, behavior: "smooth" });
     }
-  } else {
+  } else if (!isInsideHorizontallyScrollable(e.target)) {
+    // 目标处于可横向滚动的容器（如宽 mermaid 图、代码块）内时，交给原生横向滚动，
+    // 避免 window 级翻页与容器内滚动叠加造成双重移动
     if (deltaX < 0) {
       window.scrollBy({ left: window.innerWidth * 0.4, behavior: "smooth" });
     } else {
       window.scrollBy({ left: -window.innerWidth * 0.4, behavior: "smooth" });
     }
   }
+}
+
+/** 判断事件目标是否位于可横向滚动的容器内 */
+function isInsideHorizontallyScrollable(target: EventTarget | null): boolean {
+  let node = target instanceof Element ? target : null;
+
+  while (node) {
+    if (node.scrollWidth > node.clientWidth + 1) {
+      const overflowX = getComputedStyle(node).overflowX;
+      if (overflowX === "auto" || overflowX === "scroll") {
+        return true;
+      }
+    }
+    node = node.parentElement;
+  }
+
+  return false;
 }
 
 /** 全局键盘事件 */

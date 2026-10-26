@@ -348,10 +348,12 @@ export function processMathInText(text: string): ProcessedMathText {
 
     let latex = processed.slice(blockStart + 2, end).trim();
 
-    // 裸 $$ 会吞掉大段文本：跨越代码占位符的“块级公式”不是公式，按普通文本处理
+    // 裸 $$ 会吞掉大段文本：跨越代码占位符的“块级公式”不是公式，按普通文本处理。
+    // 必须原样保留整对 $$…$$ 并把游标推进到闭合符之后，
+    // 否则闭合 $$ 会被下一轮当作新的开栏参与配对，引发级联错配
     if (/[\uE100-\uE1FF]/.test(latex)) {
-      result += "$$";
-      cursor = blockStart + 2;
+      result += processed.slice(blockStart, end + 2);
+      cursor = end + 2;
       continue;
     }
 
@@ -433,8 +435,10 @@ export function processMathInText(text: string): ProcessedMathText {
     // 未配对的裸 $ 会把后续段落（含代码/块级公式占位符）误认为行内公式，
     // 产生吞掉大段文本的 KaTeX 错误输出；此类匹配按普通 $ 处理
     if (latex.includes(BLOCK_MATH_PLACEHOLDER) || /[\uE100-\uE1FF]/.test(latex)) {
-      result += "$";
-      cursor = dollar + 1;
+      // 含占位符的“行内公式”不是公式：原样保留整对 $…$ 并跳过闭合符，
+      // 避免闭合 $ 被下一轮当作新的开栏引发级联错配
+      result += processed.slice(dollar, end + 1);
+      cursor = end + 1;
       continue;
     }
     // 剥离 \label{...}（KaTeX 不支持，行内公式通常不需要标签）
@@ -500,7 +504,11 @@ export function processMathInText(text: string): ProcessedMathText {
 export function replaceMathPlaceholders(html: string, inlineMath: Map<string, string>): string {
   let result = html;
 
-  for (const [placeholder, mathHtml] of inlineMath) {
+  // 按占位符长度降序替换：多字符占位符（\uE000MT{n}\uE001）以单字符占位符
+  // （\uE000，index 0）为前缀，顺序替换会先吞掉其前缀，>256 个公式时成批丢失
+  const ordered = [...inlineMath.entries()].sort((a, b) => b[0].length - a[0].length);
+
+  for (const [placeholder, mathHtml] of ordered) {
     result = result.replaceAll(placeholder, () => mathHtml);
   }
 

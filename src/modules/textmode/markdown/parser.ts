@@ -106,12 +106,14 @@ export function normalizeTableSeparators(text: string): string {
       continue;
     }
 
-    // 计算表头行列数（去掉首尾 | 后按 | 分割）
-    const headerCells = trimmed.slice(1, -1).split("|");
+    // 计算表头行列数（去掉首尾 | 后按未转义的 | 分割）。
+    // markdown-it 表格语义：\| 是字面竖线而非列分隔符，必须转义感知地统计，
+    // 否则含 \| 的表头会被多计一列，把合法分隔行错误补齐后整表降级为段落
+    const headerCells = splitUnescapedPipes(trimmed.slice(1, -1));
     const headerColCount = headerCells.length;
 
     // 计算分隔行列数
-    const sepCells = nextTrimmed.slice(1, -1).split("|");
+    const sepCells = splitUnescapedPipes(nextTrimmed.slice(1, -1));
     const sepColCount = sepCells.length;
 
     if (sepColCount === headerColCount) {
@@ -141,6 +143,35 @@ export function normalizeTableSeparators(text: string): string {
   }
 
   return result.join("\n");
+}
+
+/**
+ * 按“未转义的 |”切分表格行单元格。
+ * 与 markdown-it 表格规则一致：反斜杠转义下一个字符，
+ * 因此 \| 是字面竖线（不是列分隔），\\| 是转义反斜杠 + 列分隔。
+ */
+function splitUnescapedPipes(row: string): string[] {
+  const cells: string[] = [];
+  let current = "";
+
+  for (let i = 0; i < row.length; i++) {
+    if (row[i] === "\\" && i + 1 < row.length) {
+      current += row[i] + row[i + 1];
+      i += 1;
+      continue;
+    }
+
+    if (row[i] === "|") {
+      cells.push(current);
+      current = "";
+      continue;
+    }
+
+    current += row[i];
+  }
+
+  cells.push(current);
+  return cells;
 }
 
 // ── 主入口 ────────────────────────────────────────────────────────────────
