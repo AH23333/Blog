@@ -45,5 +45,8 @@ console.log(
   "textmode-pre phile-body:",
   (c.match(/textmode-pre phile-body/g) || []).length
 )
-console.log("phile-media:", (c.match(/phile-media/g) || []).length)
+console.log(
+  "phile-media:",
+  (c.match(/phile-media/g) || []).length
+)
 console.log("Total size:", (c.length / 1024).toFixed(1), "KB")
