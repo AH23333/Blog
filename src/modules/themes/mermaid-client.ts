@@ -211,6 +211,7 @@ function ensureMermaid(style: ThemeMermaidStyle): Promise<MermaidModule> {
  *
  * 每个图由独立 IntersectionObserver 监测，接近视口时进入
  * 渲染队列；队列串行消费，避免并发 mermaid.render 竞争。
+ * 跳滚越过的图由滚动守卫补入队（IO 对被越过的元素不触发）。
  * mermaid 库在第一张图需要渲染时才动态加载。
  * 每张图渲染完成后立即安装它的灯箱（无需等待整页渲染完）。
  */
@@ -258,6 +259,14 @@ export function initThemeMermaid(style: ThemeMermaidStyle): void {
     }
   };
 
+  const enqueue = (diagram: HTMLElement): boolean => {
+    if (diagram.dataset.queued === "true") return false;
+    diagram.dataset.queued = "true";
+    observer.unobserve(diagram);
+    queue.push(diagram);
+    return true;
+  };
+
   const observer = new IntersectionObserver(
     (entries) => {
       let queued = false;
@@ -265,10 +274,9 @@ export function initThemeMermaid(style: ThemeMermaidStyle): void {
       for (const entry of entries) {
         if (!entry.isIntersecting) continue;
 
-        const diagram = entry.target as HTMLElement;
-        observer.unobserve(diagram);
-        queue.push(diagram);
-        queued = true;
+        if (enqueue(entry.target as HTMLElement)) {
+          queued = true;
+        }
       }
 
       if (queued) {
@@ -281,4 +289,48 @@ export function initThemeMermaid(style: ThemeMermaidStyle): void {
   for (const diagram of diagrams) {
     observer.observe(diagram);
   }
+
+  // 跳滚守卫：瞬间跳滚（End 键 / 目录锚点 / 拖动滚动条）会越过中间的图，
+  // IO 只在元素与视口（含 rootMargin）相交时触发，被越过的图
+  // 永远不会进入渲染队列。每次滚动（rAF 节流）时把所有已滚过
+  // 视口顶端的未渲染图直接入队，与 lazy-list-client 的守卫一致。
+  let ticking = false;
+
+  const activatePassed = (): void => {
+    let queued = false;
+    let allDone = true;
+
+    for (const diagram of diagrams) {
+      if (diagram.getAttribute("data-processed") === "true") continue;
+      allDone = false;
+
+      if (diagram.dataset.queued !== "true" && diagram.getBoundingClientRect().top < 0) {
+        if (enqueue(diagram)) {
+          queued = true;
+        }
+      }
+    }
+
+    if (queued) {
+      void processQueue();
+    }
+
+    if (allDone) {
+      window.removeEventListener("scroll", onScroll);
+    }
+  };
+
+  const onScroll = (): void => {
+    if (ticking) return;
+    ticking = true;
+    window.requestAnimationFrame(() => {
+      ticking = false;
+      activatePassed();
+    });
+  };
+
+  window.addEventListener("scroll", onScroll, { passive: true });
+
+  // 页面加载时可能已停在文章中部（刷新保留滚动位置）
+  activatePassed();
 }
