@@ -12,6 +12,7 @@
  */
 
 import { installMermaidLightbox } from "../textmode/lightbox/mermaid";
+import { repairInflatedViewBox } from "../textmode/mermaid/viewbox";
 
 export type ThemeMermaidStyle = "erudite" | "paper" | "retypeset";
 
@@ -289,6 +290,10 @@ export function initThemeMermaid(style: ThemeMermaidStyle): void {
           const { svg } = await mermaid.render(id, diagram.textContent ?? "");
           diagram.innerHTML = svg;
           diagram.setAttribute("data-processed", "true");
+          const rendered = diagram.querySelector("svg");
+          if (rendered) {
+            repairInflatedViewBox(rendered);
+          }
           markWideMermaid(diagram);
         } catch (err) {
           const message = err instanceof Error ? err.message : String(err);

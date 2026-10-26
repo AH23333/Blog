@@ -9,6 +9,8 @@
  * 改用 [data-processed] 属性在 DOM 层面去重，mermaid 初始化状态用 window 全局标记。
  */
 
+import { repairInflatedViewBox } from "./viewbox";
+
 declare global {
   interface Window {
     __mermaidReady?: Promise<typeof import("mermaid")["default"]>;
@@ -93,6 +95,8 @@ async function renderDiagrams(
       const { svg } = await mermaid.render(id, diagram.textContent || "");
       diagram.innerHTML = svg;
       diagram.setAttribute("data-processed", "true");
+      const rendered = diagram.querySelector("svg");
+      if (rendered) repairInflatedViewBox(rendered);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       diagram.innerHTML =
