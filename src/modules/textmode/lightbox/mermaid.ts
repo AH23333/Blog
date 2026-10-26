@@ -72,6 +72,8 @@ const doubleClickScale = 2.5;
 // ── 状态 ────────────────────────────────────────────────────────────────
 
 let transform: Transform = { scale: 1, x: 0, y: 0 };
+/** 当前图的"适配视口"缩放比（打开时让全图完整可见，重置时回到该比例） */
+let fitScale = 1;
 let dragState: DragState | undefined;
 let pinchState: PinchState | undefined;
 let tapState: TapState | undefined;
@@ -277,15 +279,27 @@ function openLightbox(trigger: HTMLElement, lb: LightboxElements): void {
   lb.svgWrapper.innerHTML = "";
   lb.svgWrapper.appendChild(clone);
 
-  // 重置变换（整数像素）
-  transform = { scale: 1, x: 0, y: 0 };
-  applyTransform(lb);
-  updateZoomLabel(lb);
-
   document.body.classList.add(openBodyClass);
   if (!lb.dialog.open) {
     lb.dialog.showModal();
   }
+
+  // 初始视图：整图适配视口（fit-to-screen）。
+  // 高图（如 TB 流程图）按 100% 打开时高度远超视口，只能靠拖拽看到局部；
+  // 打开即缩放到全图完整可见（不超过 100%，小图不放大）。
+  // 注意必须在 showModal 之后测量：dialog 关闭时为 display:none，尺寸为 0。
+  const wrapperRect = lb.svgWrapper.getBoundingClientRect();
+  const cloneRect = clone.getBoundingClientRect();
+  fitScale =
+    cloneRect.height > 0 && cloneRect.width > 0
+      ? Math.min(1, wrapperRect.height / cloneRect.height, wrapperRect.width / cloneRect.width)
+      : 1;
+
+  // 重置变换（整数像素）
+  transform = { scale: fitScale, x: 0, y: 0 };
+  applyTransform(lb);
+  updateZoomLabel(lb);
+
   lb.dialog.focus({ preventScroll: true });
 }
 
@@ -313,7 +327,7 @@ function zoomByStep(lb: LightboxElements, delta: number): void {
 }
 
 function zoomToPoint(lb: LightboxElements, cx: number, cy: number, scale: number): void {
-  const nextScale = clamp(scale, minScale, maxScale);
+  const nextScale = clamp(scale, Math.min(minScale, fitScale), maxScale);
   if (nextScale === transform.scale) return;
 
   const vpCx = window.innerWidth / 2;
@@ -342,14 +356,14 @@ function zoomWheel(event: WheelEvent, lb: LightboxElements): void {
 }
 
 function resetZoom(lb: LightboxElements): void {
-  // 强制整数像素
-  transform = { scale: 1, x: 0, y: 0 };
+  // 强制整数像素；回到整图适配比例而非 100%
+  transform = { scale: fitScale, x: 0, y: 0 };
   applyTransform(lb);
   updateZoomLabel(lb);
 }
 
 function handleDoubleClick(lb: LightboxElements): void {
-  if (transform.scale > 1.1) {
+  if (transform.scale > fitScale * 1.1) {
     resetZoom(lb);
   } else {
     zoomToPoint(lb, window.innerWidth / 2, window.innerHeight / 2, doubleClickScale);
