@@ -26,6 +26,43 @@ type MermaidModule = typeof import("mermaid")["default"];
 /** 提前渲染距离：图表距视口不足该值时开始渲染 */
 const PRELOAD_MARGIN_PX = 600;
 
+/**
+ * 各类图统一按自然尺寸渲染（useMaxWidth: false）。
+ *
+ * 主题正文列宽有限（erudite ≈ 40rem），宽图（如多参与者的时序图）
+ * 在 useMaxWidth: true 下会被压缩到 0.4 倍左右，文字不可辨认；
+ * 关闭后按 16px 基准字号渲染，超宽部分由 pre.mermaid 横向滚动，
+ * 也可点击灯箱查看全图。
+ */
+const naturalSize = { useMaxWidth: false };
+
+const diagramSizeConfigs = {
+  flowchart: naturalSize,
+  sequence: naturalSize,
+  gantt: naturalSize,
+  journey: naturalSize,
+  timeline: naturalSize,
+  class: naturalSize,
+  state: naturalSize,
+  er: naturalSize,
+  pie: naturalSize,
+  requirement: naturalSize,
+  architecture: naturalSize,
+  mindmap: naturalSize,
+  ishikawa: naturalSize,
+  kanban: naturalSize,
+  gitGraph: naturalSize,
+  c4: naturalSize,
+  sankey: naturalSize,
+  packet: naturalSize,
+  block: naturalSize,
+  eventmodeling: naturalSize,
+  treeView: naturalSize,
+  radar: naturalSize,
+  venn: naturalSize,
+  "wardley-beta": naturalSize
+};
+
 function neutralPalette(): Record<string, string> {
   return {
     background: "transparent",
@@ -137,7 +174,8 @@ function ensureMermaid(style: ThemeMermaidStyle): Promise<MermaidModule> {
           theme: "neutral",
           fontFamily: "inherit",
           securityLevel: "loose",
-          themeVariables: neutralPalette()
+          themeVariables: neutralPalette(),
+          ...diagramSizeConfigs
         });
       } else if (style === "paper") {
         const dark = document.documentElement.getAttribute("data-theme") === "dark";
@@ -146,7 +184,8 @@ function ensureMermaid(style: ThemeMermaidStyle): Promise<MermaidModule> {
           theme: "base",
           fontFamily: "inherit",
           securityLevel: "loose",
-          themeVariables: paperPalette(dark)
+          themeVariables: paperPalette(dark),
+          ...diagramSizeConfigs
         });
       } else {
         const dark = document.documentElement.getAttribute("data-theme") === "dark";
@@ -155,7 +194,8 @@ function ensureMermaid(style: ThemeMermaidStyle): Promise<MermaidModule> {
           theme: "base",
           fontFamily: "inherit",
           securityLevel: "loose",
-          themeVariables: retypesetPalette(dark)
+          themeVariables: retypesetPalette(dark),
+          ...diagramSizeConfigs
         });
       }
 
