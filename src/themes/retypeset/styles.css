@@ -708,6 +708,7 @@ html.dark .prose u {
   overflow-y: auto;
 }
 
+/* biome-ignore lint/style/noDescendingSpecificity: TOC 折叠基础态需位于 checked 态之后，属性互不冲突，顺序为刻意设计 */
 #toc-accordion-content {
   max-height: 14.75rem;
   overflow: hidden;
@@ -768,6 +769,7 @@ html.dark .prose u {
     margin-top: 0.25rem;
   }
 
+  /* biome-ignore lint/style/noDescendingSpecificity: 窄屏覆盖同上，属性不冲突 */
   #toc-accordion-content {
     max-height: calc(100vh - 27.5rem);
     overflow-y: auto;
@@ -936,67 +938,83 @@ html:not(.dark) {
     animation-delay: 0.175s;
   }
 
+  /* biome-ignore lint/style/noDescendingSpecificity: 入场动画基态（opacity:0）需先于列表项声明，与上方规则目标元素不同 */
   #toc-links-list > * {
     opacity: 0;
     animation: fadeInUp 0.5s cubic-bezier(0.165, 0.84, 0.44, 1) forwards;
   }
 
+  /* biome-ignore lint/style/noDescendingSpecificity: 交错入场延迟，刻意分层 */
   #toc-links-list > *:nth-child(1) {
     animation-delay: 0.175s;
   }
 
+  /* biome-ignore lint/style/noDescendingSpecificity: 交错入场延迟，刻意分层 */
   #toc-links-list > *:nth-child(2) {
     animation-delay: 0.2s;
   }
 
+  /* biome-ignore lint/style/noDescendingSpecificity: 交错入场延迟，刻意分层 */
   #toc-links-list > *:nth-child(3) {
     animation-delay: 0.225s;
   }
 
+  /* biome-ignore lint/style/noDescendingSpecificity: 交错入场延迟，刻意分层 */
   #toc-links-list > *:nth-child(4) {
     animation-delay: 0.25s;
   }
 
+  /* biome-ignore lint/style/noDescendingSpecificity: 交错入场延迟，刻意分层 */
   #toc-links-list > *:nth-child(5) {
     animation-delay: 0.275s;
   }
 
+  /* biome-ignore lint/style/noDescendingSpecificity: 交错入场延迟，刻意分层 */
   #toc-links-list > *:nth-child(6) {
     animation-delay: 0.3s;
   }
 
+  /* biome-ignore lint/style/noDescendingSpecificity: 交错入场延迟，刻意分层 */
   #toc-links-list > *:nth-child(7) {
     animation-delay: 0.325s;
   }
 
+  /* biome-ignore lint/style/noDescendingSpecificity: 交错入场延迟，刻意分层 */
   #toc-links-list > *:nth-child(8) {
     animation-delay: 0.35s;
   }
 
+  /* biome-ignore lint/style/noDescendingSpecificity: 交错入场延迟，刻意分层 */
   #toc-links-list > *:nth-child(9) {
     animation-delay: 0.375s;
   }
 
+  /* biome-ignore lint/style/noDescendingSpecificity: 交错入场延迟，刻意分层 */
   #toc-links-list > *:nth-child(10) {
     animation-delay: 0.4s;
   }
 
+  /* biome-ignore lint/style/noDescendingSpecificity: 交错入场延迟，刻意分层 */
   #toc-links-list > *:nth-child(11) {
     animation-delay: 0.425s;
   }
 
+  /* biome-ignore lint/style/noDescendingSpecificity: 交错入场延迟，刻意分层 */
   #toc-links-list > *:nth-child(12) {
     animation-delay: 0.45s;
   }
 
+  /* biome-ignore lint/style/noDescendingSpecificity: 交错入场延迟，刻意分层 */
   #toc-links-list > *:nth-child(13) {
     animation-delay: 0.475s;
   }
 
+  /* biome-ignore lint/style/noDescendingSpecificity: 交错入场延迟，刻意分层 */
   #toc-links-list > *:nth-child(14) {
     animation-delay: 0.5s;
   }
 
+  /* biome-ignore lint/style/noDescendingSpecificity: 交错入场延迟，刻意分层 */
   #toc-links-list > *:nth-child(15) {
     animation-delay: 0.525s;
   }
@@ -1056,10 +1074,14 @@ html.reduce-motion #back-button {
 @media (prefers-reduced-motion: reduce) {
   #toc-container,
   #post-date,
-  #post-content > *,
+  /* biome-ignore lint/style/noDescendingSpecificity: 显隐状态分组选择器，成员属性一致，顺序为刻意设计 */
+    #post-content
+    > *,
   #post-content .prose > *,
   #toc-desktop-icon,
-  #toc-links-list > *,
+  /* biome-ignore lint/style/noDescendingSpecificity: 显隐状态分组选择器，成员属性一致，顺序为刻意设计 */
+    #toc-links-list
+    > *,
   #back-button {
     opacity: 1;
     transform: translate(0);
