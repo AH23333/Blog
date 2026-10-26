@@ -51,6 +51,13 @@ const pageType = props.pageType ?? "website";
       )
     }
     <meta name="theme-color" content="" />
+    <noscript>
+      <style>
+        .lazy-list-sentinel {
+          display: none !important;
+        }
+      </style>
+    </noscript>
     <link rel="stylesheet" href={katexCssUrl} />
     <script is:inline>
       // 防闪烁：渲染前恢复主题（模板 FOUC-prevention script）
@@ -75,15 +82,17 @@ const pageType = props.pageType ?? "website";
     <ThemeSwitcher current="paper" volume={props.volume} slug={props.slug} />
 
     <script>
+      import { initThemeLazyLists } from "../../modules/themes/lazy-list-client";
       import { initThemeMermaid } from "../../modules/themes/mermaid-client";
       import { installImageLightbox } from "../../modules/textmode/lightbox/images";
-      import { installMermaidLightbox } from "../../modules/textmode/lightbox/mermaid";
 
       installImageLightbox();
 
-      initThemeMermaid("paper").then(() => {
-        installMermaidLightbox();
-      });
+      // 列表分批懒加载（无批次时为空操作）
+      initThemeLazyLists();
+
+      // mermaid 逐图懒渲染，渲染完成时自动安装对应灯箱
+      initThemeMermaid("paper");
     </script>
   </body>
 </html>

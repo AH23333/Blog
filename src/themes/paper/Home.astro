@@ -2,10 +2,13 @@
 /**
  * paper 首页（模板 index.astro 移植）。
  * hero 大标题 + 按 Volume 分区的文章卡片列表（模板 featured/recent 区块）。
+ * 卡片列表分批懒加载：首屏每卷 12 张，滚动接近时激活后续批次。
  */
 
 import type { Volume } from "../../modules/volumes/model";
 import { siteConfig } from "../../config";
+import { planLazyList, type LazyListPlan } from "../../modules/themes/lazy-list";
+import type { Phile } from "../../modules/philes/model";
 import Card from "./Card.astro";
 import Layout from "./Layout.astro";
 
@@ -14,6 +17,11 @@ type Props = {
 };
 
 const props = Astro.props;
+
+// paper 卡片（标题 + 日期 + 描述）估算高度 ~104px
+const plans: LazyListPlan<Phile>[] = props.volumes.map((volume) =>
+  planLazyList(volume.philes, { itemHeightPx: 104 })
+);
 ---
 
 <Layout title="首页" canonicalPath="/">
@@ -24,18 +32,37 @@ const props = Astro.props;
     </section>
 
     {
-      props.volumes.map((volume) => (
-        <section class="posts-section">
-          <h2>
-            <a href={`/themes/paper/volume/${volume.number}/`}>Volume {volume.number}</a>
-          </h2>
-          <ul>
-            {volume.philes.map((phile) => (
-              <Card phile={phile} showDescription />
-            ))}
-          </ul>
-        </section>
-      ))
+      props.volumes.map((volume, volumeIndex) => {
+        const plan = plans[volumeIndex];
+
+        return (
+          <section class="posts-section">
+            <h2>
+              <a href={`/themes/paper/volume/${volume.number}/`}>Volume {volume.number}</a>
+            </h2>
+            <ul>
+              {plan.initial.map((phile) => (
+                <Card phile={phile} showDescription />
+              ))}
+              {plan.batches.map((batch, batchIndex) => (
+                <>
+                  <li
+                    class="lazy-list-sentinel"
+                    data-batch={`v${volumeIndex}-b${batchIndex}`}
+                    style={`min-height: ${batch.reserveHeightPx}px`}
+                    aria-hidden="true"
+                  />
+                  <template class="lazy-list-template" data-batch={`v${volumeIndex}-b${batchIndex}`}>
+                    {batch.items.map((phile) => (
+                      <Card phile={phile} showDescription />
+                    ))}
+                  </template>
+                </>
+              ))}
+            </ul>
+          </section>
+        );
+      })
     }
   </main>
 </Layout>

@@ -25,6 +25,32 @@ dialog.mermaid-lightbox {
   --text-cell: 0.55rem;
 }
 
+/* ── 文章列表懒加载哨兵（lazy-list-client 契约） ──────────────────────── */
+
+.lazy-list-sentinel {
+  list-style: none;
+}
+
+/* ── 长文渲染性能：跳过视口外重块的布局与绘制 ──────────────────────────
+ * content-visibility: auto 让浏览器推迟视口外元素的 style/layout/paint，
+ * contain-intrinsic-size 提供占位高度（auto 使浏览器记住已渲染过的真实尺寸）。
+ * 对 jvm 深度解析这类含 80+ 代码块 / 70+ 表格的长文，可大幅缩短
+ * 首屏布局时间；DOM 与无 JS 行为不受影响。
+ */
+
+.prose pre,
+.prose .ink-block,
+.prose .math-block,
+.prose .phile-image {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 12rem;
+}
+
+.prose table {
+  content-visibility: auto;
+  contain-intrinsic-size: auto 16rem;
+}
+
 /* ── 基础排版 ─────────────────────────────────────────────────────────── */
 
 .prose {

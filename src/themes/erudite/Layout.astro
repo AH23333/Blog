@@ -96,13 +96,11 @@ const year = new Date().getFullYear();
     <script>
       import { initThemeMermaid } from "../../modules/themes/mermaid-client";
       import { installImageLightbox } from "../../modules/textmode/lightbox/images";
-      import { installMermaidLightbox } from "../../modules/textmode/lightbox/mermaid";
 
       installImageLightbox();
 
-      initThemeMermaid("erudite").then(() => {
-        installMermaidLightbox();
-      });
+      // mermaid 逐图懒渲染，渲染完成时自动安装对应灯箱
+      initThemeMermaid("erudite");
     </script>
   </body>
 </html>

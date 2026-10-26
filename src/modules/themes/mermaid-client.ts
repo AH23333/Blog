@@ -6,8 +6,12 @@
  *  - paper    ：跟随 data-theme 的亮/暗双套配色
  *  - retypeset：暖色杂志风
  *
- * 页面无 <pre class="mermaid"> 时直接返回，不加载 mermaid 资源。
+ * 逐图懒渲染：只有当 <pre class="mermaid"> 接近视口时才加载
+ * mermaid 库并渲染该图，渲染完成后立即安装该图的灯箱。
+ * 页面无 <pre class="mermaid"> 时不加载任何 mermaid 资源。
  */
+
+import { installMermaidLightbox } from "../textmode/lightbox/mermaid";
 
 export type ThemeMermaidStyle = "erudite" | "paper" | "retypeset";
 
@@ -18,6 +22,9 @@ declare global {
 }
 
 type MermaidModule = typeof import("mermaid")["default"];
+
+/** 提前渲染距离：图表距视口不足该值时开始渲染 */
+const PRELOAD_MARGIN_PX = 600;
 
 function neutralPalette(): Record<string, string> {
   return {
@@ -159,27 +166,79 @@ function ensureMermaid(style: ThemeMermaidStyle): Promise<MermaidModule> {
   return window.__themeMermaidReady;
 }
 
-/** 渲染页面内所有未处理的 mermaid 图 */
-export async function initThemeMermaid(style: ThemeMermaidStyle): Promise<void> {
+/**
+ * 懒渲染页面内所有未处理的 mermaid 图。
+ *
+ * 每个图由独立 IntersectionObserver 监测，接近视口时进入
+ * 渲染队列；队列串行消费，避免并发 mermaid.render 竞争。
+ * mermaid 库在第一张图需要渲染时才动态加载。
+ * 每张图渲染完成后立即安装它的灯箱（无需等待整页渲染完）。
+ */
+export function initThemeMermaid(style: ThemeMermaidStyle): void {
   const diagrams = document.querySelectorAll<HTMLElement>("pre.mermaid:not([data-processed])");
 
   if (diagrams.length === 0) {
     return;
   }
 
-  const mermaid = await ensureMermaid(style);
+  const queue: HTMLElement[] = [];
+  let rendering = false;
 
-  for (const diagram of diagrams) {
-    const id = `tmermaid-${Math.random().toString(36).slice(2, 11)}`;
+  const processQueue = async (): Promise<void> => {
+    if (rendering) return;
+    rendering = true;
 
     try {
-      const { svg } = await mermaid.render(id, diagram.textContent ?? "");
-      diagram.innerHTML = svg;
-      diagram.setAttribute("data-processed", "true");
-    } catch (err) {
-      const message = err instanceof Error ? err.message : String(err);
-      diagram.innerHTML = `<div class="mermaid-error">Diagram error: ${message}</div>`;
-      diagram.setAttribute("data-processed", "true");
+      const mermaid = await ensureMermaid(style);
+
+      while (queue.length > 0) {
+        const diagram = queue.shift();
+
+        if (!diagram || diagram.getAttribute("data-processed") === "true") {
+          continue;
+        }
+
+        const id = `tmermaid-${Math.random().toString(36).slice(2, 11)}`;
+
+        try {
+          const { svg } = await mermaid.render(id, diagram.textContent ?? "");
+          diagram.innerHTML = svg;
+          diagram.setAttribute("data-processed", "true");
+        } catch (err) {
+          const message = err instanceof Error ? err.message : String(err);
+          diagram.innerHTML = `<div class="mermaid-error">Diagram error: ${message}</div>`;
+          diagram.setAttribute("data-processed", "true");
+        }
+
+        // 安装该图的灯箱（root 取父节点：installMermaidLightbox 只扫描后代）
+        installMermaidLightbox(diagram.parentElement ?? document);
+      }
+    } finally {
+      rendering = false;
     }
+  };
+
+  const observer = new IntersectionObserver(
+    (entries) => {
+      let queued = false;
+
+      for (const entry of entries) {
+        if (!entry.isIntersecting) continue;
+
+        const diagram = entry.target as HTMLElement;
+        observer.unobserve(diagram);
+        queue.push(diagram);
+        queued = true;
+      }
+
+      if (queued) {
+        void processQueue();
+      }
+    },
+    { rootMargin: `${PRELOAD_MARGIN_PX}px 0px` }
+  );
+
+  for (const diagram of diagrams) {
+    observer.observe(diagram);
   }
 }

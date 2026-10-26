@@ -1,10 +1,12 @@
 ---
 /**
  * paper 卷页（模板 posts/[...page].astro + Breadcrumb.astro + Main.astro 移植）。
- * 面包屑 + 页面标题 + 按分组分区的文章卡片列表。
+ * 面包屑 + 页面标题 + 按分组分区的文章卡片列表（分批懒加载）。
  */
 
 import type { Volume } from "../../modules/volumes/model";
+import type { Phile } from "../../modules/philes/model";
+import { planLazyList, type LazyListPlan } from "../../modules/themes/lazy-list";
 import Card from "./Card.astro";
 import Layout from "./Layout.astro";
 
@@ -18,6 +20,11 @@ const groups =
   volume.groups.length > 0
     ? volume.groups
     : [{ dir: "", label: "Articles", philes: volume.philes }];
+
+// paper 卡片（标题 + 日期 + 描述）估算高度 ~104px
+const plans: LazyListPlan<Phile>[] = groups.map((group) =>
+  planLazyList(group.philes, { itemHeightPx: 104 })
+);
 ---
 
 <Layout
@@ -39,16 +46,35 @@ const groups =
     <h1 class="page-title">Volume {volume.number}</h1>
 
     {
-      groups.map((group) => (
-        <section class="posts-section">
-          {volume.groups.length > 0 && <h2>{group.label || "Articles"}</h2>}
-          <ul>
-            {group.philes.map((phile) => (
-              <Card phile={phile} showDescription />
-            ))}
-          </ul>
-        </section>
-      ))
+      groups.map((group, groupIndex) => {
+        const plan = plans[groupIndex];
+
+        return (
+          <section class="posts-section">
+            {volume.groups.length > 0 && <h2>{group.label || "Articles"}</h2>}
+            <ul>
+              {plan.initial.map((phile) => (
+                <Card phile={phile} showDescription />
+              ))}
+              {plan.batches.map((batch, batchIndex) => (
+                <>
+                  <li
+                    class="lazy-list-sentinel"
+                    data-batch={`g${groupIndex}-b${batchIndex}`}
+                    style={`min-height: ${batch.reserveHeightPx}px`}
+                    aria-hidden="true"
+                  />
+                  <template class="lazy-list-template" data-batch={`g${groupIndex}-b${batchIndex}`}>
+                    {batch.items.map((phile) => (
+                      <Card phile={phile} showDescription />
+                    ))}
+                  </template>
+                </>
+              ))}
+            </ul>
+          </section>
+        );
+      })
     }
   </main>
 </Layout>

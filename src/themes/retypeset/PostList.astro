@@ -2,10 +2,12 @@
 /**
  * retypeset 文章列表（模板 PostList.astro 移植）。
  * 移动端：标题 + Snell 时间行；lg 起：时间内联 + （首页）描述。
+ * 分批懒加载：首屏 12 条，滚动接近时激活后续批次。
  */
 
 import type { Phile } from "../../modules/philes/model";
 import { phileExcerpt } from "../../modules/seo/xml";
+import { planLazyList, type LazyListPlan } from "../../modules/themes/lazy-list";
 import PostDate from "./PostDate.astro";
 import { estimateReadingMinutes } from "./reading";
 
@@ -16,11 +18,16 @@ type Props = {
 };
 
 const props = Astro.props;
+
+// 带描述条目（lg 布局）估算 ~112px；纯标题条目 ~56px
+const plan: LazyListPlan<Phile> = planLazyList(props.philes, {
+  itemHeightPx: props.showDescription ? 112 : 56
+});
 ---
 
 <ul class="post-list">
   {
-    props.philes.map((phile) => {
+    plan.initial.map((phile) => {
       const href = phile.route.href.startsWith("/themes/retypeset/")
         ? phile.route.href
         : `/themes/retypeset/volume/${phile.route.volume}/${phile.route.slug}/`;
@@ -55,6 +62,56 @@ const props = Astro.props;
         </li>
       );
     })
+  }
+
+  {
+    plan.batches.map((batch, batchIndex) => (
+      <>
+        <li
+          class="lazy-list-sentinel"
+          data-batch={`pl-${batchIndex}`}
+          style={`min-height: ${batch.reserveHeightPx}px`}
+          aria-hidden="true"
+        />
+        <template class="lazy-list-template" data-batch={`pl-${batchIndex}`}>
+          {batch.items.map((phile) => {
+            const href = phile.route.href.startsWith("/themes/retypeset/")
+              ? phile.route.href
+              : `/themes/retypeset/volume/${phile.route.volume}/${phile.route.slug}/`;
+
+            return (
+              <li class="post-item" class:list={{ "post-item-home": props.showDescription }}>
+                <h3 class="post-item-title">
+                  <a class="post-item-link" href={href}>
+                    {phile.data.title}
+                  </a>
+                </h3>
+
+                <div class="post-time-mobile">
+                  <PostDate
+                    date={phile.data.date}
+                    minutes={estimateReadingMinutes(phile.body)}
+                    spacing="list"
+                  />
+                </div>
+
+                <div class="post-time-desktop">
+                  <PostDate
+                    date={phile.data.date}
+                    minutes={estimateReadingMinutes(phile.body)}
+                    spacing="list"
+                  />
+                </div>
+
+                {props.showDescription && (
+                  <p class="post-description">{phileExcerpt(phile)}</p>
+                )}
+              </li>
+            );
+          })}
+        </template>
+      </>
+    ))
   }
 </ul>
 
