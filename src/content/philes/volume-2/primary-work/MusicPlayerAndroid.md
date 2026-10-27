@@ -40,11 +40,11 @@ redacted: false
 
 ## 📷 项目截图
 
-![浅色搜索结果](Blog\public\images\volume-2\primary-work\MusicPlayerAndroid\浅色搜索结果.jpg)
-![深色搜索结果](Blog\public\images\volume-2\primary-work\MusicPlayerAndroid\深色搜索结果.jpg)
+![浅色搜索结果](Blog\public\images\volume-2\primary-work\MusicPlayerAndroid\浅色搜索结果.webp)
+![深色搜索结果](Blog\public\images\volume-2\primary-work\MusicPlayerAndroid\深色搜索结果.webp)
 ![浅色播放列表](Blog\public\images\volume-2\primary-work\MusicPlayerAndroid\浅色播放列表.jpg)
 ![深色创建歌单](Blog\public\images\volume-2\primary-work\MusicPlayerAndroid\深色创建歌单.jpg)
-![深色横屏歌词](Blog\public\images\volume-2\primary-work\MusicPlayerAndroid\深色横屏歌词.jpg)
+![深色横屏歌词](Blog\public\images\volume-2\primary-work\MusicPlayerAndroid\深色横屏歌词.webp)
 ![深色自定义歌单](Blog\public\images\volume-2\primary-work\MusicPlayerAndroid\深色自定义歌单.jpg)
 
 ## 🛠️ 技术栈

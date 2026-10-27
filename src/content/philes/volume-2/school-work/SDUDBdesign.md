@@ -433,7 +433,7 @@ graph LR
 
 ### 5.2 ER图
 
-![ER图](public\images\volume-2\primary-work\DBdesign\er-diagram-system.png)
+![ER图](public\images\volume-2\primary-work\DBdesign\er-diagram-system.webp)
 
 ### 5.3 数据字典
 
@@ -557,7 +557,7 @@ graph LR
 
 ### 5.4 关系表
 
-![关系表](public\images\volume-2\primary-work\DBdesign\er-diagram-table.png)
+![关系表](public\images\volume-2\primary-work\DBdesign\er-diagram-table.webp)
 
 ### 5.5 关系说明
 
@@ -891,8 +891,8 @@ flowchart LR
 
 ##### 登录/注册页
 
-![登录](public\images\volume-2\primary-work\DBdesign\登录.png)
-![注册](public\images\volume-2\primary-work\DBdesign\注册.png)
+![登录](public\images\volume-2\primary-work\DBdesign\登录.webp)
+![注册](public\images\volume-2\primary-work\DBdesign\注册.webp)
 
 ##### 仪表盘
 

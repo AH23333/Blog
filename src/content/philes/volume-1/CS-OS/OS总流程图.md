@@ -223,8 +223,8 @@ sequenceDiagram
 
 # 可放大查看图片
 
-![总流程图1](Blog\public\images\volume-1\CS-OS\简易OS知识点\总流程图1.png)
-![总流程图2](Blog\public\images\volume-1\CS-OS\简易OS知识点\总流程图2.png)
+![总流程图1](Blog\public\images\volume-1\CS-OS\简易OS知识点\总流程图1.webp)
+![总流程图2](Blog\public\images\volume-1\CS-OS\简易OS知识点\总流程图2.webp)
 
 # 操作系统全流程知识串联 · 详细图解版
 
