@@ -458,6 +458,18 @@ dialog.mermaid-lightbox {
   margin-inline: 0;
 }
 
+/* 超高图（渲染后 svg 高于 3000px，由 mermaid-client.ts 标记 mermaid-tall）：
+   限制为约视口高的内滚框，页面高度与绘制区域有界（实测整页滚动
+   p95 帧耗时从 0.5s+ 降回两位数 ms）。框内保持自然尺寸双向滚动，
+   行内文字仍可读；全图也可点击灯箱查看。
+   align-items 改 flex-start：flex 垂直居中在内容溢出时会把顶部
+   裁剪到滚动不可达。 */
+.prose pre.mermaid.mermaid-tall {
+  max-block-size: 70svh;
+  align-items: flex-start;
+  overflow-y: auto;
+}
+
 .prose .mermaid-error {
   color: #e5484d;
   font-size: 0.85em;

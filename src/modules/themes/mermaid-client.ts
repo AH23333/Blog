@@ -28,17 +28,31 @@ type MermaidModule = typeof import("mermaid")["default"];
 const PRELOAD_MARGIN_PX = 600;
 
 /**
- * 宽图标记：svg 宽于 pre 内容区时取消 auto margin 居中。
+ * 宽图/高图标记。
  *
+ * 宽图：svg 宽于 pre 内容区时取消 auto margin 居中。
  * 共享 mermaid.css 的 pre.mermaid 使用 justify-content: center（content.css
  * 已覆盖为 flex-start）；svg 的 margin-inline: auto 在溢出时按规范解析为 0，
  * 但为防浏览器差异，宽图仍加 mermaid-wide 类显式左对齐，保证整图
  * 可通过横向滚动到达；未溢出的小图不受影响，保持居中。
+ *
+ * 高图：渲染后 svg 高于 TALL_THRESHOLD_PX 时加 mermaid-tall 类，
+ * 由 content.css 限制为约视口高的内滚框。上万 px 高的 SVG（如巨型
+ * 时序图）参与页面滚动会令每帧绘制开销暴涨（实测滚动帧耗时 p95
+ * 超 0.5s）；限高后绘制面积有界，整页滚动恢复流畅，全图仍可通过
+ * 框内滚动或点击灯箱查看。
  */
+const TALL_THRESHOLD_PX = 3000;
+
 function markWideMermaid(diagram: HTMLElement): void {
   const svg = diagram.querySelector("svg");
-  if (svg && svg.getBoundingClientRect().width > diagram.getBoundingClientRect().width) {
+  if (!svg) return;
+  const rect = svg.getBoundingClientRect();
+  if (rect.width > diagram.getBoundingClientRect().width) {
     diagram.classList.add("mermaid-wide");
+  }
+  if (rect.height > TALL_THRESHOLD_PX) {
+    diagram.classList.add("mermaid-tall");
   }
 }
 
@@ -383,4 +397,38 @@ export function initThemeMermaid(style: ThemeMermaidStyle): void {
 
   // 页面加载时可能已停在文章中部（刷新保留滚动位置）
   activatePassed();
+
+  // 空闲预渲染：每拍浏览器空闲时间把文档序最靠前的一张未渲染图入队。
+  // mermaid.render 是同步长任务（每张 0.1~0.3s），滚动途中 IO 触发渲染
+  // 会把滚动帧卡住；空闲时提前渲掉，用户滚到时图已就绪。与 IO 入队
+  // 共用队列与去重标记，全部渲完后循环自然退出；页面不可见时
+  // requestIdleCallback 稀疏触发，天然限流。
+  const scheduleIdle: (cb: () => void) => void =
+    typeof requestIdleCallback === "function"
+      ? (cb) => {
+          requestIdleCallback(() => cb(), { timeout: 2000 });
+        }
+      : (cb) => {
+          setTimeout(cb, 300);
+        };
+
+  const trickle = (): void => {
+    for (const diagram of diagrams) {
+      if (diagram.getAttribute("data-processed") === "true" || diagram.dataset.queued === "true") {
+        continue;
+      }
+      if (enqueue(diagram)) {
+        void processQueue();
+      }
+      break;
+    }
+    const remaining = [...diagrams].some(
+      (d) => d.getAttribute("data-processed") !== "true" && d.dataset.queued !== "true"
+    );
+    if (remaining) {
+      scheduleIdle(trickle);
+    }
+  };
+
+  scheduleIdle(trickle);
 }
